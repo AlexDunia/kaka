@@ -6,30 +6,51 @@ export const useEventStore = defineStore('events', () => {
   // State
   const events = ref([])
   const currentEvent = ref(null)
-  const loading = ref(false)
+  const isLoading = ref(false)
   const error = ref(null)
   const searchQuery = ref('')
   const currentCategory = ref('all')
+  const lastFetch = ref(null)
+  const forceRefresh = ref(false)
 
   // Actions
-  const fetchAllEvents = async () => {
-    loading.value = true
+  const fetchAllEvents = async (refresh = false) => {
+    // Skip fetching if we already have events and it hasn't been 5 minutes since the last fetch
+    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000
+    if (
+      !refresh &&
+      !forceRefresh.value &&
+      events.value.length > 0 &&
+      lastFetch.value &&
+      lastFetch.value > fiveMinutesAgo
+    ) {
+      return events.value
+    }
+
+    isLoading.value = true
     error.value = null
 
     try {
       const allEvents = await eventService.getAllEvents()
       events.value = allEvents
+      lastFetch.value = Date.now()
+      forceRefresh.value = false
       return allEvents
     } catch (err) {
       error.value = err.message || 'Failed to fetch events'
       throw err
     } finally {
-      loading.value = false
+      isLoading.value = false
     }
   }
 
-  const fetchEventById = async (id) => {
-    loading.value = true
+  const fetchEventById = async (id, refresh = false) => {
+    // If we already have the event loaded and refresh is not requested
+    if (!refresh && currentEvent.value && currentEvent.value.id === id) {
+      return currentEvent.value
+    }
+
+    isLoading.value = true
     error.value = null
 
     try {
@@ -44,29 +65,35 @@ export const useEventStore = defineStore('events', () => {
       error.value = err.message || 'Failed to fetch event details'
       throw err
     } finally {
-      loading.value = false
+      isLoading.value = false
     }
   }
 
-  const fetchEventsByCategory = async (category) => {
-    loading.value = true
+  const fetchEventsByCategory = async (category, refresh = false) => {
+    // Skip fetching if we're already on this category and have events
+    if (!refresh && currentCategory.value === category && events.value.length > 0) {
+      return events.value
+    }
+
+    isLoading.value = true
     error.value = null
     currentCategory.value = category
 
     try {
       const filteredEvents = await eventService.getEventsByCategory(category)
       events.value = filteredEvents
+      lastFetch.value = Date.now()
       return filteredEvents
     } catch (err) {
       error.value = err.message || 'Failed to fetch events by category'
       throw err
     } finally {
-      loading.value = false
+      isLoading.value = false
     }
   }
 
   const fetchFeaturedEvents = async () => {
-    loading.value = true
+    isLoading.value = true
     error.value = null
 
     try {
@@ -76,34 +103,44 @@ export const useEventStore = defineStore('events', () => {
       error.value = err.message || 'Failed to fetch featured events'
       throw err
     } finally {
-      loading.value = false
+      isLoading.value = false
     }
   }
 
   const createEvent = async (eventData) => {
-    loading.value = true
+    isLoading.value = true
     error.value = null
 
     try {
-      const newEvent = await eventService.createEvent(eventData)
-      events.value.push(newEvent)
+      // Process image files if they exist
+      const processedData = { ...eventData }
+
+      // Upload happens in the service when not using localStorage
+      // We just need to make sure we're sending the right data format
+
+      const newEvent = await eventService.createEvent(processedData)
+
+      // Add to local state and force a refresh on next fetch
+      events.value.unshift(newEvent)
+      forceRefresh.value = true
+
       return newEvent
     } catch (err) {
       error.value = err.message || 'Failed to create event'
       throw err
     } finally {
-      loading.value = false
+      isLoading.value = false
     }
   }
 
   const updateEvent = async (id, eventData) => {
-    loading.value = true
+    isLoading.value = true
     error.value = null
 
     try {
       const updatedEvent = await eventService.updateEvent(id, eventData)
 
-      // Update event in the events array
+      // Update local state
       const index = events.value.findIndex((e) => e.id === id)
       if (index !== -1) {
         events.value[index] = updatedEvent
@@ -114,23 +151,25 @@ export const useEventStore = defineStore('events', () => {
         currentEvent.value = updatedEvent
       }
 
+      forceRefresh.value = true
+
       return updatedEvent
     } catch (err) {
       error.value = err.message || 'Failed to update event'
       throw err
     } finally {
-      loading.value = false
+      isLoading.value = false
     }
   }
 
   const deleteEvent = async (id) => {
-    loading.value = true
+    isLoading.value = true
     error.value = null
 
     try {
       await eventService.deleteEvent(id)
 
-      // Remove from events array
+      // Remove from local state
       events.value = events.value.filter((e) => e.id !== id)
 
       // Clear currentEvent if it's the deleted event
@@ -138,17 +177,19 @@ export const useEventStore = defineStore('events', () => {
         currentEvent.value = null
       }
 
+      forceRefresh.value = true
+
       return { success: true }
     } catch (err) {
       error.value = err.message || 'Failed to delete event'
       throw err
     } finally {
-      loading.value = false
+      isLoading.value = false
     }
   }
 
   const searchEvents = async (query) => {
-    loading.value = true
+    isLoading.value = true
     error.value = null
     searchQuery.value = query
 
@@ -160,15 +201,15 @@ export const useEventStore = defineStore('events', () => {
       error.value = err.message || 'Search failed'
       throw err
     } finally {
-      loading.value = false
+      isLoading.value = false
     }
   }
 
   // Reset search and filters
-  const resetFilters = () => {
+  const resetFilters = async () => {
     searchQuery.value = ''
     currentCategory.value = 'all'
-    fetchAllEvents()
+    return await fetchAllEvents(true)
   }
 
   // Computed properties
@@ -180,7 +221,8 @@ export const useEventStore = defineStore('events', () => {
       (event) =>
         event.title.toLowerCase().includes(query) ||
         event.description.toLowerCase().includes(query) ||
-        event.location.toLowerCase().includes(query),
+        event.location.toLowerCase().includes(query) ||
+        event.organizer.toLowerCase().includes(query),
     )
   })
 
@@ -191,15 +233,32 @@ export const useEventStore = defineStore('events', () => {
       .sort((a, b) => new Date(a.date) - new Date(b.date))
   })
 
+  const featuredEvents = computed(() => {
+    return events.value.filter((event) => event.featured)
+  })
+
+  const recentlyAddedEvents = computed(() => {
+    return [...events.value]
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 6)
+  })
+
   return {
+    // State
     events,
     currentEvent,
-    loading,
+    isLoading,
     error,
     searchQuery,
     currentCategory,
+
+    // Computed
     filteredEvents,
     upcomingEvents,
+    featuredEvents,
+    recentlyAddedEvents,
+
+    // Actions
     fetchAllEvents,
     fetchEventById,
     fetchEventsByCategory,
@@ -211,4 +270,3 @@ export const useEventStore = defineStore('events', () => {
     resetFilters,
   }
 })
- 

@@ -1,16 +1,12 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useEventStore } from '@/stores/events'
 import { storeToRefs } from 'pinia'
 import EventCard from '@/components/EventCard.vue'
-import LoadingIndicator from '@/components/LoadingIndicator.vue'
 
 // Store
 const eventStore = useEventStore()
-const { isLoading, error } = storeToRefs(eventStore)
-
-// Computed properties from store
-const featuredEvents = computed(() => eventStore.events.filter((event) => event.featured))
+const { events, featuredEvents, error } = storeToRefs(eventStore)
 
 // Local state
 const searchTerm = ref('')
@@ -35,21 +31,46 @@ const filteredEvents = computed(() => {
 })
 
 // Methods
-const getEventsByCategory = (category) => {
+const getEventsByCategory = async (category) => {
   activeTab.value = category
+  await eventStore.fetchEventsByCategory(category)
 }
 
-const handleSearch = () => {
-  // Implement search functionality
-  console.log('Searching for:', searchTerm.value)
+const handleSearch = async () => {
+  if (searchTerm.value.trim()) {
+    await eventStore.searchEvents(searchTerm.value)
+  } else {
+    await eventStore.resetFilters()
+  }
 }
 
 // Lifecycle hooks
 onMounted(async () => {
-  if (eventStore.events.length === 0) {
+  // Load all events if not already loaded
+  if (events.value.length === 0) {
     await eventStore.fetchAllEvents()
   }
+
+  // Load featured events
+  try {
+    loadingFeatured.value = true
+    await eventStore.fetchFeaturedEvents()
+  } catch (err) {
+    console.error('Error loading featured events:', err)
+  } finally {
+    loadingFeatured.value = false
+  }
 })
+
+// Watch for changes in events store to update UI
+watch(
+  () => eventStore.events,
+  () => {
+    // This will update when the events array changes, like when a new event is created
+    console.log('Events updated in HomePage')
+  },
+  { deep: true },
+)
 </script>
 
 <template>
@@ -78,11 +99,11 @@ onMounted(async () => {
         <h2>Featured Events</h2>
       </div>
 
-      <div v-if="loadingFeatured" class="loading-container">
-        <LoadingIndicator />
-      </div>
-      <div v-else-if="error" class="error-message">
+      <div v-if="error" class="error-message">
         {{ error }}
+      </div>
+      <div v-else-if="featuredEvents.length === 0" class="empty-state">
+        <p>No featured events available. Check back soon!</p>
       </div>
       <div v-else class="event-grid">
         <EventCard v-for="event in featuredEvents" :key="event.id" :event="event" />
@@ -143,11 +164,11 @@ onMounted(async () => {
         </button>
       </div>
 
-      <div v-if="isLoading" class="loading-container">
-        <LoadingIndicator />
-      </div>
-      <div v-else-if="error" class="error-message">
+      <div v-if="error" class="error-message">
         {{ error }}
+      </div>
+      <div v-else-if="filteredEvents.length === 0" class="empty-state">
+        <p>No events found. Try a different category or create your own event!</p>
       </div>
       <div v-else class="event-grid">
         <EventCard
@@ -162,9 +183,8 @@ onMounted(async () => {
 
 <style scoped>
 .home-page {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
+  width: 100%;
+  padding: 0 30px;
 }
 
 .hero-section {
@@ -222,46 +242,73 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #eee;
+  margin-bottom: 30px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  position: relative;
+}
+
+.section-header::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0));
 }
 
 .section-header h2 {
   font-size: 1.8rem;
-  color: #333;
+  color: white;
+  font-weight: 700;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  letter-spacing: -0.02em;
 }
 
 .view-all {
-  color: #4caf50;
+  color: rgba(255, 255, 255, 0.7);
   cursor: pointer;
   font-weight: 500;
+  transition: all 0.3s ease;
 }
 
 .view-all:hover {
-  text-decoration: underline;
+  text-decoration: none;
+  color: #e84393;
+  transform: translateY(-1px);
 }
 
 .event-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 30px;
   margin-bottom: 40px;
-  opacity: 0.75;
+  opacity: 1;
+  position: relative;
+  z-index: 1;
 }
 
 .event-grid > * {
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   transition:
-    opacity 0.3s ease,
-    transform 0.3s ease;
-  border: 1px solid rgba(0, 0, 0, 0.03);
+    transform 0.4s cubic-bezier(0.215, 0.61, 0.355, 1),
+    box-shadow 0.4s cubic-bezier(0.215, 0.61, 0.355, 1),
+    opacity 0.4s cubic-bezier(0.215, 0.61, 0.355, 1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  max-width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  height: auto;
+  max-height: 350px;
+  opacity: 0.92;
 }
 
 .event-grid > *:hover {
   opacity: 1;
-  transform: translateY(-2px);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+  transform: translateY(-8px);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.16);
 }
 
 .category-tabs {
@@ -273,30 +320,54 @@ onMounted(async () => {
 
 .tab {
   padding: 8px 15px;
-  background-color: #f5f5f5;
-  border: none;
+  background-color: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 25px;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .tab:hover {
-  background-color: #e0e0e0;
-}
-
-.tab.active {
-  background-color: #4caf50;
+  background-color: rgba(255, 255, 255, 0.1);
   color: white;
 }
 
+.tab.active {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
 .loading-container,
-.error-message {
+.error-message,
+.empty-state {
   text-align: center;
-  padding: 40px;
+  padding: 20px;
 }
 
 .error-message {
   color: #e74c3c;
+}
+
+.empty-state {
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  border: 1px dashed #ddd;
+  color: #777;
+}
+
+@media (max-width: 1200px) {
+  .event-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 992px) {
+  .event-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 768px) {
@@ -332,5 +403,33 @@ onMounted(async () => {
   .section-header h2 {
     font-size: 1.5rem;
   }
+}
+
+/* Style enhancements for sections */
+.featured-events,
+.upcoming-events {
+  position: relative;
+  padding: 30px;
+  border-radius: 0;
+  background-color: rgba(18, 18, 24, 0.2);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  margin-bottom: 40px;
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.025);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.025);
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.05),
+    0 1px 2px rgba(255, 255, 255, 0.025);
+}
+
+/* Add this to the HomePage.vue file to enhance the background */
+body {
+  background-color: #121212;
+  background-image:
+    radial-gradient(circle at 10% 20%, rgba(232, 67, 147, 0.015) 0%, transparent 30%),
+    radial-gradient(circle at 90% 80%, rgba(232, 67, 147, 0.015) 0%, transparent 30%);
+  background-attachment: fixed;
+  color: white;
 }
 </style>

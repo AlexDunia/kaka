@@ -404,27 +404,52 @@
           <div class="form-row">
             <div class="form-group">
               <label for="date" class="form-label">Event Date</label>
-              <input
-                id="date"
-                v-model="form.date"
-                type="date"
-                class="form-input"
-                :class="{ 'form-input--error': !validation.date.valid }"
-                :min="today"
-              />
+              <div class="date-picker-wrapper">
+                <input
+                  id="date"
+                  v-model="form.date"
+                  type="text"
+                  readonly
+                  class="form-input date-input"
+                  :class="{ 'form-input--error': !validation.date.valid }"
+                  :min="today"
+                  @click="openDatePicker"
+                />
+                <div v-if="showDateTip" class="picker-tip">
+                  <div class="tip-arrow"></div>
+                  <div class="tip-content">
+                    <p>Click to open calendar</p>
+                    <span>Select a date for your event</span>
+                  </div>
+                </div>
+              </div>
               <p v-if="!validation.date.valid" class="form-error">{{ validation.date.message }}</p>
+              <p v-else class="form-helper">Click to open the calendar</p>
             </div>
 
             <div class="form-group">
               <label for="time" class="form-label">Start Time</label>
-              <input
-                id="time"
-                v-model="form.time"
-                type="time"
-                class="form-input"
-                :class="{ 'form-input--error': !validation.time.valid }"
-              />
+              <div class="time-picker-wrapper">
+                <input
+                  id="time"
+                  v-model="form.time"
+                  type="text"
+                  readonly
+                  class="form-input time-input"
+                  :class="{ 'form-input--error': !validation.time.valid }"
+                  @click="openTimePicker"
+                  placeholder="Select a time"
+                />
+                <div v-if="showTimeTip" class="picker-tip">
+                  <div class="tip-arrow"></div>
+                  <div class="tip-content">
+                    <p>Click to select time</p>
+                    <span>Use our easy time selector</span>
+                  </div>
+                </div>
+              </div>
               <p v-if="!validation.time.valid" class="form-error">{{ validation.time.message }}</p>
+              <p v-else class="form-helper">Click to open time selector</p>
             </div>
           </div>
 
@@ -727,7 +752,108 @@
             Event Options
           </h2>
 
-          <div class="form-checkbox-wrapper">
+          <p class="section-intro">
+            Select features and amenities that your event offers to help attendees know what to
+            expect.
+          </p>
+
+          <div class="event-options-container">
+            <div class="event-options-grid">
+              <!-- Predefined event options -->
+              <div
+                v-for="option in predefinedEventOptions"
+                :key="'predefined-' + option"
+                class="event-option-item"
+                @click="toggleEventOption(option)"
+              >
+                <div
+                  class="event-option-checkbox"
+                  :class="{ 'event-option-checkbox--selected': isEventOptionSelected(option) }"
+                >
+                  <div class="event-option-label">{{ option }}</div>
+                  <svg
+                    v-if="isEventOptionSelected(option)"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="event-option-checkmark"
+                  >
+                    <path
+                      d="M20 6L9 17L4 12"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </div>
+              </div>
+
+              <!-- Custom event options -->
+              <div
+                v-for="(option, index) in form.customEventOptions"
+                :key="'custom-' + index"
+                class="event-option-item"
+              >
+                <div class="event-option-checkbox event-option-checkbox--selected">
+                  <div class="event-option-label">{{ option }}</div>
+                  <button
+                    type="button"
+                    @click="removeCustomEventOption(index)"
+                    class="remove-option-btn"
+                    aria-label="Remove option"
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M18 6L6 18"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <path
+                        d="M6 6L18 18"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="add-event-option">
+              <div class="custom-event-option-input">
+                <input
+                  type="text"
+                  v-model="newCustomEventOption"
+                  placeholder="Add your own event option..."
+                  class="form-input custom-option-input"
+                  @keyup.enter="addCustomEventOption"
+                />
+                <button
+                  type="button"
+                  class="add-custom-option-btn"
+                  @click="addCustomEventOption"
+                  :disabled="!newCustomEventOption.trim()"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-checkbox-wrapper mt-4">
             <input id="featured" v-model="form.featured" type="checkbox" class="form-checkbox" />
             <label for="featured" class="form-checkbox-label">
               Feature this event (additional promotion fee may apply)
@@ -1081,6 +1207,214 @@
         </div>
       </div>
     </div>
+
+    <!-- Custom Time Picker Modal -->
+    <div v-if="isTimePickerOpen" class="time-picker-overlay" @click.self="closeTimePicker">
+      <div class="time-picker-modal">
+        <div class="time-picker-header">
+          <h3>Select Time</h3>
+          <button type="button" class="time-picker-close" @click="closeTimePicker">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M18 6L6 18"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M6 6L18 18"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
+        <div class="time-picker-body">
+          <!-- Custom time input -->
+          <div class="custom-time-input">
+            <div class="time-input-group">
+              <input
+                type="text"
+                v-model="customHours"
+                class="time-input-field"
+                maxlength="2"
+                @focus="$event.target.select()"
+                @blur="formatTimeInputs"
+                @keydown="handleTimeInput"
+                placeholder="HH"
+              />
+              <span class="time-divider">:</span>
+              <input
+                type="text"
+                v-model="customMinutes"
+                class="time-input-field"
+                maxlength="2"
+                @focus="$event.target.select()"
+                @blur="formatTimeInputs"
+                @keydown="handleTimeInput"
+                placeholder="MM"
+              />
+            </div>
+          </div>
+
+          <div class="time-picker-grid">
+            <div
+              v-for="time in timeOptions"
+              :key="time"
+              class="time-option"
+              :class="{ selected: selectedTime === time }"
+              @click="selectTime(time)"
+            >
+              {{ time }}
+            </div>
+          </div>
+          <div class="time-period-selector">
+            <button
+              type="button"
+              class="time-period-btn"
+              :class="{ selected: selectedPeriod === 'AM' }"
+              @click="selectPeriod('AM')"
+            >
+              AM
+            </button>
+            <button
+              type="button"
+              class="time-period-btn"
+              :class="{ selected: selectedPeriod === 'PM' }"
+              @click="selectPeriod('PM')"
+            >
+              PM
+            </button>
+          </div>
+        </div>
+        <div class="time-picker-actions">
+          <button type="button" class="time-picker-btn time-picker-cancel" @click="closeTimePicker">
+            Cancel
+          </button>
+          <button
+            type="button"
+            class="time-picker-btn time-picker-apply"
+            @click="applyTimeSelection"
+          >
+            Apply
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Custom Date Picker Modal -->
+    <div v-if="isDatePickerOpen" class="date-picker-overlay" @click.self="closeDatePicker">
+      <div class="date-picker-modal">
+        <div class="date-picker-header">
+          <h3>Select Date</h3>
+          <button type="button" class="date-picker-close" @click="closeDatePicker">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M18 6L6 18"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M6 6L18 18"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
+        <div class="date-picker-body">
+          <div class="date-picker-month-nav">
+            <button class="month-nav-btn" @click="previousMonth">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M15 18L9 12L15 6"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+            <div class="month-display">{{ monthNames[currentMonth] }} {{ currentYear }}</div>
+            <button class="month-nav-btn" @click="nextMonth">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M9 18L15 12L9 6"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <div class="date-picker-weekdays">
+            <div class="weekday" v-for="day in weekdays" :key="day">{{ day }}</div>
+          </div>
+
+          <div class="date-picker-days">
+            <div
+              v-for="(day, index) in calendarDays"
+              :key="index"
+              class="calendar-day"
+              :class="{
+                'other-month': !day.inCurrentMonth,
+                today: day.isToday,
+                selected: day.isSelected,
+                disabled: day.isDisabled,
+              }"
+              @click="!day.isDisabled && selectDate(day.date)"
+            >
+              {{ day.day }}
+            </div>
+          </div>
+        </div>
+        <div class="date-picker-actions">
+          <button type="button" class="date-picker-btn date-picker-cancel" @click="closeDatePicker">
+            Cancel
+          </button>
+          <button
+            type="button"
+            class="date-picker-btn date-picker-apply"
+            @click="applyDateSelection"
+          >
+            Apply
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -1107,6 +1441,7 @@ const categories = ref([])
 const availableSubCategories = ref([])
 const mainImagePreview = ref(null)
 const bannerImagePreview = ref(null)
+const newCustomEventOption = ref('')
 
 // Also initialize form with image fields
 const form = reactive({
@@ -1125,6 +1460,8 @@ const form = reactive({
   imageIndex: Math.floor(Math.random() * 4), // Random image from available set
   mainImage: null,
   bannerImage: null,
+  selectedEventOptions: [], // Start with no options selected
+  customEventOptions: [], // For user-added custom options
   ticketTypes: [
     {
       name: 'General Admission',
@@ -1188,11 +1525,11 @@ onMounted(async () => {
   try {
     // This will be replaced with API call later
     const eventService = (await import('@/services/eventService')).default
-    categories.value = eventService.getAllCategories()
+    categories.value = await eventService.getAllCategories()
 
     // Get sub-categories or initialize with mock data if the service doesn't provide them
     try {
-      availableSubCategories.value = eventService.getAllSubCategories()
+      availableSubCategories.value = await eventService.getAllSubCategories()
     } catch {
       // If the service doesn't have getAllSubCategories method yet, use mock data
       availableSubCategories.value = [
@@ -1596,6 +1933,11 @@ const handleSubmit = async () => {
     let mainImageUrl = mainImagePreview.value
     let bannerImageUrl = bannerImagePreview.value
 
+    // Get the selected event options
+    const selectedEventOptions = [...form.selectedEventOptions, ...form.customEventOptions].filter(
+      Boolean,
+    ) // Remove any falsy values
+
     // Prepare the event data
     const eventData = {
       title: form.title,
@@ -1612,6 +1954,9 @@ const handleSubmit = async () => {
       imageIndex: form.imageIndex,
       mainImage: mainImageUrl,
       bannerImage: bannerImageUrl,
+      eventOptions: selectedEventOptions, // Add event options to the event data
+      selectedEventOptions: form.selectedEventOptions, // Store the original selected options
+      customEventOptions: form.customEventOptions, // Store the custom options
       ticketTypes: processedTickets,
       faqs: form.faqs.filter((faq) => faq.question.trim() && faq.answer.trim()), // Only include FAQs with content
     }
@@ -1675,6 +2020,12 @@ const resetForm = () => {
 
   // Also reset custom subcategories
   customSubCategories.value = []
+
+  // Reset custom event options
+  form.customEventOptions = []
+
+  // Reset event options to defaults
+  form.selectedEventOptions = ['Live performance', 'Food & drinks available', 'Indoor event']
 
   // Reset FAQs to defaults
   form.faqs = [
@@ -1935,9 +2286,477 @@ const handleBannerImageDrop = (event) => {
   event.preventDefault()
   handleBannerImageUpload(event)
 }
+
+// Add custom event option
+const addCustomEventOption = () => {
+  const trimmed = newCustomEventOption.value.trim()
+  if (trimmed && form.customEventOptions.length < 5 && !form.customEventOptions.includes(trimmed)) {
+    form.customEventOptions.push(trimmed)
+    newCustomEventOption.value = ''
+  }
+}
+
+// Remove custom event option
+const removeCustomEventOption = (index) => {
+  form.customEventOptions.splice(index, 1)
+}
+
+// Toggle event option
+const toggleEventOption = (option) => {
+  if (form.selectedEventOptions.includes(option)) {
+    form.selectedEventOptions = form.selectedEventOptions.filter((opt) => opt !== option)
+  } else {
+    // Allow selecting more options - remove limit
+    form.selectedEventOptions.push(option)
+  }
+}
+
+// Check if event option is selected
+const isEventOptionSelected = (option) => {
+  return form.selectedEventOptions.includes(option)
+}
+
+// Predefined event options
+const predefinedEventOptions = [
+  'Live performance',
+  'Food & drinks available',
+  'Indoor event',
+  'Outdoor event',
+  'Accessible venue',
+  'Family friendly',
+  'Free parking',
+  'VIP access',
+  'Professional networking',
+  'Photo opportunities',
+  'Live streaming',
+  'Q&A session',
+  'Merchandise available',
+  'Meet & greet',
+  'Seating provided',
+]
+
+const showDateTip = ref(false)
+const showTimeTip = ref(false)
+
+// Time picker variables
+const isTimePickerOpen = ref(false)
+const selectedTime = ref('07:00')
+const selectedPeriod = ref('AM')
+
+const timeOptions = [
+  '01:00',
+  '01:30',
+  '02:00',
+  '02:30',
+  '03:00',
+  '03:30',
+  '04:00',
+  '04:30',
+  '05:00',
+  '05:30',
+  '06:00',
+  '06:30',
+  '07:00',
+  '07:30',
+  '08:00',
+  '08:30',
+  '09:00',
+  '09:30',
+  '10:00',
+  '10:30',
+  '11:00',
+  '11:30',
+  '12:00',
+  '12:30',
+]
+
+const openTimePicker = () => {
+  // If there's already a time, parse it to 12-hour format for the picker
+  if (form.time) {
+    const [hours, minutes] = form.time.split(':')
+    const hour = parseInt(hours)
+
+    if (hour > 12) {
+      // Convert from 24-hour to 12-hour format for PM
+      selectedTime.value = `${(hour - 12).toString().padStart(2, '0')}:${minutes}`
+      selectedPeriod.value = 'PM'
+    } else if (hour === 12) {
+      // 12 PM
+      selectedTime.value = `12:${minutes}`
+      selectedPeriod.value = 'PM'
+    } else if (hour === 0) {
+      // 12 AM
+      selectedTime.value = `12:${minutes}`
+      selectedPeriod.value = 'AM'
+    } else {
+      // Regular AM hours
+      selectedTime.value = `${hour.toString().padStart(2, '0')}:${minutes}`
+      selectedPeriod.value = 'AM'
+    }
+  } else {
+    // Default to 7:00 AM if no time selected
+    selectedTime.value = '07:00'
+    selectedPeriod.value = 'AM'
+  }
+
+  isTimePickerOpen.value = true
+}
+
+const closeTimePicker = () => {
+  isTimePickerOpen.value = false
+}
+
+const selectTime = (time) => {
+  selectedTime.value = time
+}
+
+const selectPeriod = (period) => {
+  selectedPeriod.value = period
+}
+
+const applyTimeSelection = () => {
+  // Convert to 24-hour format if PM is selected
+  if (selectedPeriod.value === 'PM') {
+    const [hours, minutes] = selectedTime.value.split(':')
+    const hour = parseInt(hours)
+
+    // Only adjust hours that aren't already in PM format (12 PM stays as 12)
+    const adjustedHour = hour === 12 ? 12 : hour + 12
+    form.time = `${adjustedHour.toString().padStart(2, '0')}:${minutes}`
+  } else {
+    // For AM, make sure 12 AM becomes 00:00
+    const [hours, minutes] = selectedTime.value.split(':')
+    const hour = parseInt(hours)
+    const adjustedHour = hour === 12 ? 0 : hour
+    form.time = `${adjustedHour.toString().padStart(2, '0')}:${minutes}`
+  }
+
+  closeTimePicker()
+}
+
+// Date picker variables
+const isDatePickerOpen = ref(false)
+const currentYear = ref(new Date().getFullYear())
+const currentMonth = ref(new Date().getMonth())
+const selectedDate = ref(new Date())
+const tempSelectedDate = ref(null)
+
+// Custom time input variables
+const customHours = ref('07')
+const customMinutes = ref('00')
+
+// Define weekdays and month names for the calendar
+const weekdays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
+const monthNames = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+]
+
+// Format time inputs when focus is lost
+const formatTimeInputs = () => {
+  // Validate and format hours
+  let formattedHours = parseInt(customHours.value) || 1
+  if (formattedHours < 1) formattedHours = 1
+  if (formattedHours > 12) formattedHours = 12
+
+  // Validate and format minutes
+  let formattedMinutes = parseInt(customMinutes.value) || 0
+  if (formattedMinutes < 0) formattedMinutes = 0
+  if (formattedMinutes > 59) formattedMinutes = 59
+
+  // Update the ref values with formatted strings
+  customHours.value = formattedHours.toString().padStart(2, '0')
+  customMinutes.value = formattedMinutes.toString().padStart(2, '0')
+
+  // Update selectedTime with formatted values
+  selectedTime.value = `${formattedHours.toString().padStart(2, '0')}:${formattedMinutes.toString().padStart(2, '0')}`
+}
+
+// Handle keydown in time inputs
+const handleTimeInput = (event) => {
+  // Allow normal typing, backspace, arrows, etc
+  const allowedKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab']
+  if (allowedKeys.includes(event.key)) return
+
+  // If Enter key is pressed, format the inputs
+  if (event.key === 'Enter') {
+    event.preventDefault()
+    formatTimeInputs()
+    return
+  }
+
+  // Check if the user is typing a colon (:) to move to the minutes field
+  if (event.key === ':' && event.target === document.querySelector('.time-input-field')) {
+    event.preventDefault()
+    // Focus the minutes input
+    document.querySelectorAll('.time-input-field')[1].focus()
+    return
+  }
+}
+
+// Update custom time input fields when selectedTime changes
+watch(selectedTime, (newTime) => {
+  const [hours, minutes] = newTime.split(':')
+  // Only update if the input field is not currently focused
+  if (document.activeElement !== document.querySelector('.time-input-field')) {
+    customHours.value = hours
+    customMinutes.value = minutes
+  }
+})
+
+// Open date picker
+const openDatePicker = () => {
+  // If there's already a date, use it as the selected date
+  if (form.date) {
+    const [year, month, day] = form.date.split('-').map(Number)
+    selectedDate.value = new Date(year, month - 1, day)
+    currentYear.value = year
+    currentMonth.value = month - 1
+  } else {
+    // Default to today
+    selectedDate.value = new Date()
+    currentYear.value = selectedDate.value.getFullYear()
+    currentMonth.value = selectedDate.value.getMonth()
+  }
+
+  tempSelectedDate.value = new Date(selectedDate.value)
+  isDatePickerOpen.value = true
+}
+
+// Close date picker
+const closeDatePicker = () => {
+  isDatePickerOpen.value = false
+}
+
+// Navigate to previous month
+const previousMonth = () => {
+  if (currentMonth.value === 0) {
+    currentYear.value--
+    currentMonth.value = 11
+  } else {
+    currentMonth.value--
+  }
+}
+
+// Navigate to next month
+const nextMonth = () => {
+  if (currentMonth.value === 11) {
+    currentYear.value++
+    currentMonth.value = 0
+  } else {
+    currentMonth.value++
+  }
+}
+
+// Select a date from the calendar
+const selectDate = (date) => {
+  tempSelectedDate.value = new Date(date)
+}
+
+// Apply the selected date
+const applyDateSelection = () => {
+  selectedDate.value = new Date(tempSelectedDate.value)
+
+  // Format date as YYYY-MM-DD
+  const year = selectedDate.value.getFullYear()
+  const month = (selectedDate.value.getMonth() + 1).toString().padStart(2, '0')
+  const day = selectedDate.value.getDate().toString().padStart(2, '0')
+
+  form.date = `${year}-${month}-${day}`
+
+  closeDatePicker()
+}
+
+// Generate calendar days for the current month view
+const calendarDays = computed(() => {
+  const days = []
+  const firstDayOfMonth = new Date(currentYear.value, currentMonth.value, 1)
+  const lastDayOfMonth = new Date(currentYear.value, currentMonth.value + 1, 0)
+
+  // Get the day of the week of the first day (0-6, where 0 is Sunday)
+  const firstDayWeekday = firstDayOfMonth.getDay()
+
+  // Add days from previous month to fill the first row
+  const prevMonthLastDay = new Date(currentYear.value, currentMonth.value, 0).getDate()
+  for (let i = firstDayWeekday - 1; i >= 0; i--) {
+    const prevMonthDay = prevMonthLastDay - i
+    const date = new Date(currentYear.value, currentMonth.value - 1, prevMonthDay)
+    days.push({
+      day: prevMonthDay,
+      date: date,
+      inCurrentMonth: false,
+      isToday: isSameDay(date, new Date()),
+      isSelected: tempSelectedDate.value && isSameDay(date, tempSelectedDate.value),
+      isDisabled: date < new Date(today.value),
+    })
+  }
+
+  // Add days of current month
+  for (let day = 1; day <= lastDayOfMonth.getDate(); day++) {
+    const date = new Date(currentYear.value, currentMonth.value, day)
+    days.push({
+      day,
+      date,
+      inCurrentMonth: true,
+      isToday: isSameDay(date, new Date()),
+      isSelected: tempSelectedDate.value && isSameDay(date, tempSelectedDate.value),
+      isDisabled: date < new Date(today.value),
+    })
+  }
+
+  // Add days from next month to complete the calendar grid (up to 6 rows x 7 columns = 42 cells)
+  const remainingDays = 42 - days.length
+  for (let day = 1; day <= remainingDays; day++) {
+    const date = new Date(currentYear.value, currentMonth.value + 1, day)
+    days.push({
+      day,
+      date,
+      inCurrentMonth: false,
+      isToday: isSameDay(date, new Date()),
+      isSelected: tempSelectedDate.value && isSameDay(date, tempSelectedDate.value),
+      isDisabled: date < new Date(today.value),
+    })
+  }
+
+  return days
+})
+
+// Helper function to check if two dates are the same day
+const isSameDay = (date1, date2) => {
+  return (
+    date1.getFullYear() === date2.getFullYear() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getDate() === date2.getDate()
+  )
+}
 </script>
 
 <style scoped>
+.event-options-container {
+  margin-bottom: 2rem;
+}
+
+.event-options-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 2rem;
+}
+
+.event-option-item {
+  flex: 0 0 auto;
+}
+
+.add-event-option {
+  margin-top: 1.5rem;
+}
+
+.custom-event-option-input {
+  display: flex;
+  gap: 10px;
+  margin-top: 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.custom-option-input {
+  height: 46px;
+  font-size: 14px;
+}
+
+.add-custom-option-btn {
+  padding: 0 20px;
+  background-color: rgba(233, 75, 159, 0.15);
+  border: 1px solid rgba(233, 75, 159, 0.3);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  height: 46px;
+}
+
+.add-custom-option-btn:hover:not(:disabled) {
+  background-color: rgba(233, 75, 159, 0.25);
+  transform: translateY(-1px);
+}
+
+.add-custom-option-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.remove-option-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.remove-option-btn:hover {
+  color: white;
+  transform: scale(1.1);
+}
+
+.event-option-checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  padding: 10px 15px;
+  border-radius: 8px;
+  transition: all 0.25s ease;
+  background-color: rgba(25, 24, 30, 0.5);
+  border: 1px solid rgba(67, 67, 70, 0.25);
+  margin-bottom: 0.5rem;
+}
+
+.event-option-checkbox:hover {
+  background-color: rgba(37, 36, 42, 0.7);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.event-option-checkbox--selected {
+  background-color: rgba(233, 75, 159, 0.15);
+  border-color: rgba(233, 75, 159, 0.3);
+  color: white;
+}
+
+.event-option-label {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+  user-select: none;
+  cursor: pointer;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+.event-option-checkmark {
+  color: rgba(233, 75, 159, 1);
+}
+
+.mt-4 {
+  margin-top: 1.5rem;
+}
+
 .create-event {
   min-height: 100vh;
   background-color: #111014;
@@ -3868,5 +4687,619 @@ const handleBannerImageDrop = (event) => {
 .remove-image-btn svg {
   width: 16px;
   height: 16px;
+}
+
+.event-options-container {
+  margin-bottom: 2rem;
+}
+
+.event-options-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 2rem;
+}
+
+.event-option-item {
+  flex: 0 0 auto;
+}
+
+.add-event-option {
+  margin-top: 1.5rem;
+}
+
+.custom-event-option-input {
+  display: flex;
+  gap: 10px;
+  margin-top: 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.date-picker-wrapper {
+  position: relative;
+}
+
+.date-input {
+  padding-right: 30px;
+}
+
+.date-picker-wrapper::after {
+  content: '\25BC';
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.time-picker-wrapper {
+  position: relative;
+}
+
+.time-input {
+  padding-right: 30px;
+  cursor: pointer;
+}
+
+.time-picker-wrapper::after {
+  content: '\25BC';
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.picker-tip {
+  position: absolute;
+  top: -54px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(25, 24, 30, 0.95);
+  border: 1px solid rgba(170, 170, 170, 0.2);
+  border-radius: 8px;
+  padding: 8px 12px;
+  z-index: 10;
+  width: 180px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  animation: tipFadeIn 0.3s ease;
+}
+
+@keyframes tipFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.picker-tip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 8px;
+  border-style: solid;
+  border-color: rgba(25, 24, 30, 0.95) transparent transparent transparent;
+}
+
+.tip-content p {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.tip-content span {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Time Picker Modal */
+.time-picker-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  backdrop-filter: blur(5px);
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.time-picker-modal {
+  width: 320px;
+  background-color: #19181e;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  overflow: hidden;
+}
+
+.time-picker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.time-picker-header h3 {
+  font-size: 18px;
+  font-weight: 500;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: 0.3px;
+}
+
+.time-picker-close {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.time-picker-close:hover {
+  color: white;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.time-picker-body {
+  padding: 20px;
+}
+
+.time-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 5px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(170, 170, 170, 0.3) transparent;
+  position: relative;
+}
+
+.time-picker-grid::-webkit-scrollbar {
+  width: 4px;
+}
+
+.time-picker-grid::-webkit-scrollbar-track {
+  background: rgba(25, 24, 30, 0.3);
+  border-radius: 2px;
+}
+
+.time-picker-grid::-webkit-scrollbar-thumb {
+  background-color: rgba(233, 75, 159, 0.3);
+  border-radius: 2px;
+}
+
+.time-picker-grid::after {
+  content: 'Scroll for more options';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  padding: 30px 0 5px;
+  background: linear-gradient(to bottom, transparent, #19181e);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.time-picker-grid:hover::after {
+  opacity: 1;
+}
+
+.time-option {
+  padding: 10px 0;
+  text-align: center;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+  border: 1px solid transparent;
+}
+
+.time-option:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.time-option.selected {
+  background-color: rgba(233, 75, 159, 0.15);
+  border-color: rgba(233, 75, 159, 0.3);
+  color: white;
+  font-weight: 500;
+}
+
+.time-period-selector {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.time-period-btn {
+  padding: 8px 20px;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+
+.time-period-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.time-period-btn.selected {
+  background-color: rgba(233, 75, 159, 0.15);
+  border-color: rgba(233, 75, 159, 0.3);
+  color: white;
+}
+
+.time-picker-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.time-picker-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.time-picker-cancel {
+  background-color: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.time-picker-cancel:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: white;
+}
+
+.time-picker-apply {
+  background-color: rgba(233, 75, 159, 0.15);
+  border: 1px solid rgba(233, 75, 159, 0.3);
+  color: white;
+}
+
+.time-picker-apply:hover {
+  background-color: rgba(233, 75, 159, 0.25);
+  transform: translateY(-2px);
+}
+
+@keyframes modalSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Custom Time Input */
+.custom-time-input {
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.time-input-group {
+  display: flex;
+  align-items: center;
+  background-color: rgba(233, 75, 159, 0.08);
+  border: 1px solid rgba(233, 75, 159, 0.2);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 24px;
+  position: relative;
+}
+
+.full-time-input {
+  width: 100%;
+  background-color: rgba(233, 75, 159, 0.08);
+  border: 1px solid rgba(233, 75, 159, 0.2);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  color: white;
+  font-size: 16px;
+  text-align: center;
+  outline: none;
+}
+
+.full-time-input:focus {
+  background-color: rgba(233, 75, 159, 0.15);
+  border-color: rgba(233, 75, 159, 0.4);
+}
+
+.full-time-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.time-input-group::after {
+  content: 'Type your custom time';
+  position: absolute;
+  bottom: -20px;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.time-input-field {
+  width: 40px;
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 20px;
+  font-weight: 500;
+  text-align: center;
+  -moz-appearance: textfield;
+  border-radius: 5px;
+  padding: 5px 0;
+  transition: all 0.2s ease;
+}
+
+.time-input-field::-webkit-outer-spin-button,
+.time-input-field::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.time-input-field:focus {
+  outline: none;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.time-input-field::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 16px;
+}
+
+.time-divider {
+  color: white;
+  font-size: 20px;
+  margin: 0 5px;
+}
+
+.time-input-note {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 4px;
+}
+
+/* Date Picker Styles */
+.date-picker-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  backdrop-filter: blur(5px);
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.date-picker-modal {
+  width: 320px;
+  background-color: #19181e;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  overflow: hidden;
+}
+
+.date-picker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.date-picker-header h3 {
+  font-size: 18px;
+  font-weight: 500;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: 0.3px;
+}
+
+.date-picker-close {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.date-picker-close:hover {
+  color: white;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.date-picker-body {
+  padding: 20px;
+}
+
+.date-picker-month-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.month-display {
+  font-size: 16px;
+  font-weight: 500;
+  color: white;
+}
+
+.month-nav-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.month-nav-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.date-picker-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.weekday {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 8px 0;
+  font-weight: 500;
+}
+
+.date-picker-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.calendar-day {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.calendar-day:hover:not(.disabled):not(.selected) {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.calendar-day.other-month {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.calendar-day.today {
+  border: 1px dashed rgba(233, 75, 159, 0.5);
+}
+
+.calendar-day.selected {
+  background-color: rgba(233, 75, 159, 0.15);
+  border: 1px solid rgba(233, 75, 159, 0.3);
+  font-weight: 500;
+}
+
+.calendar-day.disabled {
+  color: rgba(255, 255, 255, 0.2);
+  cursor: not-allowed;
+}
+
+.date-picker-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.date-picker-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.date-picker-cancel {
+  background-color: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.date-picker-cancel:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: white;
+}
+
+.date-picker-apply {
+  background-color: rgba(233, 75, 159, 0.15);
+  border: 1px solid rgba(233, 75, 159, 0.3);
+  color: white;
+}
+
+.date-picker-apply:hover {
+  background-color: rgba(233, 75, 159, 0.25);
+  transform: translateY(-2px);
 }
 </style>

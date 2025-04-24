@@ -15,7 +15,7 @@ const props = defineProps({
 
 const router = useRouter()
 
-// Predefined event images
+// Predefined event images - fallback in case mainImage is not available
 const eventImages = [
   'https://res.cloudinary.com/dnuhjsckk/image/upload/v1745339803/Miss-Treasure-Base_gh6jnz.jpg',
   'https://res.cloudinary.com/dnuhjsckk/image/upload/v1745339803/6th-Service-with-mudiaga_1_hjvlab.jpg',
@@ -23,7 +23,7 @@ const eventImages = [
   'https://res.cloudinary.com/dnuhjsckk/image/upload/v1745339804/IMG-20250219-WA0008_entmwi.jpg',
 ]
 
-// Select a random image or use a specific one based on event index if available
+// Select image based on the event data
 const eventImage = computed(() => {
   // If event has mainImage, use it
   if (props.event.mainImage) {
@@ -45,12 +45,6 @@ const formattedPrice = computed(() => {
   }).format(props.event.price)
 })
 
-// Calculate percentage of tickets sold
-const percentageSold = computed(() => {
-  const sold = props.event.totalTickets - props.event.availableTickets
-  return Math.round((sold / props.event.totalTickets) * 100)
-})
-
 // Format date for display
 const displayDate = computed(() => {
   const eventDate = new Date(props.event.date)
@@ -69,16 +63,13 @@ const displayYear = computed(() => {
   return eventDate.getFullYear()
 })
 
-// Get avatar initials
-const hostInitials = computed(() => {
-  if (!props.event.host) return 'TD'
+// Get category display name
+const categoryDisplayName = computed(() => {
+  const category = props.event.category
+  if (!category) return 'Event'
 
-  const hostName = props.event.host.name || 'Tix Demand'
-  const nameParts = hostName.split(' ')
-  if (nameParts.length >= 2) {
-    return (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
-  }
-  return hostName.substring(0, 2).toUpperCase()
+  // Capitalize first letter and replace dashes/underscores with spaces
+  return category.charAt(0).toUpperCase() + category.slice(1).replace(/[-_]/g, ' ')
 })
 
 // Navigate to event details
@@ -92,8 +83,7 @@ const viewDetails = (e) => {
   <div class="event-card" @click="viewDetails">
     <div class="event-card__image">
       <img :src="eventImage" :alt="event.title" />
-      <div class="event-card__category">{{ event.category }}</div>
-      <div v-if="percentageSold > 75" class="event-card__badge">Hot!</div>
+      <div class="event-card__category">{{ categoryDisplayName }}</div>
 
       <div class="event-card__date-badge">
         <div class="date-main">
@@ -132,20 +122,6 @@ const viewDetails = (e) => {
             </svg>
             {{ event.location }}
           </div>
-
-          <div class="event-card__host">
-            <div class="host-avatar">{{ hostInitials }}</div>
-            <span class="host-label">{{ event.host?.name || 'Organized by Tix Demand' }}</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="event-card__tickets">
-        <div class="event-card__progress">
-          <div class="event-card__progress-bar" :style="{ width: `${percentageSold}%` }"></div>
-        </div>
-        <div class="event-card__tickets-info">
-          <span class="tickets-left">{{ event.availableTickets }} tickets left</span>
           <span class="event-card__price">{{ formattedPrice }}</span>
         </div>
       </div>
@@ -162,27 +138,33 @@ const viewDetails = (e) => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background-color: var(--card-bg);
-  border-radius: 8px;
+  background-color: rgba(18, 18, 24, 0.25);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border-radius: 12px;
   overflow: hidden;
-  transition: all var(--transition-medium) ease;
+  transition: all 0.4s cubic-bezier(0.215, 0.61, 0.355, 1);
   position: relative;
-  border: 1px solid rgba(255, 255, 255, 0.03);
-  box-shadow: var(--shadow-subtle);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.06),
+    0 1px 2px rgba(255, 255, 255, 0.025);
   cursor: pointer;
   transform-origin: center bottom;
 }
 
 .event-card:hover {
-  transform: translateY(-6px) scale(1.02);
-  box-shadow: var(--shadow-elevated);
-  background-color: var(--card-bg-hover);
-  border-color: rgba(255, 255, 255, 0.08);
+  transform: translateY(-8px) scale(1.02);
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.1),
+    0 0 15px rgba(255, 255, 255, 0.025);
+  background-color: rgba(24, 24, 32, 0.3);
+  border-color: rgba(255, 255, 255, 0.06);
 }
 
 .event-card__image {
   position: relative;
-  height: 180px;
+  height: 220px;
   overflow: hidden;
 }
 
@@ -192,8 +174,8 @@ const viewDetails = (e) => {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 60%;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0));
+  height: 70%;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0));
   z-index: 1;
   pointer-events: none;
 }
@@ -202,11 +184,11 @@ const viewDetails = (e) => {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform var(--transition-slow) ease;
+  transition: transform 0.7s ease;
 }
 
 .event-card:hover .event-card__image img {
-  transform: scale(1.08);
+  transform: scale(1.1);
 }
 
 .event-card__category {
@@ -215,30 +197,15 @@ const viewDetails = (e) => {
   left: 10px;
   color: white;
   padding: 6px 12px;
-  border-radius: var(--button-radius);
+  border-radius: 20px;
   font-size: 0.7rem;
   text-transform: uppercase;
   font-weight: 700;
   letter-spacing: 0.05em;
-  background-color: var(--primary);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.7);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   z-index: 2;
-}
-
-.event-card__badge {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background-color: #ff9f43;
-  color: white;
-  padding: 6px 12px;
-  border-radius: var(--button-radius);
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  z-index: 2;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .event-card__date-badge {
@@ -248,25 +215,13 @@ const viewDetails = (e) => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 10px 14px;
-  background-color: rgba(0, 0, 0, 0.75);
-  border-radius: 8px;
-  text-align: center;
+  background-color: rgba(0, 0, 0, 0.8);
+  border-radius: 10px;
+  padding: 8px;
+  min-width: 50px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
   z-index: 2;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  min-width: 60px;
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-  transition:
-    transform var(--transition-fast) ease,
-    box-shadow var(--transition-fast) ease;
-}
-
-.event-card:hover .event-card__date-badge {
-  transform: scale(1.05);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
-  border-color: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .date-main {
@@ -276,27 +231,24 @@ const viewDetails = (e) => {
 }
 
 .date-number {
-  font-size: 1.8rem;
-  font-weight: 800;
-  color: var(--primary);
+  font-size: 1.2rem;
+  font-weight: 700;
   line-height: 1;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  color: white;
 }
 
 .date-month {
-  font-size: 1rem;
-  color: var(--primary);
+  font-size: 0.7rem;
+  font-weight: 600;
   text-transform: uppercase;
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 2px;
 }
 
 .date-year {
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.8);
-  font-weight: 500;
-  margin-top: 3px;
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 2px;
 }
 
 .event-card__content {
@@ -304,154 +256,158 @@ const viewDetails = (e) => {
   display: flex;
   flex-direction: column;
   padding: 16px;
-  background-color: var(--card-bg);
+  background: rgba(12, 12, 16, 0.35);
+  color: white;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  position: relative;
+}
+
+.event-card__content::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0),
+    rgba(255, 255, 255, 0.05),
+    rgba(255, 255, 255, 0)
+  );
 }
 
 .event-card__header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .event-card__title {
-  margin: 0;
   font-size: 1.1rem;
-  line-height: 1.3;
+  font-weight: 600;
   color: white;
-  font-weight: 700;
-  flex: 1;
+  margin: 0;
   padding-right: 8px;
-  letter-spacing: -0.01em;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .event-card__rating {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
   white-space: nowrap;
+  margin-top: 4px;
 }
 
 .star-icon {
-  color: var(--primary);
-  font-size: 1.1rem;
+  color: #f0c14b; /* Amazon-style gold star color */
+  margin-right: 4px;
 }
 
 .event-card__details {
+  flex: 0;
   display: flex;
-  margin-bottom: 16px;
+  flex-direction: column;
+  margin-bottom: 8px;
 }
 
 .event-card__info {
-  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
 }
 
 .event-card__location {
   display: flex;
   align-items: center;
-  gap: 6px;
   font-size: 0.85rem;
-  color: var(--text-secondary);
+  color: rgba(255, 255, 255, 0.6);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  max-width: 100%;
 }
 
 .event-card__location svg {
+  margin-right: 6px;
   flex-shrink: 0;
-  color: var(--primary);
-}
-
-.event-card__host {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.host-avatar {
-  width: 28px;
-  height: 28px;
-  background-color: var(--primary);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: white;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-}
-
-.host-label {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
+  stroke: rgba(255, 255, 255, 0.6);
 }
 
 .event-card__tickets {
-  margin-top: auto;
-  margin-bottom: 16px;
-}
-
-.event-card__progress {
-  height: 4px;
-  background-color: rgba(255, 255, 255, 0.1);
-  border-radius: 100px;
-  overflow: hidden;
-  margin-bottom: 8px;
-}
-
-.event-card__progress-bar {
-  height: 100%;
-  background: linear-gradient(to right, var(--primary), var(--accent));
-  border-radius: 100px;
-  transition: width 1.5s cubic-bezier(0.19, 1, 0.22, 1);
-}
-
-.event-card__tickets-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.85rem;
-}
-
-.tickets-left {
-  color: var(--text-secondary);
-  font-weight: 500;
+  margin-top: 0;
+  padding-top: 0;
 }
 
 .event-card__price {
   font-weight: 700;
-  color: var(--primary);
+  color: white;
+  font-size: 1.2rem;
+  margin-top: 4px;
+  letter-spacing: 0.5px;
 }
 
 .event-card__action {
-  margin-top: auto;
-  display: flex;
-  justify-content: center;
+  text-align: center;
+  margin-top: 12px;
 }
 
 .event-card__button {
   width: 100%;
-  padding: 10px 16px;
-  background-color: var(--primary);
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.15);
   color: white;
-  border: none;
-  border-radius: var(--button-radius);
-  font-weight: 700;
-  font-size: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 30px;
+  font-size: 0.9rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: all var(--transition-fast) ease;
-  text-align: center;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  transition: all 0.3s ease;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
 }
 
 .event-card__button:hover {
-  background-color: var(--accent);
-  transform: scale(1.03);
-  box-shadow: 0 6px 14px rgba(232, 67, 147, 0.3);
+  background: #e84393;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(232, 67, 147, 0.3);
+  border-color: transparent;
+}
+
+@media (max-width: 768px) {
+  .event-card__image {
+    height: 160px;
+  }
+
+  .event-card__content {
+    padding: 12px;
+  }
+
+  .event-card__title {
+    font-size: 1rem;
+  }
+
+  .event-card__date-badge {
+    bottom: 10px;
+    right: 10px;
+    padding: 6px;
+    min-width: 45px;
+  }
+
+  .date-number {
+    font-size: 1rem;
+  }
 }
 </style>

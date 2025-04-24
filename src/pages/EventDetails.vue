@@ -20,10 +20,21 @@ const eventImages = [
   'https://res.cloudinary.com/dnuhjsckk/image/upload/v1745339804/IMG-20250219-WA0008_entmwi.jpg',
 ]
 
-// Select a random image or use a specific one based on event index if available
+// Modify the eventImage computed property to display the uploaded image
 const eventImage = computed(() => {
   if (!event.value) return eventImages[0]
 
+  // Use the uploaded mainImage if available
+  if (event.value.mainImage) {
+    return event.value.mainImage
+  }
+
+  // Use the uploaded bannerImage if available
+  if (event.value.bannerImage) {
+    return event.value.bannerImage
+  }
+
+  // Fall back to imageIndex if available
   if (event.value.imageIndex !== undefined && eventImages[event.value.imageIndex]) {
     return eventImages[event.value.imageIndex]
   }
@@ -48,19 +59,87 @@ const formattedDate = computed(() => {
   })
 })
 
-// Calculate percentage of tickets sold
-const percentageSold = computed(() => {
+// Calculate available tickets based on total tickets if not explicitly set
+const availableTickets = computed(() => {
   if (!event.value) return 0
 
-  const sold = event.value.totalTickets - event.value.availableTickets
-  return Math.round((sold / event.value.totalTickets) * 100)
+  // If availableTickets is explicitly set, use it
+  if (event.value.availableTickets !== undefined) {
+    return event.value.availableTickets
+  }
+
+  // Otherwise, use totalTickets (all tickets are initially available)
+  return event.value.totalTickets || 0
 })
 
-// Simplified ticket types for display in cards
+// Update percentageSold to use the availableTickets computed property
+const percentageSold = computed(() => {
+  if (!event.value || !event.value.totalTickets) return 0
+
+  const totalTickets = event.value.totalTickets
+  const available = availableTickets.value
+  const sold = totalTickets - available
+
+  return Math.round((sold / totalTickets) * 100)
+})
+
+// Update ticketTypes to use the actual ticket types from the event data
 const ticketTypes = computed(() => {
   if (!event.value) return []
 
-  const basePrice = event.value.price
+  // If event has ticket types defined, use those
+  if (event.value.ticketTypes && event.value.ticketTypes.length > 0) {
+    // Map event ticket types to display format
+    return event.value.ticketTypes.map((ticket, index) => {
+      // Generate different styles based on index
+      const styles = [
+        {
+          highlight: ticket.isFeatured,
+          icon: 'ticket',
+          isTable: false,
+        },
+        {
+          highlight: ticket.isFeatured,
+          icon: 'award',
+          isTable: false,
+        },
+        {
+          highlight: false,
+          icon: 'grid',
+          isTable: ticket.name.toLowerCase().includes('table'),
+        },
+        {
+          highlight: ticket.isFeatured,
+          icon: 'ticket',
+          isTable: ticket.name.toLowerCase().includes('table'),
+        },
+      ]
+
+      // Select a style based on index or use first style as default
+      const style = styles[index % styles.length]
+
+      // Check if it's a table ticket by name
+      const isTableTicket = ticket.name.toLowerCase().includes('table')
+      const tableMatch = ticket.name.match(/table for (\d+)/i)
+      const seatsCount = tableMatch ? parseInt(tableMatch[1]) : isTableTicket ? 4 : 0
+
+      return {
+        id: ticket.name.toLowerCase().replace(/\s+/g, '-'),
+        name: ticket.name,
+        description: ticket.description || 'Regular admission ticket',
+        price: ticket.price,
+        available: true,
+        maxPerPurchase: isTableTicket ? 2 : 10,
+        highlight: style.highlight || ticket.isFeatured,
+        icon: style.icon,
+        isTable: isTableTicket || style.isTable,
+        seatsCount: seatsCount,
+      }
+    })
+  }
+
+  // Fallback to generated ticket types based on base price
+  const basePrice = event.value.price || 0
 
   return [
     {
@@ -246,6 +325,43 @@ const closePurchaseModal = () => {
   selectedTicketType.value = null
   ticketQuantity.value = 1
 }
+
+// First, add a formattedCategory computed property for category name display
+const formattedCategory = computed(() => {
+  if (!event.value || !event.value.category) return ''
+
+  // Convert category ID to readable name (capitalize and replace hyphens with spaces)
+  return (
+    event.value.category.charAt(0).toUpperCase() + event.value.category.slice(1).replace(/-/g, ' ')
+  )
+})
+
+// After the existing computed properties, add a displaySubCategories computed property
+const displaySubCategories = computed(() => {
+  if (!event.value || !event.value.subCategories) return []
+
+  // Filter out empty strings and return array of subcategories
+  return event.value.subCategories.filter((cat) => cat && cat.trim() !== '')
+})
+
+// Merge event options
+const mergeEventOptions = () => {
+  if (!event.value) return []
+
+  // If event has selectedEventOptions, use those
+  if (event.value.selectedEventOptions && event.value.selectedEventOptions.length > 0) {
+    return event.value.selectedEventOptions
+  }
+
+  // If event has customEventOptions, combine with default options
+  if (event.value.customEventOptions && event.value.customEventOptions.length > 0) {
+    const defaultOptions = ['Live performance', 'Food & drinks available', 'Indoor event']
+    return [...defaultOptions, ...event.value.customEventOptions]
+  }
+
+  // Default fallback options
+  return ['Live performance', 'Food & drinks available', 'Indoor event']
+}
 </script>
 
 <template>
@@ -285,7 +401,7 @@ const closePurchaseModal = () => {
           <div class="event-info__main">
             <div class="event-info__image-container">
               <img :src="eventImage" :alt="event.title" class="event-info__image" />
-              <div class="event-info__category">{{ event.category }}</div>
+              <div class="event-info__category">{{ formattedCategory }}</div>
               <div v-if="percentageSold > 75" class="event-info__badge">Hot!</div>
             </div>
 
@@ -293,7 +409,7 @@ const closePurchaseModal = () => {
               <h1 class="event-info__title">{{ event.title }}</h1>
 
               <div class="event-info__badges">
-                <span class="event-info__badge-item">{{ event.category }}</span>
+                <span class="event-info__badge-item">{{ formattedCategory }}</span>
                 <span
                   v-if="percentageSold > 75"
                   class="event-info__badge-item event-info__badge-item--hot"
@@ -314,6 +430,14 @@ const closePurchaseModal = () => {
                     ></path>
                   </svg>
                   Popular
+                </span>
+                <!-- Display subcategories as badges -->
+                <span
+                  v-for="(subCategory, index) in displaySubCategories"
+                  :key="index"
+                  class="event-info__badge-item event-info__badge-item--subcategory"
+                >
+                  {{ subCategory }}
                 </span>
               </div>
 
@@ -390,7 +514,11 @@ const closePurchaseModal = () => {
               </div>
 
               <div class="event-info__highlights">
-                <div class="event-info__highlight-item">
+                <div
+                  v-for="(option, index) in event.eventOptions || mergeEventOptions()"
+                  :key="index"
+                  class="event-info__highlight-item"
+                >
                   <div class="event-info__highlight-icon">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -407,45 +535,7 @@ const closePurchaseModal = () => {
                       <circle cx="12" cy="12" r="10"></circle>
                     </svg>
                   </div>
-                  <span>Live performance</span>
-                </div>
-                <div class="event-info__highlight-item">
-                  <div class="event-info__highlight-icon">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    >
-                      <path d="m9 10 2 2 4-4"></path>
-                      <circle cx="12" cy="12" r="10"></circle>
-                    </svg>
-                  </div>
-                  <span>Food & drinks available</span>
-                </div>
-                <div class="event-info__highlight-item">
-                  <div class="event-info__highlight-icon">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    >
-                      <path d="m9 10 2 2 4-4"></path>
-                      <circle cx="12" cy="12" r="10"></circle>
-                    </svg>
-                  </div>
-                  <span>Indoor event</span>
+                  <span>{{ option }}</span>
                 </div>
               </div>
 
@@ -459,7 +549,7 @@ const closePurchaseModal = () => {
                 </div>
                 <div class="event-info__progress-text">
                   <div class="event-info__progress-stats">
-                    <span class="event-info__progress-number">{{ event.availableTickets }}</span>
+                    <span class="event-info__progress-number">{{ availableTickets }}</span>
                     <span class="event-info__progress-label">tickets left</span>
                   </div>
                   <div class="event-info__progress-stats">
@@ -583,10 +673,10 @@ const closePurchaseModal = () => {
               <div class="ticket-card__action">
                 <button
                   class="ticket-card__button"
-                  :disabled="event.availableTickets === 0"
+                  :disabled="availableTickets === 0"
                   @click.stop="openPurchaseModalWithTicket(ticket.id)"
                 >
-                  <span v-if="event.availableTickets === 0">Sold Out</span>
+                  <span v-if="availableTickets === 0">Sold Out</span>
                   <span v-else>SELECT</span>
                 </button>
               </div>
@@ -865,6 +955,12 @@ const closePurchaseModal = () => {
   background-color: rgba(255, 87, 34, 0.15);
   color: #ff7043;
   border-color: rgba(255, 87, 34, 0.3);
+}
+
+.event-info__badge-item--subcategory {
+  background-color: rgba(110, 231, 183, 0.15);
+  color: rgb(110, 231, 183);
+  border-color: rgba(110, 231, 183, 0.3);
 }
 
 .event-info__meta {
