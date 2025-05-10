@@ -1,7 +1,8 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useEventStore } from '@/stores/events'
+import QRCode from 'qrcode.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -11,6 +12,8 @@ const loading = ref(true)
 const error = ref(null)
 const event = computed(() => eventStore.currentEvent)
 const showPurchaseModal = ref(false)
+const showQRModal = ref(false)
+const qrValue = ref('')
 
 // Only use main_image from DB, no fallback
 const eventImage = computed(() => {
@@ -288,13 +291,31 @@ const showToast = (message) => {
   }, 10)
 }
 
-// Simplified purchase function
-const quickPurchase = () => {
+// Replace the quickPurchase function with this
+const proceedToCheckout = () => {
+  if (!event.value || !selectedTicketType.value) return
+
   const ticket = ticketTypes.value.find((t) => t.id === selectedTicketType.value)
   if (!ticket) return
 
-  alert(`Thank you! Your ${ticket.name} ticket has been booked. Check your email for confirmation.`)
-  closePurchaseModal()
+  // Create checkout data
+  const checkoutData = {
+    eventId: event.value.id,
+    eventTitle: event.value.title,
+    eventDate: event.value.event_date,
+    eventLocation: event.value.location,
+    ticketType: ticket.name,
+    ticketId: ticket.id,
+    quantity: ticketQuantity.value,
+    pricePerTicket: ticket.price,
+    totalPrice: ticket.price * ticketQuantity.value,
+  }
+
+  // Store checkout data in localStorage
+  localStorage.setItem('checkoutData', JSON.stringify(checkoutData))
+
+  // Navigate to checkout page
+  router.push('/checkout')
 }
 
 // Close purchase modal - combined version
@@ -341,6 +362,43 @@ const mergeEventOptions = () => {
   // Default fallback options
   return ['Live performance', 'Food & drinks available', 'Indoor event']
 }
+
+// Replace the generateBarcode function with this
+const generateQRCode = () => {
+  if (!event.value || !selectedTicketType.value) return
+
+  // Create a unique URL for this ticket type
+  qrValue.value = `${window.location.origin}/event/${event.value.id}?ticket=${selectedTicketType.value}`
+  showQRModal.value = true
+}
+
+const downloadQRCode = () => {
+  const canvas = document.querySelector('.qr-code canvas')
+  if (!canvas) return
+
+  const link = document.createElement('a')
+  link.download = `${event.value.title}-${getSelectedTicketName()}-ticket.png`
+  link.href = canvas.toDataURL('image/png')
+  link.click()
+
+  // Close the QR modal after download
+  showQRModal.value = false
+}
+
+// Add this watch effect to handle URL parameters
+watch(
+  () => route.query,
+  (query) => {
+    if (query.ticket && event.value) {
+      const ticketId = query.ticket
+      const ticket = ticketTypes.value.find((t) => t.id === ticketId)
+      if (ticket) {
+        openPurchaseModalWithTicket(ticketId)
+      }
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -770,11 +828,79 @@ const mergeEventOptions = () => {
                 </svg>
                 <span>{{ isEventInFavorites ? 'Saved to Favorites' : 'Add to Favorites' }}</span>
               </button>
-              <button class="premium-modal__purchase" @click="quickPurchase">
-                <span>Buy now</span>
+              <button class="premium-modal__qr" @click="generateQRCode">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <rect x="3" y="3" width="7" height="7"></rect>
+                  <rect x="14" y="3" width="7" height="7"></rect>
+                  <rect x="14" y="14" width="7" height="7"></rect>
+                  <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+                <span>Generate QR Code</span>
+              </button>
+              <button class="premium-modal__purchase" @click="proceedToCheckout">
+                <span>Proceed to Checkout</span>
               </button>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add this new QR Code modal after the premium modal -->
+    <div v-if="showQRModal" class="qr-modal-overlay" @click="showQRModal = false">
+      <div class="qr-modal" @click.stop>
+        <div class="qr-modal__header">
+          <h3 class="qr-modal__title">QR Code for {{ getSelectedTicketName() }}</h3>
+          <button class="qr-modal__close" @click="showQRModal = false">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="qr-modal__body">
+          <div class="qr-code">
+            <QRCode
+              :value="qrValue"
+              :size="200"
+              level="H"
+              render-as="canvas"
+              :foreground="'#000000'"
+              :background="'#ffffff'"
+            />
+          </div>
+          <p class="qr-modal__description">Scan this QR code to quickly access this ticket type</p>
+          <button class="qr-modal__download" @click="downloadQRCode">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Download QR Code
+          </button>
         </div>
       </div>
     </div>
@@ -1568,6 +1694,12 @@ const mergeEventOptions = () => {
   display: flex;
   gap: 1rem;
   margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.premium-modal__actions button {
+  flex: 1;
+  min-width: 120px;
 }
 
 .premium-modal__favorite {
@@ -1600,7 +1732,113 @@ const mergeEventOptions = () => {
   stroke: var(--primary);
 }
 
-.premium-modal__purchase {
+.premium-modal__qr {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex: 1;
+}
+
+.premium-modal__qr:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.premium-modal__qr svg {
+  stroke: currentColor;
+  fill: none;
+}
+
+.qr-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  backdrop-filter: blur(5px);
+}
+
+.qr-modal {
+  background: linear-gradient(145deg, rgba(40, 40, 55, 0.95), rgba(30, 30, 45, 0.98));
+  border-radius: 12px;
+  width: 400px;
+  max-width: 90vw;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.qr-modal__header {
+  padding: 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.qr-modal__title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+  color: white;
+}
+
+.qr-modal__close {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.qr-modal__close:hover {
+  color: white;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.qr-modal__body {
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.qr-code {
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.qr-modal__description {
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.qr-modal__download {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   background-color: var(--primary);
   color: white;
   border: none;
@@ -1609,12 +1847,16 @@ const mergeEventOptions = () => {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  flex: 1;
 }
 
-.premium-modal__purchase:hover {
+.qr-modal__download:hover {
   background-color: var(--primary-dark, #d62e7e);
   box-shadow: 0 4px 10px rgba(232, 67, 147, 0.3);
+}
+
+.qr-modal__download svg {
+  stroke: currentColor;
+  fill: none;
 }
 
 /* Toast notification styles */

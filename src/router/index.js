@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomePage from '../pages/HomePage.vue'
 import EventDetails from '../pages/EventDetails.vue'
 import CreateEvent from '../pages/CreateEvent.vue'
+import CheckoutPage from '../pages/Checkout.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -97,6 +98,11 @@ const router = createRouter({
       meta: {
         title: 'Create Event',
       },
+    },
+    {
+      path: '/checkout',
+      name: 'checkout',
+      component: CheckoutPage,
     },
     {
       path: '/:pathMatch(.*)*',
