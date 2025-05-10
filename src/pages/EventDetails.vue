@@ -3,10 +3,12 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useEventStore } from '@/stores/events'
 import QRCode from 'qrcode.vue'
+import { useCartStore } from '@/stores/cart'
 
 const route = useRoute()
 const router = useRouter()
 const eventStore = useEventStore()
+const cartStore = useCartStore()
 
 const loading = ref(true)
 const error = ref(null)
@@ -14,6 +16,8 @@ const event = computed(() => eventStore.currentEvent)
 const showPurchaseModal = ref(false)
 const showQRModal = ref(false)
 const qrValue = ref('')
+const notification = ref(null)
+const notificationTimeout = ref(null)
 
 // Only use main_image from DB, no fallback
 const eventImage = computed(() => {
@@ -265,30 +269,12 @@ const toggleFavorite = () => {
     // Remove from favorites
     const index = favorites.value.indexOf(event.value.id)
     favorites.value.splice(index, 1)
-    showToast('Removed from favorites')
+    showToaster('Removed from favorites')
   } else {
     // Add to favorites
     favorites.value.push(event.value.id)
-    showToast('Added to favorites')
+    showToaster('Added to favorites')
   }
-}
-
-// Toast notification
-const showToast = (message) => {
-  const toast = document.createElement('div')
-  toast.className = 'toast'
-  toast.textContent = message
-  document.body.appendChild(toast)
-
-  setTimeout(() => {
-    toast.classList.add('show')
-    setTimeout(() => {
-      toast.classList.remove('show')
-      setTimeout(() => {
-        document.body.removeChild(toast)
-      }, 300)
-    }, 2000)
-  }, 10)
 }
 
 // Replace the quickPurchase function with this
@@ -399,6 +385,40 @@ watch(
   },
   { immediate: true },
 )
+
+function showToaster(message) {
+  notification.value = message
+  if (notificationTimeout.value) clearTimeout(notificationTimeout.value)
+  notificationTimeout.value = setTimeout(() => {
+    notification.value = null
+  }, 3000)
+}
+
+const addToCart = () => {
+  if (!event.value || !selectedTicketType.value) return
+  const ticket = ticketTypes.value.find((t) => t.id === selectedTicketType.value)
+  if (!ticket) return
+  cartStore.addItem({
+    eventId: event.value.id,
+    eventTitle: event.value.title,
+    eventDate: event.value.event_date,
+    eventLocation: event.value.location,
+    ticketType: ticket.name,
+    ticketId: ticket.id,
+    quantity: ticketQuantity.value,
+    pricePerTicket: ticket.price,
+    totalPrice: ticket.price * ticketQuantity.value,
+    eventImage: eventImage.value,
+  })
+  closePurchaseModal()
+  showToaster(`${ticketQuantity.value} of ${event.value.title} successfully added to cart`)
+}
+
+// Add goToCart method
+const goToCart = () => {
+  notification.value = null
+  router.push('/cart')
+}
 </script>
 
 <template>
@@ -812,7 +832,11 @@ watch(
             </div>
 
             <div class="premium-modal__actions">
-              <button class="premium-modal__favorite" @click="toggleFavorite">
+              <button
+                class="premium-modal__favorite"
+                @click="addToCart"
+                :disabled="!selectedTicketType || ticketQuantity < 1"
+              >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="18"
@@ -822,11 +846,13 @@ watch(
                   stroke="currentColor"
                   stroke-width="2"
                 >
-                  <path
-                    d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
-                  ></path>
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="3" y1="9" x2="21" y2="9"></line>
+                  <line x1="3" y1="15" x2="21" y2="15"></line>
+                  <line x1="9" y1="3" x2="9" y2="21"></line>
+                  <line x1="15" y1="3" x2="15" y2="21"></line>
                 </svg>
-                <span>{{ isEventInFavorites ? 'Saved to Favorites' : 'Add to Favorites' }}</span>
+                <span>Add to Cart</span>
               </button>
               <button class="premium-modal__qr" @click="generateQRCode">
                 <svg
@@ -904,6 +930,44 @@ watch(
         </div>
       </div>
     </div>
+
+    <transition name="toaster-fade">
+      <div v-if="notification" class="toaster-notification">
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="toaster-icon"
+        >
+          <circle cx="12" cy="12" r="10" />
+          <path d="M9 12l2 2l4-4" />
+        </svg>
+        <span>{{ notification }}</span>
+        <button class="toaster-go-to-cart" @click="goToCart" aria-label="Go to cart">
+          Go to Cart
+        </button>
+        <button class="toaster-close" @click="notification = null" aria-label="Close notification">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -1859,25 +1923,101 @@ watch(
   fill: none;
 }
 
-/* Toast notification styles */
-.toast {
+.toaster-notification {
   position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%) translateY(100px);
-  background-color: rgba(40, 40, 55, 0.95);
-  color: white;
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-  z-index: 2000;
-  opacity: 0;
-  transition: all 0.3s ease;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  top: 32px;
+  right: 32px;
+  z-index: 3000;
+  background: rgba(40, 40, 55, 0.98);
+  color: #fff;
+  padding: 1.1rem 2.2rem 1.1rem 1.5rem;
+  border-radius: 12px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.18),
+    0 1.5px 8px rgba(232, 67, 147, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 1.08rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  pointer-events: auto;
+  opacity: 0.98;
+  animation: toaster-in 0.45s cubic-bezier(0.4, 1.6, 0.6, 1) both;
 }
 
-.toast.show {
-  transform: translateX(-50%) translateY(0);
-  opacity: 1;
+.toaster-icon {
+  color: #4ade80;
+  flex-shrink: 0;
+}
+
+@keyframes toaster-in {
+  from {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.98);
+  }
+  to {
+    opacity: 0.98;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.toaster-fade-enter-active,
+.toaster-fade-leave-active {
+  transition:
+    opacity 0.35s cubic-bezier(0.4, 1.6, 0.6, 1),
+    transform 0.35s cubic-bezier(0.4, 1.6, 0.6, 1);
+}
+.toaster-fade-enter-from,
+.toaster-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-30px) scale(0.98);
+}
+.toaster-fade-enter-to,
+.toaster-fade-leave-from {
+  opacity: 0.98;
+  transform: translateY(0) scale(1);
+}
+
+.toaster-close {
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  margin-left: 0.5rem;
+  padding: 0.2rem;
+  border-radius: 50%;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toaster-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Add styles for the Go to Cart button in the toaster */
+.toaster-go-to-cart {
+  background: none;
+  border: 1.5px solid var(--primary, #c04888);
+  color: var(--primary, #c04888);
+  font-weight: 700;
+  font-size: 1rem;
+  border-radius: 8px;
+  padding: 0.3rem 1rem;
+  cursor: pointer;
+  margin-left: 1.2rem;
+  margin-right: 0.5rem;
+  transition:
+    background 0.18s,
+    color 0.18s;
+  display: flex;
+  align-items: center;
+  height: 2.2rem;
+}
+.toaster-go-to-cart:hover {
+  background: var(--primary, #c04888);
+  color: #fff;
 }
 </style>

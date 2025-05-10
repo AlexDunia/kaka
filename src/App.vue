@@ -1,6 +1,7 @@
 <script setup>
 import { RouterLink, RouterView } from 'vue-router'
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { useCartStore } from '@/stores/cart'
 
 const isMobileMenuOpen = ref(false)
 const scrollPosition = ref(0)
@@ -21,6 +22,9 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('scroll', updateScroll)
 })
+
+const cartStore = useCartStore()
+const cartCount = computed(() => cartStore.itemCount)
 </script>
 
 <template>
@@ -54,29 +58,27 @@ onUnmounted(() => {
             <RouterLink to="/contact" @click="isMobileMenuOpen = false" class="nav-link"
               >Contact</RouterLink
             >
-      </nav>
+          </nav>
 
           <div class="header-actions">
-            <RouterLink to="/login" class="auth-btn">
-              <div class="user-icon">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="12" cy="7" r="4"></circle>
-                </svg>
-              </div>
-              <span class="login-text">Login</span>
+            <RouterLink to="/cart" class="navbar__action navbar__action--cart">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="9" cy="21" r="1" />
+                <circle cx="20" cy="21" r="1" />
+                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+              </svg>
+              <span v-if="cartCount > 0" class="cart-badge">{{ cartCount }}</span>
             </RouterLink>
-
             <button class="mobile-menu-toggle" @click="toggleMobileMenu">
               <span></span>
               <span></span>
@@ -84,8 +86,8 @@ onUnmounted(() => {
             </button>
           </div>
         </div>
-    </div>
-  </header>
+      </div>
+    </header>
 
     <main class="app-content">
       <RouterView v-slot="{ Component }">
@@ -489,7 +491,7 @@ onUnmounted(() => {
 }
 
 .social-links a {
-    display: flex;
+  display: flex;
   align-items: center;
   justify-content: center;
   width: 36px;
@@ -582,5 +584,46 @@ onUnmounted(() => {
     text-align: center;
     padding-top: 2rem;
   }
+}
+
+/* Add cart badge styles for header-actions */
+.navbar__action {
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.navbar__action:hover {
+  color: white;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.navbar__action--cart {
+  position: relative;
+}
+
+.cart-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: var(--primary, #e84393);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 50%;
+  padding: 0.18em 0.55em;
+  min-width: 1.3em;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(232, 67, 147, 0.15);
+  pointer-events: none;
+  z-index: 2;
+  border: 2px solid #18181e;
+  transition: background 0.2s;
 }
 </style>

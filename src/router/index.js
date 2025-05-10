@@ -105,6 +105,11 @@ const router = createRouter({
       component: CheckoutPage,
     },
     {
+      path: '/cart',
+      name: 'cart',
+      component: () => import('../pages/Cart.vue'),
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: () => import('../pages/NotFound.vue'),

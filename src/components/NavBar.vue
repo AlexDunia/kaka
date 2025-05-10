@@ -1,5 +1,8 @@
 <script setup>
-// Import router functionality is not needed for now
+import { useCartStore } from '@/stores/cart'
+import { computed } from 'vue'
+const cartStore = useCartStore()
+const cartCount = computed(() => cartStore.itemCount)
 </script>
 
 <template>
@@ -43,11 +46,11 @@
       </div>
 
       <div class="navbar__actions">
-        <router-link to="/search" class="navbar__action">
+        <router-link to="/cart" class="navbar__action navbar__action--cart">
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            width="18"
-            height="18"
+            width="24"
+            height="24"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -55,44 +58,11 @@
             stroke-linecap="round"
             stroke-linejoin="round"
           >
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            <circle cx="9" cy="21" r="1" />
+            <circle cx="20" cy="21" r="1" />
+            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
           </svg>
-        </router-link>
-
-        <router-link to="/create-event" class="navbar__action navbar__action--create-event">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-          <span>Create Event</span>
-        </router-link>
-
-        <router-link to="/login" class="navbar__action navbar__action--auth">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-            <circle cx="12" cy="7" r="4"></circle>
-          </svg>
+          <span v-if="cartCount > 0" class="cart-badge">{{ cartCount }}</span>
         </router-link>
       </div>
     </div>
@@ -217,6 +187,47 @@
   background-color: var(--primary-dark, #d62e7e);
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(232, 67, 147, 0.3);
+}
+
+.navbar__action--cart {
+  position: relative;
+  font-size: 1.7rem;
+  background: rgba(192, 72, 136, 0.12);
+  border-radius: 50%;
+  padding: 0.7rem;
+  border: 2.5px solid #fff;
+  color: var(--primary, #c04888);
+  transition:
+    background 0.2s,
+    color 0.2s,
+    border 0.2s;
+}
+
+.navbar__action--cart:hover {
+  background: var(--primary, #c04888);
+  color: #fff;
+  border-color: #fff;
+}
+
+.cart-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: var(--primary, #c04888);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 900;
+  border-radius: 50%;
+  padding: 0.22em 0.7em;
+  min-width: 1.5em;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(232, 67, 147, 0.18);
+  border: 2.5px solid #fff;
+  z-index: 2;
+  transition:
+    background 0.2s,
+    color 0.2s,
+    border 0.2s;
 }
 
 /* Responsive styles */
