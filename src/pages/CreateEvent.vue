@@ -88,6 +88,7 @@
               <option v-for="category in categories" :key="category.id" :value="category.id">
                 {{ category.name }}
               </option>
+              _
             </select>
             <p v-if="!validation.category.valid" class="form-error">
               {{ validation.category.message }}
@@ -1522,30 +1523,152 @@ const validation = reactive({
 
 // Fetch categories on mount
 onMounted(async () => {
-  try {
-    // This will be replaced with API call later
-    const eventService = (await import('@/services/eventService')).default
-    categories.value = await eventService.getAllCategories()
+  error.value = null // Start with no error message
 
-    // Get sub-categories or initialize with mock data if the service doesn't provide them
+  try {
+    // Use axios directly to ensure we're hitting the exact Laravel API endpoints
+    const axios = (await import('axios')).default
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+    console.log('Configured API URL:', API_BASE_URL)
+
+    // Direct diagnostic check of the Laravel API root to verify connectivity
     try {
-      availableSubCategories.value = await eventService.getAllSubCategories()
-    } catch {
-      // If the service doesn't have getAllSubCategories method yet, use mock data
-      availableSubCategories.value = [
-        { id: 'sub1', name: 'Workshop' },
-        { id: 'sub2', name: 'Conference' },
-        { id: 'sub3', name: 'Meetup' },
-        { id: 'sub4', name: 'Webinar' },
-        { id: 'sub5', name: 'Party' },
-        { id: 'sub6', name: 'Exhibition' },
-        { id: 'sub7', name: 'Concert' },
-        { id: 'sub8', name: 'Sport Event' },
-      ]
+      console.log('Testing API connectivity with simple GET request...')
+      const pingResponse = await axios.get(`${API_BASE_URL}/api`, {
+        timeout: 5000, // 5 second timeout
+      })
+      console.log('API root response:', pingResponse.status, pingResponse.statusText)
+    } catch (pingErr) {
+      console.error('API root connectivity test failed:', pingErr.message)
+      // Check for CORS error
+      if (pingErr.message.includes('CORS') || pingErr.message.includes('Cross-Origin')) {
+        console.error('POSSIBLE CORS ISSUE DETECTED! Check your Laravel CORS configuration')
+      }
+    }
+
+    // Try different combinations of headers and configurations
+    const fetchOptions = [
+      // Option 1: Simple GET without any special headers
+      {
+        description: 'Simple GET',
+        config: { timeout: 10000 },
+      },
+      // Option 2: With AJAX header
+      {
+        description: 'With AJAX header',
+        config: {
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+          timeout: 10000,
+        },
+      },
+      // Option 3: With Accept JSON header
+      {
+        description: 'With Accept JSON header',
+        config: {
+          headers: { Accept: 'application/json' },
+          timeout: 10000,
+        },
+      },
+      // Option 4: Full headers with credentials
+      {
+        description: 'Full headers with credentials',
+        config: {
+          withCredentials: true,
+          headers: {
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/json',
+          },
+          timeout: 10000,
+        },
+      },
+    ]
+
+    // Try each option until one works
+    let categoriesSucceeded = false
+    for (const option of fetchOptions) {
+      if (categoriesSucceeded) break
+
+      try {
+        console.log(`Trying to fetch categories with: ${option.description}`)
+        const response = await axios.get(`${API_BASE_URL}/api/categories`, option.config)
+        console.log(`✅ CATEGORIES SUCCESS with ${option.description}:`, response.status)
+
+        if (response.data && response.data.data) {
+          categories.value = response.data.data
+          console.log('Categories loaded, count:', categories.value.length)
+        } else if (Array.isArray(response.data)) {
+          categories.value = response.data
+          console.log('Categories loaded as array, count:', categories.value.length)
+        } else {
+          console.warn('Unexpected response format:', response.data)
+          continue // Try next option
+        }
+
+        categoriesSucceeded = true
+      } catch (err) {
+        console.error(`❌ Failed with ${option.description}:`, err.message)
+      }
+    }
+
+    if (!categoriesSucceeded) {
+      throw new Error('All category fetch attempts failed')
+    }
+
+    // Now try to fetch subcategories with the same approach
+    let subcategoriesSucceeded = false
+    for (const option of fetchOptions) {
+      if (subcategoriesSucceeded) break
+
+      try {
+        console.log(`Trying to fetch subcategories with: ${option.description}`)
+        const response = await axios.get(`${API_BASE_URL}/api/subcategories`, option.config)
+        console.log(`✅ SUBCATEGORIES SUCCESS with ${option.description}:`, response.status)
+
+        if (response.data && response.data.data) {
+          availableSubCategories.value = response.data.data
+          console.log('Subcategories loaded, count:', availableSubCategories.value.length)
+        } else if (Array.isArray(response.data)) {
+          availableSubCategories.value = response.data
+          console.log('Subcategories loaded as array, count:', availableSubCategories.value.length)
+        } else {
+          console.warn('Unexpected response format:', response.data)
+          continue // Try next option
+        }
+
+        subcategoriesSucceeded = true
+      } catch (err) {
+        console.error(`❌ Failed with ${option.description}:`, err.message)
+      }
+    }
+
+    if (!subcategoriesSucceeded) {
+      throw new Error('All subcategory fetch attempts failed')
     }
   } catch (err) {
-    error.value = 'Failed to load categories'
-    console.error('Error loading categories:', err)
+    error.value = 'Failed to load categories from API'
+    console.error('API Error Details:', err)
+
+    // More detailed error information for troubleshooting
+    if (err.response) {
+      console.error('API Response Status:', err.response.status)
+      console.error('API Response Data:', err.response.data)
+      console.error('API Response Headers:', err.response.headers)
+
+      if (err.response.status === 404) {
+        error.value = 'API endpoints not found. Check Laravel routes.'
+      } else if (err.response.status === 401 || err.response.status === 403) {
+        error.value = 'Authentication error. API requires login.'
+      } else if (err.response.status >= 500) {
+        error.value = 'Server error. Check Laravel logs.'
+      }
+    } else if (err.request) {
+      console.error('No response received:', err.request)
+      error.value = 'No response from API server. Is Laravel running?'
+    } else {
+      console.error('Error setting up request:', err.message)
+      error.value = `Request setup error: ${err.message}`
+    }
   }
 })
 
@@ -1912,6 +2035,7 @@ const handleSubmit = async () => {
 
   isSubmitting.value = true
   error.value = null
+  success.value = false
 
   try {
     // Filter out empty sub-categories and combine with custom subcategories
@@ -1929,22 +2053,18 @@ const handleSubmit = async () => {
       description: sanitizeInput(ticket.description.trim()),
     }))
 
-    // Process images - convert File objects to data URLs
-    let mainImageUrl = mainImagePreview.value
-    let bannerImageUrl = bannerImagePreview.value
-
     // Get the selected event options
     const selectedEventOptions = [...form.selectedEventOptions, ...form.customEventOptions].filter(
       Boolean,
     ) // Remove any falsy values
 
-    // Prepare the event data
+    // Prepare the event data for Laravel backend format
     const eventData = {
       title: form.title,
       description: form.description,
-      category: form.category,
+      category: form.category, // This will be category_id in the Laravel backend
       subCategories: validSubCategories,
-      date: fullDateTime.value,
+      date: fullDateTime.value, // Make sure this is in YYYY-MM-DD format for Laravel
       location: form.location,
       price: parseFloat(form.price),
       totalTickets: parseInt(form.totalTickets),
@@ -1952,18 +2072,24 @@ const handleSubmit = async () => {
       duration: form.duration,
       featured: form.featured,
       imageIndex: form.imageIndex,
-      mainImage: mainImageUrl,
-      bannerImage: bannerImageUrl,
-      eventOptions: selectedEventOptions, // Add event options to the event data
-      selectedEventOptions: form.selectedEventOptions, // Store the original selected options
-      customEventOptions: form.customEventOptions, // Store the custom options
+      mainImage: mainImagePreview.value ? mainImagePreview.value : null,
+      bannerImage: bannerImagePreview.value ? bannerImagePreview.value : null,
+      eventOptions: selectedEventOptions,
+      selectedEventOptions: form.selectedEventOptions,
+      customEventOptions: form.customEventOptions,
       ticketTypes: processedTickets,
-      faqs: form.faqs.filter((faq) => faq.question.trim() && faq.answer.trim()), // Only include FAQs with content
+      faqs: form.faqs.filter((faq) => faq.question.trim() && faq.answer.trim()),
     }
 
-    // Create the event
+    console.log('Submitting event data to database:', eventData)
+
+    // Create the event using the event service - the API will save to database
     const newEvent = await eventStore.createEvent(eventData)
 
+    // If we reach this point, it means the API call was successful and the event was saved to the database
+    console.log('Event successfully saved to database:', newEvent)
+
+    // Show success message
     success.value = true
 
     // Redirect to the event page after a brief delay
@@ -1971,7 +2097,9 @@ const handleSubmit = async () => {
       router.push({ path: `/event/${newEvent.id}` })
     }, 2000)
   } catch (err) {
-    error.value = err.message || 'Failed to create event'
+    // API call failed, show error message and don't update frontend state
+    error.value = err.message || 'Failed to save event to database. Please check your inputs.'
+    console.error('Failed to save event to database:', err)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   } finally {
     isSubmitting.value = false

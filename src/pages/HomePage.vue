@@ -6,13 +6,14 @@ import EventCard from '@/components/EventCard.vue'
 
 // Store
 const eventStore = useEventStore()
-const { events, featuredEvents, error } = storeToRefs(eventStore)
+const { events, featuredEvents, error, isLoading } = storeToRefs(eventStore)
 
 // Local state
 const searchTerm = ref('')
 const loadingFeatured = ref(false)
 const activeTab = ref('all')
 const viewAll = ref(false)
+const initialLoadComplete = ref(false)
 
 // Computed
 const filteredEvents = computed(() => {
@@ -32,33 +33,52 @@ const filteredEvents = computed(() => {
 
 // Methods
 const getEventsByCategory = async (category) => {
-  activeTab.value = category
-  await eventStore.fetchEventsByCategory(category)
+  try {
+    activeTab.value = category
+    await eventStore.fetchEventsByCategory(category)
+  } catch (err) {
+    console.error(`Error fetching ${category} events:`, err)
+  }
 }
 
 const handleSearch = async () => {
-  if (searchTerm.value.trim()) {
-    await eventStore.searchEvents(searchTerm.value)
-  } else {
-    await eventStore.resetFilters()
+  try {
+    if (searchTerm.value.trim()) {
+      await eventStore.searchEvents(searchTerm.value)
+    } else {
+      await eventStore.resetFilters()
+    }
+  } catch (err) {
+    console.error('Search error:', err)
   }
 }
 
 // Lifecycle hooks
 onMounted(async () => {
-  // Load all events if not already loaded
-  if (events.value.length === 0) {
-    await eventStore.fetchAllEvents()
-  }
-
-  // Load featured events
   try {
-    loadingFeatured.value = true
-    await eventStore.fetchFeaturedEvents()
-  } catch (err) {
-    console.error('Error loading featured events:', err)
-  } finally {
-    loadingFeatured.value = false
+    console.log('Home page mounted - initializing data')
+    initialLoadComplete.value = false
+
+    // Load all events if not already loaded
+    if (events.value.length === 0) {
+      await eventStore.fetchAllEvents(true) // Force refresh from API
+      console.log('Events loaded:', events.value)
+    }
+
+    // Load featured events
+    try {
+      loadingFeatured.value = true
+      const featuredData = await eventStore.fetchFeaturedEvents()
+      console.log('Featured events loaded:', featuredData)
+    } catch (err) {
+      console.error('Error loading featured events:', err)
+    } finally {
+      loadingFeatured.value = false
+      initialLoadComplete.value = true
+    }
+  } catch (error) {
+    console.error('Failed to fetch events:', error)
+    initialLoadComplete.value = true
   }
 })
 
@@ -93,14 +113,27 @@ watch(
       </div>
     </section>
 
+    <!-- Loading Indicator for Initial Load -->
+    <div v-if="isLoading && !initialLoadComplete" class="loading-container">
+      <div class="loading-spinner"></div>
+      <p>Loading events...</p>
+    </div>
+
+    <!-- Global Error Message -->
+    <div v-if="error" class="error-message">
+      <p>{{ error }}</p>
+      <button @click="eventStore.fetchAllEvents(true)" class="retry-button">Retry</button>
+    </div>
+
     <!-- Featured Events Section -->
-    <section class="featured-events">
+    <section v-if="initialLoadComplete || featuredEvents.length > 0" class="featured-events">
       <div class="section-header">
         <h2>Featured Events</h2>
       </div>
 
-      <div v-if="error" class="error-message">
-        {{ error }}
+      <div v-if="loadingFeatured" class="loading-container">
+        <div class="loading-spinner"></div>
+        <p>Loading featured events...</p>
       </div>
       <div v-else-if="featuredEvents.length === 0" class="empty-state">
         <p>No featured events available. Check back soon!</p>
@@ -111,7 +144,7 @@ watch(
     </section>
 
     <!-- Upcoming Events Section -->
-    <section class="upcoming-events">
+    <section v-if="initialLoadComplete || events.length > 0" class="upcoming-events">
       <div class="section-header">
         <h2>Upcoming Events</h2>
         <span class="view-all" @click="viewAll = !viewAll">
@@ -164,7 +197,11 @@ watch(
         </button>
       </div>
 
-      <div v-if="error" class="error-message">
+      <div v-if="isLoading && activeTab !== 'all'" class="loading-container">
+        <div class="loading-spinner"></div>
+        <p>Loading {{ activeTab }} events...</p>
+      </div>
+      <div v-else-if="error" class="error-message">
         {{ error }}
       </div>
       <div v-else-if="filteredEvents.length === 0" class="empty-state">
@@ -347,15 +384,51 @@ watch(
   padding: 20px;
 }
 
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto 15px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  border-top-color: #e84393;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .error-message {
   color: #e74c3c;
+  background-color: rgba(231, 76, 60, 0.1);
+  border-radius: 8px;
+  padding: 15px;
+  margin: 20px 0;
+}
+
+.retry-button {
+  margin-top: 10px;
+  padding: 8px 16px;
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.retry-button:hover {
+  background-color: #c0392b;
 }
 
 .empty-state {
-  background-color: #f9f9f9;
+  background-color: rgba(255, 255, 255, 0.05);
   border-radius: 8px;
-  border: 1px dashed #ddd;
-  color: #777;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  padding: 30px;
 }
 
 @media (max-width: 1200px) {

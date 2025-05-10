@@ -15,27 +15,8 @@ const props = defineProps({
 
 const router = useRouter()
 
-// Predefined event images - fallback in case mainImage is not available
-const eventImages = [
-  'https://res.cloudinary.com/dnuhjsckk/image/upload/v1745339803/Miss-Treasure-Base_gh6jnz.jpg',
-  'https://res.cloudinary.com/dnuhjsckk/image/upload/v1745339803/6th-Service-with-mudiaga_1_hjvlab.jpg',
-  'https://res.cloudinary.com/dnuhjsckk/image/upload/v1745339803/Comedy-Meets-dance_s2egap.jpg',
-  'https://res.cloudinary.com/dnuhjsckk/image/upload/v1745339804/IMG-20250219-WA0008_entmwi.jpg',
-]
-
-// Select image based on the event data
-const eventImage = computed(() => {
-  // If event has mainImage, use it
-  if (props.event.mainImage) {
-    return props.event.mainImage
-  }
-
-  // Otherwise use the predefined images
-  if (props.event.imageIndex !== undefined && eventImages[props.event.imageIndex]) {
-    return eventImages[props.event.imageIndex]
-  }
-  return eventImages[Math.floor(Math.random() * eventImages.length)]
-})
+// Only use main_image from DB, no fallback
+const eventImage = computed(() => props.event.main_image || '')
 
 // Format price
 const formattedPrice = computed(() => {
@@ -45,22 +26,20 @@ const formattedPrice = computed(() => {
   }).format(props.event.price)
 })
 
-// Format date for display
+// Format date for display using event.event_date
 const displayDate = computed(() => {
-  const eventDate = new Date(props.event.date)
-  return eventDate.getDate()
+  const eventDate = new Date(props.event.event_date)
+  return isNaN(eventDate) ? '' : eventDate.getDate()
 })
 
-// Format month for display
 const displayMonth = computed(() => {
-  const eventDate = new Date(props.event.date)
-  return eventDate.toLocaleDateString('en-US', { month: 'short' })
+  const eventDate = new Date(props.event.event_date)
+  return isNaN(eventDate) ? '' : eventDate.toLocaleDateString('en-US', { month: 'short' })
 })
 
-// Format year for display
 const displayYear = computed(() => {
-  const eventDate = new Date(props.event.date)
-  return eventDate.getFullYear()
+  const eventDate = new Date(props.event.event_date)
+  return isNaN(eventDate) ? '' : eventDate.getFullYear()
 })
 
 // Get category display name
@@ -82,7 +61,7 @@ const viewDetails = (e) => {
 <template>
   <div class="event-card" @click="viewDetails">
     <div class="event-card__image">
-      <img :src="eventImage" :alt="event.title" />
+      <img v-if="eventImage" :src="eventImage" :alt="event.title" />
       <div class="event-card__category">{{ categoryDisplayName }}</div>
 
       <div class="event-card__date-badge">

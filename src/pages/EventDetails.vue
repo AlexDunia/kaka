@@ -12,51 +12,26 @@ const error = ref(null)
 const event = computed(() => eventStore.currentEvent)
 const showPurchaseModal = ref(false)
 
-// Predefined event images - same as EventCard
-const eventImages = [
-  'https://res.cloudinary.com/dnuhjsckk/image/upload/v1745339803/Miss-Treasure-Base_gh6jnz.jpg',
-  'https://res.cloudinary.com/dnuhjsckk/image/upload/v1745339803/6th-Service-with-mudiaga_1_hjvlab.jpg',
-  'https://res.cloudinary.com/dnuhjsckk/image/upload/v1745339803/Comedy-Meets-dance_s2egap.jpg',
-  'https://res.cloudinary.com/dnuhjsckk/image/upload/v1745339804/IMG-20250219-WA0008_entmwi.jpg',
-]
-
-// Modify the eventImage computed property to display the uploaded image
+// Only use main_image from DB, no fallback
 const eventImage = computed(() => {
-  if (!event.value) return eventImages[0]
-
-  // Use the uploaded mainImage if available
-  if (event.value.mainImage) {
-    return event.value.mainImage
-  }
-
-  // Use the uploaded bannerImage if available
-  if (event.value.bannerImage) {
-    return event.value.bannerImage
-  }
-
-  // Fall back to imageIndex if available
-  if (event.value.imageIndex !== undefined && eventImages[event.value.imageIndex]) {
-    return eventImages[event.value.imageIndex]
-  }
-
-  // Use a deterministic "random" based on the event ID to keep it consistent
-  const id = parseInt(event.value.id) || 0
-  return eventImages[id % eventImages.length]
+  if (!event.value) return ''
+  return event.value.main_image || ''
 })
 
 // Format date
 const formattedDate = computed(() => {
   if (!event.value) return ''
-
-  const eventDate = new Date(event.value.date)
-  return eventDate.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  const eventDate = new Date(event.value.event_date)
+  return isNaN(eventDate)
+    ? ''
+    : eventDate.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
 })
 
 // Calculate available tickets based on total tickets if not explicitly set
@@ -88,7 +63,7 @@ const ticketTypes = computed(() => {
   if (!event.value) return []
 
   // If event has ticket types defined, use those
-  if (event.value.ticketTypes && event.value.ticketTypes.length > 0) {
+  if (event.value.ticketTypes && Array.isArray(event.value.ticketTypes)) {
     // Map event ticket types to display format
     return event.value.ticketTypes.map((ticket, index) => {
       // Generate different styles based on index
@@ -123,12 +98,16 @@ const ticketTypes = computed(() => {
       const tableMatch = ticket.name.match(/table for (\d+)/i)
       const seatsCount = tableMatch ? parseInt(tableMatch[1]) : isTableTicket ? 4 : 0
 
+      // Calculate available tickets for this type
+      const available = ticket.quantity || 0
+
       return {
         id: ticket.name.toLowerCase().replace(/\s+/g, '-'),
         name: ticket.name,
         description: ticket.description || 'Regular admission ticket',
         price: ticket.price,
-        available: true,
+        available: available > 0,
+        availableQuantity: available,
         maxPerPurchase: isTableTicket ? 2 : 10,
         highlight: style.highlight || ticket.isFeatured,
         icon: style.icon,
@@ -673,10 +652,13 @@ const mergeEventOptions = () => {
               <div class="ticket-card__action">
                 <button
                   class="ticket-card__button"
-                  :disabled="availableTickets === 0"
+                  :disabled="!ticket.available"
                   @click.stop="openPurchaseModalWithTicket(ticket.id)"
                 >
-                  <span v-if="availableTickets === 0">Sold Out</span>
+                  <span v-if="!ticket.available">Sold Out</span>
+                  <span v-else-if="ticket.availableQuantity <= 5"
+                    >Only {{ ticket.availableQuantity }} left</span
+                  >
                   <span v-else>SELECT</span>
                 </button>
               </div>
