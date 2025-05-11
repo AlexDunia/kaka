@@ -14,9 +14,6 @@ const error = ref(null)
 // Paystack Public Key
 const paystackPublicKey = 'pk_test_a23671022344a4de4ca87e5b42f68b3f5d84bfd9'
 
-// Inform linter about global PaystackPop
-/* global PaystackPop */
-
 // Form data
 const formData = ref({
   firstName: '',
@@ -33,16 +30,32 @@ const showSuccess = ref(false)
 // Try to get last event page from sessionStorage
 const lastEventPage = ref(sessionStorage.getItem('lastEventPage') || null)
 
-// Load checkout data
+// Load Paystack script when component mounts
 onMounted(() => {
   try {
     if (cartStore.isEmpty) {
       error.value = 'Your cart is empty'
       return
     }
-    loading.value = false
-  } catch {
+
+    // Load Paystack script dynamically
+    const script = document.createElement('script')
+    script.src = 'https://js.paystack.co/v1/inline.js'
+    script.async = true
+    script.onload = () => {
+      console.log('Paystack script loaded successfully')
+      loading.value = false
+    }
+    script.onerror = () => {
+      console.error('Failed to load Paystack script')
+      error.value = 'Failed to load payment gateway. Please try again later.'
+      loading.value = false
+    }
+    document.head.appendChild(script)
+  } catch (err) {
+    console.error('Error during initialization:', err)
     error.value = 'Error loading checkout data'
+    loading.value = false
   }
 })
 
@@ -80,23 +93,20 @@ const validateForm = () => {
   return isValid
 }
 
-// Handle form submission
-const handleSubmit = async () => {
-  if (!validateForm()) return
-
-  isSubmitting.value = true
+// Function to initialize Paystack payment
+const payWithPaystack = () => {
   try {
-    // Ensure PaystackPop is available (loaded from the script in index.html)
-    if (typeof PaystackPop === 'undefined') {
-      error.value = 'Paystack library not loaded. Please try again later.'
+    // Generate a unique reference for this transaction
+    const paymentReference = 'ref-' + Date.now() + '-' + Math.floor(Math.random() * 1000000)
+
+    // Check if PaystackPop is available
+    if (typeof window.PaystackPop === 'undefined') {
+      error.value = 'Payment gateway not loaded. Please refresh the page and try again.'
       isSubmitting.value = false
       return
     }
 
-    // Generate a unique reference for this transaction
-    const paymentReference = 'ref-' + Date.now() + '-' + Math.floor(Math.random() * 1000000)
-
-    const handler = PaystackPop.setup({
+    const handler = window.PaystackPop.setup({
       key: paystackPublicKey,
       email: formData.value.email,
       amount: cartStore.total * 100, // Amount in kobo
@@ -121,95 +131,69 @@ const handleSubmit = async () => {
               .map((item) => `${item.eventTitle} - ${item.ticketType} (Qty: ${item.quantity})`)
               .join(', '),
           },
-          {
-            display_name: 'Total Tickets',
-            variable_name: 'total_tickets',
-            value: cartStore.items.reduce((sum, item) => sum + item.quantity, 0) + ' tickets',
-          },
         ],
-        cart_id: `cart-${Date.now()}`,
-        customer_details: {
-          first_name: formData.value.firstName,
-          last_name: formData.value.lastName,
-          phone: formData.value.phone,
-        },
       },
-      callback: async function (response) {
-        console.log('Paystack response:', response)
+      callback: function (response) {
+        console.log('Payment successful. Reference: ' + response.reference)
 
-        // Verify payment with our backend
-        if (response.reference) {
-          try {
-            const verifyResponse = await fetch('/payment.php', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                reference: response.reference,
-                formData: {
-                  firstName: formData.value.firstName,
-                  lastName: formData.value.lastName,
-                  email: formData.value.email,
-                  phone: formData.value.phone,
-                },
-                cartItems: cartStore.items.map((item) => ({
-                  eventId: item.eventId,
-                  eventTitle: item.eventTitle,
-                  ticketType: item.ticketType,
-                  quantity: item.quantity,
-                  pricePerTicket: item.pricePerTicket,
-                })),
-              }),
-            })
-
-            const result = await verifyResponse.json()
-
-            if (result.status === 'success') {
-              // Clear cart and show success
-              cartStore.clearCart()
-              showSuccess.value = true
-
-              // Store ticket info in localStorage
-              localStorage.setItem(
-                'lastTransaction',
-                JSON.stringify({
-                  reference: response.reference,
-                  tickets: result.tickets || [],
-                  amount: result.payment_details?.amount || cartStore.total,
-                  date: new Date().toISOString(),
-                }),
-              )
-
-              // Redirect after a delay
-              setTimeout(() => router.push('/'), 2500)
-            } else {
-              error.value = result.message || 'Payment verification failed. Please contact support.'
-              isSubmitting.value = false
-            }
-          } catch (err) {
-            console.error('Verification error:', err)
-            error.value = 'Error verifying payment. Reference: ' + response.reference
-            isSubmitting.value = false
-          }
-        } else {
-          error.value = 'Payment failed or was cancelled.'
-          isSubmitting.value = false
-        }
+        // Simulate verification success
+        const reference = response.reference
+        handlePaymentSuccess(reference)
       },
       onClose: function () {
-        if (!showSuccess.value && isSubmitting.value) {
-          error.value = 'Payment popup closed before completion.'
+        if (!showSuccess.value) {
+          console.log('Payment window closed')
           isSubmitting.value = false
         }
       },
     })
+
     handler.openIframe()
-  } catch (e) {
-    console.error('Paystack Error:', e)
+  } catch (err) {
+    console.error('Paystack error:', err)
     error.value = 'Error initiating payment. Please try again.'
     isSubmitting.value = false
   }
+}
+
+// Handle form submission
+const handleSubmit = async (e) => {
+  e.preventDefault()
+
+  if (!validateForm()) return
+
+  isSubmitting.value = true
+
+  // Call Paystack payment function
+  payWithPaystack()
+}
+
+// Handle successful payment
+const handlePaymentSuccess = (reference) => {
+  // Simulate verification
+  // Store transaction data in localStorage
+  localStorage.setItem(
+    'lastTransaction',
+    JSON.stringify({
+      reference: reference,
+      tickets: cartStore.items.map((item) => ({
+        ticketId: `TKT-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+        eventId: item.eventId,
+        eventTitle: item.eventTitle,
+        ticketType: item.ticketType,
+        quantity: item.quantity,
+      })),
+      amount: cartStore.total,
+      date: new Date().toISOString(),
+    }),
+  )
+
+  // Clear cart and show success
+  cartStore.clearCart()
+  showSuccess.value = true
+
+  // Redirect after a delay
+  setTimeout(() => router.push('/'), 2500)
 }
 
 // Format price in Naira
@@ -252,7 +236,7 @@ const continueShopping = () => {
           <div class="section-title">Customer Information</div>
           <div class="divider"></div>
           <form
-            @submit.prevent="handleSubmit"
+            @submit="handleSubmit"
             class="checkout__form"
             autocomplete="off"
             aria-label="Ticket purchase form"
@@ -307,7 +291,7 @@ const continueShopping = () => {
             </div>
             <button type="submit" class="checkout__submit" :disabled="isSubmitting">
               <span v-if="isSubmitting">Processing…</span>
-              <span v-else>Complete Purchase</span>
+              <span v-else>Pay with Paystack</span>
             </button>
           </form>
         </div>
@@ -338,7 +322,7 @@ const continueShopping = () => {
           </div>
         </div>
       </div>
-      <div v-if="loading" class="checkout__loading">Loading…</div>
+      <div v-if="loading" class="checkout__loading">Loading payment gateway...</div>
       <div v-else-if="error" class="checkout__error">
         <p>{{ error }}</p>
         <button @click="router.push('/')" class="checkout__back-button">Return Home</button>
