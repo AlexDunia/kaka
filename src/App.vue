@@ -34,7 +34,11 @@ const cartCount = computed(() => cartStore.itemCount)
         <div class="header-content">
           <div class="logo">
             <RouterLink to="/">
-              <h1>tixdemand</h1>
+              <img
+                src="https://res.cloudinary.com/dnuhjsckk/image/upload/v1746062122/tdlogo_bmlpd8.png"
+                alt="tixdemand logo"
+                class="header-logo-img"
+              />
             </RouterLink>
           </div>
 
@@ -98,91 +102,62 @@ const cartCount = computed(() => cartStore.itemCount)
     </main>
 
     <footer class="app-footer">
-      <div class="container">
-        <div class="footer-content">
-          <div class="footer-logo">
-            <h2 class="gradient-text">tixdemand</h2>
-            <p>Your premier destination for event tickets</p>
-          </div>
-
-          <div class="footer-links">
-            <div class="footer-section">
-              <h3>Explore</h3>
-              <RouterLink to="/">All Events</RouterLink>
-              <RouterLink to="/music">Music</RouterLink>
-              <RouterLink to="/theatre">Theatre</RouterLink>
-              <RouterLink to="/sports">Sports</RouterLink>
-            </div>
-
-            <div class="footer-section">
-              <h3>Account</h3>
-              <RouterLink to="/login">Sign In</RouterLink>
-              <RouterLink to="/register">Register</RouterLink>
-              <RouterLink to="/dashboard">Dashboard</RouterLink>
-            </div>
-
-            <div class="footer-section">
-              <h3>Support</h3>
-              <RouterLink to="/contact">Contact Us</RouterLink>
-              <a href="#">FAQ</a>
-              <a href="#">Terms of Service</a>
-            </div>
-          </div>
+      <div class="footer-simple">
+        <div class="footer-logo-col">
+          <img
+            src="https://res.cloudinary.com/dnuhjsckk/image/upload/v1746062122/tdlogo_bmlpd8.png"
+            alt="tixdemand logo"
+            class="footer-logo-img"
+          />
         </div>
-
-        <div class="footer-bottom">
-          <p>&copy; 2024 tixdemand. All rights reserved.</p>
-          <div class="social-links">
-            <a href="#" aria-label="Facebook">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
-              </svg>
-            </a>
-            <a href="#" aria-label="Twitter">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path
-                  d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"
-                ></path>
-              </svg>
-            </a>
-            <a href="#" aria-label="Instagram">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-              </svg>
-            </a>
-          </div>
+        <div class="footer-center-col">
+          <span class="footer-copyright">© 2025 tixdemand</span>
+        </div>
+        <div class="footer-social-col">
+          <a
+            href="https://t.me/yourtelegram"
+            target="_blank"
+            rel="noopener"
+            aria-label="Telegram"
+            class="footer-social-link"
+          >
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M22 2L11 13" />
+              <path d="M22 2L15 22L11 13L2 9L22 2Z" />
+            </svg>
+          </a>
+          <a
+            href="https://linkedin.com/in/yourprofile"
+            target="_blank"
+            rel="noopener"
+            aria-label="LinkedIn"
+            class="footer-social-link"
+          >
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="2" y="2" width="20" height="20" rx="5" />
+              <path d="M16 8a6 6 0 0 1 6 6v6" />
+              <line x1="8" y1="11" x2="8" y2="16" />
+              <line x1="8" y1="8" x2="8" y2="8" />
+            </svg>
+          </a>
         </div>
       </div>
     </footer>
@@ -625,5 +600,88 @@ const cartCount = computed(() => cartStore.itemCount)
   z-index: 2;
   border: 2px solid #18181e;
   transition: background 0.2s;
+}
+
+/* Header and Footer Logo Styles */
+.header-logo-img {
+  height: 38px;
+  width: auto;
+  display: block;
+  margin-right: 0.5rem;
+  border-radius: 7px;
+  box-shadow: 0 2px 8px rgba(192, 72, 136, 0.08);
+}
+.footer-logo-img {
+  height: 44px;
+  width: auto;
+  display: block;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(192, 72, 136, 0.1);
+}
+.footer-simple {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2.2rem 0 1.2rem 0;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+.footer-logo-col {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+}
+.footer-center-col {
+  flex: 1 1 auto;
+  text-align: center;
+  color: #fff;
+  font-size: 1.08rem;
+  font-weight: 500;
+  opacity: 0.85;
+}
+.footer-social-col {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+}
+.footer-social-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+  transition:
+    background 0.18s,
+    color 0.18s,
+    transform 0.18s;
+  font-size: 1.2rem;
+}
+.footer-social-link:hover {
+  background: var(--primary, #c04888);
+  color: #fff;
+  transform: translateY(-2px) scale(1.08);
+}
+@media (max-width: 700px) {
+  .footer-simple {
+    flex-direction: column;
+    gap: 1.2rem;
+    padding: 1.5rem 0 0.7rem 0;
+  }
+  .footer-center-col {
+    order: 3;
+    font-size: 0.98rem;
+    margin-top: 0.7rem;
+  }
+  .footer-logo-img {
+    height: 36px;
+  }
+  .footer-social-col {
+    gap: 0.7rem;
+  }
 }
 </style>

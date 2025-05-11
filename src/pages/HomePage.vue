@@ -98,7 +98,7 @@ watch(
     <!-- Hero Section -->
     <section class="hero-section">
       <div class="hero-content">
-        <h1>Discover Amazing Events</h1>
+        <h1>Discover Amazing Events,,,,,</h1>
         <p>Find and join events happening around you</p>
         <div class="search-container">
           <input

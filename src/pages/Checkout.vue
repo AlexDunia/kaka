@@ -1,14 +1,21 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useCartStore } from '@/stores/cart'
 
 // Set multi-word component name for linting
 defineOptions({ name: 'EventCheckout' })
 
 const router = useRouter()
-const checkoutData = ref(null)
+const cartStore = useCartStore()
 const loading = ref(true)
 const error = ref(null)
+
+// Paystack Public Key
+const paystackPublicKey = 'pk_test_a23671022344a4de4ca87e5b42f68b3f5d84bfd9'
+
+// Inform linter about global PaystackPop
+/* global PaystackPop */
 
 // Form data
 const formData = ref({
@@ -23,19 +30,19 @@ const errors = ref({})
 const isSubmitting = ref(false)
 const showSuccess = ref(false)
 
+// Try to get last event page from sessionStorage
+const lastEventPage = ref(sessionStorage.getItem('lastEventPage') || null)
+
 // Load checkout data
 onMounted(() => {
   try {
-    const storedData = localStorage.getItem('checkoutData')
-    if (!storedData) {
-      error.value = 'No checkout data found'
+    if (cartStore.isEmpty) {
+      error.value = 'Your cart is empty'
       return
     }
-    checkoutData.value = JSON.parse(storedData)
+    loading.value = false
   } catch {
     error.value = 'Error loading checkout data'
-  } finally {
-    loading.value = false
   }
 })
 
@@ -79,13 +86,128 @@ const handleSubmit = async () => {
 
   isSubmitting.value = true
   try {
-    await new Promise((resolve) => setTimeout(resolve, 900))
-    localStorage.removeItem('checkoutData')
-    showSuccess.value = true
-    setTimeout(() => router.push('/'), 1800)
-  } catch {
-    error.value = 'Error processing purchase. Please try again.'
-  } finally {
+    // Ensure PaystackPop is available (loaded from the script in index.html)
+    if (typeof PaystackPop === 'undefined') {
+      error.value = 'Paystack library not loaded. Please try again later.'
+      isSubmitting.value = false
+      return
+    }
+
+    // Generate a unique reference for this transaction
+    const paymentReference = 'ref-' + Date.now() + '-' + Math.floor(Math.random() * 1000000)
+
+    const handler = PaystackPop.setup({
+      key: paystackPublicKey,
+      email: formData.value.email,
+      amount: cartStore.total * 100, // Amount in kobo
+      currency: 'NGN',
+      ref: paymentReference,
+      metadata: {
+        custom_fields: [
+          {
+            display_name: 'Customer Name',
+            variable_name: 'customer_name',
+            value: `${formData.value.firstName} ${formData.value.lastName}`,
+          },
+          {
+            display_name: 'Phone Number',
+            variable_name: 'phone_number',
+            value: formData.value.phone,
+          },
+          {
+            display_name: 'Order Items',
+            variable_name: 'order_items',
+            value: cartStore.items
+              .map((item) => `${item.eventTitle} - ${item.ticketType} (Qty: ${item.quantity})`)
+              .join(', '),
+          },
+          {
+            display_name: 'Total Tickets',
+            variable_name: 'total_tickets',
+            value: cartStore.items.reduce((sum, item) => sum + item.quantity, 0) + ' tickets',
+          },
+        ],
+        cart_id: `cart-${Date.now()}`,
+        customer_details: {
+          first_name: formData.value.firstName,
+          last_name: formData.value.lastName,
+          phone: formData.value.phone,
+        },
+      },
+      callback: async function (response) {
+        console.log('Paystack response:', response)
+
+        // Verify payment with our backend
+        if (response.reference) {
+          try {
+            const verifyResponse = await fetch('/payment.php', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                reference: response.reference,
+                formData: {
+                  firstName: formData.value.firstName,
+                  lastName: formData.value.lastName,
+                  email: formData.value.email,
+                  phone: formData.value.phone,
+                },
+                cartItems: cartStore.items.map((item) => ({
+                  eventId: item.eventId,
+                  eventTitle: item.eventTitle,
+                  ticketType: item.ticketType,
+                  quantity: item.quantity,
+                  pricePerTicket: item.pricePerTicket,
+                })),
+              }),
+            })
+
+            const result = await verifyResponse.json()
+
+            if (result.status === 'success') {
+              // Clear cart and show success
+              cartStore.clearCart()
+              showSuccess.value = true
+
+              // Store ticket info in localStorage
+              localStorage.setItem(
+                'lastTransaction',
+                JSON.stringify({
+                  reference: response.reference,
+                  tickets: result.tickets || [],
+                  amount: result.payment_details?.amount || cartStore.total,
+                  date: new Date().toISOString(),
+                }),
+              )
+
+              // Redirect after a delay
+              setTimeout(() => router.push('/'), 2500)
+            } else {
+              error.value = result.message || 'Payment verification failed. Please contact support.'
+              isSubmitting.value = false
+            }
+          } catch (err) {
+            console.error('Verification error:', err)
+            error.value = 'Error verifying payment. Reference: ' + response.reference
+            isSubmitting.value = false
+          }
+        } else {
+          error.value = 'Payment failed or was cancelled.'
+          isSubmitting.value = false
+        }
+      },
+      onClose: function () {
+        if (!showSuccess.value && isSubmitting.value) {
+          error.value = 'Payment popup closed before completion.'
+          isSubmitting.value = false
+        }
+      },
+    })
+    handler.openIframe()
+  } catch (e) {
+    console.error('Paystack Error:', e)
+    error.value = 'Error initiating payment. Please try again.'
     isSubmitting.value = false
   }
 }
@@ -93,6 +215,15 @@ const handleSubmit = async () => {
 // Format price in Naira
 const formatPrice = (price) => {
   return `₦${price.toLocaleString('en-NG')}`
+}
+
+// Continue shopping handler
+const continueShopping = () => {
+  if (lastEventPage.value) {
+    router.push(lastEventPage.value)
+  } else {
+    router.back()
+  }
 }
 </script>
 
@@ -113,6 +244,9 @@ const formatPrice = (price) => {
         <span>Back</span>
       </div>
       <h1 class="checkout-title">Checkout</h1>
+      <button class="continue-shopping-checkout" @click="continueShopping">
+        Continue Shopping
+      </button>
       <div class="checkout-flex-cards">
         <div class="checkout-card left">
           <div class="section-title">Customer Information</div>
@@ -180,22 +314,27 @@ const formatPrice = (price) => {
         <div class="checkout-card right">
           <div class="section-title">Order Summary</div>
           <div class="divider"></div>
-          <div v-if="checkoutData" class="summary-content">
-            <div class="summary-row summary-main">
+          <div v-if="!cartStore.isEmpty" class="summary-content">
+            <div
+              v-for="item in cartStore.items"
+              :key="item.eventId + '-' + item.ticketId"
+              class="summary-row summary-main"
+            >
               <div>
-                <div class="summary-event-title">{{ checkoutData.eventTitle }}</div>
-                <div class="summary-event-id">{{ checkoutData.eventId }}</div>
-                <div class="summary-ticket-type">{{ checkoutData.ticketType }}</div>
-                <span class="summary-qty-badge">Qty: {{ checkoutData.quantity }}</span>
+                <div class="summary-event-title">{{ item.eventTitle }}</div>
+                <div class="summary-event-id">{{ item.eventId }}</div>
+                <div class="summary-ticket-type">{{ item.ticketType }}</div>
+                <span class="summary-qty-badge">Qty: {{ item.quantity }}</span>
               </div>
-              <div class="summary-total">{{ formatPrice(checkoutData.totalPrice) }}</div>
+              <div class="summary-total">
+                {{ formatPrice(item.pricePerTicket * item.quantity) }}
+              </div>
             </div>
             <div class="divider small"></div>
             <div class="summary-row">
               <span>Subtotal</span>
-              <span>{{ formatPrice(checkoutData.totalPrice) }}</span>
+              <span>{{ formatPrice(cartStore.total) }}</span>
             </div>
-            <!-- Service fee and total can be added here if needed -->
           </div>
         </div>
       </div>
@@ -462,6 +601,24 @@ const formatPrice = (price) => {
 .success-desc {
   color: #e0e0e0;
   font-size: 1.05rem;
+}
+.continue-shopping-checkout {
+  background: var(--primary, #c04888);
+  color: #fff;
+  border: none;
+  padding: 0.7rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin-bottom: 1.5rem;
+  cursor: pointer;
+  transition:
+    background 0.18s,
+    color 0.18s;
+}
+.continue-shopping-checkout:hover {
+  background: #a13a6e;
+  color: #fff;
 }
 @media (max-width: 1100px) {
   .checkout-flex-cards {

@@ -18,6 +18,9 @@ const showQRModal = ref(false)
 const qrValue = ref('')
 const notification = ref(null)
 const notificationTimeout = ref(null)
+const toasterLoading = ref(false)
+const toasterTimeout = ref(null)
+const lastEventPage = ref(null)
 
 // Only use main_image from DB, no fallback
 const eventImage = computed(() => {
@@ -277,33 +280,6 @@ const toggleFavorite = () => {
   }
 }
 
-// Replace the quickPurchase function with this
-const proceedToCheckout = () => {
-  if (!event.value || !selectedTicketType.value) return
-
-  const ticket = ticketTypes.value.find((t) => t.id === selectedTicketType.value)
-  if (!ticket) return
-
-  // Create checkout data
-  const checkoutData = {
-    eventId: event.value.id,
-    eventTitle: event.value.title,
-    eventDate: event.value.event_date,
-    eventLocation: event.value.location,
-    ticketType: ticket.name,
-    ticketId: ticket.id,
-    quantity: ticketQuantity.value,
-    pricePerTicket: ticket.price,
-    totalPrice: ticket.price * ticketQuantity.value,
-  }
-
-  // Store checkout data in localStorage
-  localStorage.setItem('checkoutData', JSON.stringify(checkoutData))
-
-  // Navigate to checkout page
-  router.push('/checkout')
-}
-
 // Close purchase modal - combined version
 const closePurchaseModal = () => {
   console.log('Closing purchase modal')
@@ -386,12 +362,24 @@ watch(
   { immediate: true },
 )
 
-function showToaster(message) {
+function showToaster(message, autoCheckout = false) {
   notification.value = message
+  toasterLoading.value = autoCheckout
   if (notificationTimeout.value) clearTimeout(notificationTimeout.value)
-  notificationTimeout.value = setTimeout(() => {
-    notification.value = null
-  }, 3000)
+  if (toasterTimeout.value) clearTimeout(toasterTimeout.value)
+  if (autoCheckout) {
+    lastEventPage.value = router.currentRoute.value.fullPath
+    toasterTimeout.value = setTimeout(() => {
+      notification.value = null
+      toasterLoading.value = false
+      router.push('/checkout')
+    }, 4000) // 4 seconds
+  } else {
+    notificationTimeout.value = setTimeout(() => {
+      notification.value = null
+      toasterLoading.value = false
+    }, 3000)
+  }
 }
 
 const addToCart = () => {
@@ -411,13 +399,7 @@ const addToCart = () => {
     eventImage: eventImage.value,
   })
   closePurchaseModal()
-  showToaster(`${ticketQuantity.value} of ${event.value.title} successfully added to cart`)
-}
-
-// Add goToCart method
-const goToCart = () => {
-  notification.value = null
-  router.push('/cart')
+  showToaster(`${ticketQuantity.value} of ${event.value.title} successfully added to cart`, true)
 }
 </script>
 
@@ -785,39 +767,47 @@ const goToCart = () => {
 
               <div class="premium-modal__quantity-container">
                 <div class="premium-modal__quantity-label">Quantity:</div>
-                <div class="premium-modal__quantity-controls">
+                <div class="premium-modal__quantity-controls" aria-label="Change ticket quantity">
                   <button
-                    class="premium-modal__quantity-btn"
+                    class="premium-modal__quantity-btn premium-modal__quantity-btn--minus"
                     @click="decrementQuantity"
                     :disabled="ticketQuantity <= 1"
+                    aria-label="Decrease quantity"
                   >
                     <svg
-                      width="14"
-                      height="14"
+                      width="22"
+                      height="22"
                       viewBox="0 0 24 24"
                       fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
+                      stroke="white"
+                      stroke-width="2.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      style="display: block"
                     >
-                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                      <line x1="5" y1="12" x2="19" y2="12" />
                     </svg>
                   </button>
                   <span class="premium-modal__quantity-value">{{ ticketQuantity }}</span>
                   <button
-                    class="premium-modal__quantity-btn"
+                    class="premium-modal__quantity-btn premium-modal__quantity-btn--plus"
                     @click="incrementQuantity"
                     :disabled="ticketQuantity >= 10"
+                    aria-label="Increase quantity"
                   >
                     <svg
-                      width="14"
-                      height="14"
+                      width="22"
+                      height="22"
                       viewBox="0 0 24 24"
                       fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
+                      stroke="white"
+                      stroke-width="2.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      style="display: block"
                     >
-                      <line x1="12" y1="5" x2="12" y2="19"></line>
-                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
                     </svg>
                   </button>
                 </div>
@@ -870,9 +860,6 @@ const goToCart = () => {
                   <rect x="3" y="14" width="7" height="7"></rect>
                 </svg>
                 <span>Generate QR Code</span>
-              </button>
-              <button class="premium-modal__purchase" @click="proceedToCheckout">
-                <span>Proceed to Checkout</span>
               </button>
             </div>
           </div>
@@ -932,7 +919,7 @@ const goToCart = () => {
     </div>
 
     <transition name="toaster-fade">
-      <div v-if="notification" class="toaster-notification">
+      <div v-if="notification" class="toaster-notification world-class-toaster">
         <svg
           width="22"
           height="22"
@@ -947,10 +934,7 @@ const goToCart = () => {
           <circle cx="12" cy="12" r="10" />
           <path d="M9 12l2 2l4-4" />
         </svg>
-        <span>{{ notification }}</span>
-        <button class="toaster-go-to-cart" @click="goToCart" aria-label="Go to cart">
-          Go to Cart
-        </button>
+        <span class="toaster-message">{{ notification }}</span>
         <button class="toaster-close" @click="notification = null" aria-label="Close notification">
           <svg
             width="18"
@@ -966,6 +950,7 @@ const goToCart = () => {
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
+        <div v-if="toasterLoading" class="toaster-loading-bar world-class-loader"></div>
       </div>
     </transition>
   </div>
@@ -1695,39 +1680,54 @@ const goToCart = () => {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  background-color: rgba(255, 255, 255, 0.06);
-  padding: 0.25rem 0.5rem;
-  border-radius: 6px;
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 0.35rem 0.7rem;
+  border-radius: 8px;
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 2px 8px rgba(232, 67, 147, 0.04);
 }
 
 .premium-modal__quantity-btn {
   background: none;
   border: none;
-  color: white;
+  color: #fff;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
-  transition: background-color 0.2s ease;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+  font-size: 1.3rem;
+  position: relative;
+  z-index: 1;
 }
 
-.premium-modal__quantity-btn:hover:not(:disabled) {
-  background-color: rgba(255, 255, 255, 0.1);
+.premium-modal__quantity-btn svg {
+  stroke: white !important;
+  fill: none;
 }
 
 .premium-modal__quantity-btn:disabled {
-  color: rgba(255, 255, 255, 0.3);
+  color: #fff;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
+.premium-modal__quantity-btn:not(:disabled):hover {
+  background-color: rgba(232, 67, 147, 0.13);
+}
+
 .premium-modal__quantity-value {
-  font-weight: 600;
-  font-size: 1rem;
-  min-width: 1.5rem;
+  font-weight: 700;
+  font-size: 1.15rem;
+  min-width: 2.2rem;
   text-align: center;
+  color: #fff;
+  letter-spacing: 0.03em;
 }
 
 .premium-modal__divider {
@@ -1923,62 +1923,55 @@ const goToCart = () => {
   fill: none;
 }
 
-.toaster-notification {
+.toaster-notification.world-class-toaster {
   position: fixed;
-  top: 32px;
-  right: 32px;
-  z-index: 3000;
-  background: rgba(40, 40, 55, 0.98);
+  top: 40px;
+  right: 40px;
+  z-index: 4000;
+  min-width: 370px;
+  max-width: 420px;
+  background: rgba(34, 30, 45, 0.92);
   color: #fff;
-  padding: 1.1rem 2.2rem 1.1rem 1.5rem;
-  border-radius: 12px;
+  padding: 1.3rem 2.5rem 1.1rem 1.7rem;
+  border-radius: 18px;
   box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.18),
-    0 1.5px 8px rgba(232, 67, 147, 0.08);
+    0 8px 32px rgba(0, 0, 0, 0.22),
+    0 2px 12px rgba(232, 67, 147, 0.1);
   display: flex;
   align-items: center;
-  gap: 1rem;
-  font-size: 1.08rem;
+  gap: 1.2rem;
+  font-size: 1.13rem;
   font-weight: 600;
   letter-spacing: 0.01em;
   pointer-events: auto;
   opacity: 0.98;
   animation: toaster-in 0.45s cubic-bezier(0.4, 1.6, 0.6, 1) both;
+  flex-direction: row;
+  backdrop-filter: blur(12px) saturate(1.2);
+  border: 1.5px solid rgba(232, 67, 147, 0.1);
+  transition:
+    box-shadow 0.2s,
+    border 0.2s;
 }
-
+.toaster-notification.world-class-toaster:hover {
+  box-shadow:
+    0 12px 36px rgba(232, 67, 147, 0.18),
+    0 4px 16px rgba(0, 0, 0, 0.18);
+  border: 1.5px solid var(--primary, #c04888);
+}
 .toaster-icon {
   color: #4ade80;
   flex-shrink: 0;
+  filter: drop-shadow(0 2px 6px #4ade80cc);
 }
-
-@keyframes toaster-in {
-  from {
-    opacity: 0;
-    transform: translateY(-30px) scale(0.98);
-  }
-  to {
-    opacity: 0.98;
-    transform: translateY(0) scale(1);
-  }
+.toaster-message {
+  flex: 1;
+  font-size: 1.13rem;
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.13);
 }
-
-.toaster-fade-enter-active,
-.toaster-fade-leave-active {
-  transition:
-    opacity 0.35s cubic-bezier(0.4, 1.6, 0.6, 1),
-    transform 0.35s cubic-bezier(0.4, 1.6, 0.6, 1);
-}
-.toaster-fade-enter-from,
-.toaster-fade-leave-to {
-  opacity: 0;
-  transform: translateY(-30px) scale(0.98);
-}
-.toaster-fade-enter-to,
-.toaster-fade-leave-from {
-  opacity: 0.98;
-  transform: translateY(0) scale(1);
-}
-
 .toaster-close {
   background: none;
   border: none;
@@ -1991,33 +1984,44 @@ const goToCart = () => {
   display: flex;
   align-items: center;
   justify-content: center;
+  opacity: 0.7;
 }
-
 .toaster-close:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.1);
+  opacity: 1;
 }
-
-/* Add styles for the Go to Cart button in the toaster */
-.toaster-go-to-cart {
+.toaster-loading-bar.world-class-loader {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 5px;
+  width: 100%;
   background: none;
-  border: 1.5px solid var(--primary, #c04888);
-  color: var(--primary, #c04888);
-  font-weight: 700;
-  font-size: 1rem;
-  border-radius: 8px;
-  padding: 0.3rem 1rem;
-  cursor: pointer;
-  margin-left: 1.2rem;
-  margin-right: 0.5rem;
-  transition:
-    background 0.18s,
-    color 0.18s;
-  display: flex;
-  align-items: center;
-  height: 2.2rem;
+  overflow: hidden;
+  border-radius: 0 0 18px 18px;
 }
-.toaster-go-to-cart:hover {
-  background: var(--primary, #c04888);
-  color: #fff;
+.toaster-loading-bar.world-class-loader::after {
+  content: '';
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, var(--primary, #c04888), #ff6b9d);
+  animation: toaster-bar-progress 4s linear forwards;
+  border-radius: 0 0 18px 18px;
+}
+@keyframes toaster-bar-progress {
+  from {
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+  to {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+}
+.premium-modal__quantity-btn--minus svg,
+.premium-modal__quantity-btn--plus svg {
+  stroke: white !important;
+  fill: none;
 }
 </style>
