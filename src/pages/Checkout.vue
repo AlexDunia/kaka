@@ -106,6 +106,36 @@ const payWithPaystack = () => {
       return
     }
 
+    // Create individual custom fields for each order item
+    const customFields = [
+      {
+        display_name: 'Customer Name',
+        variable_name: 'customer_name',
+        value: `${formData.value.firstName} ${formData.value.lastName}`,
+      },
+      {
+        display_name: 'Phone Number',
+        variable_name: 'phone_number',
+        value: formData.value.phone,
+      },
+    ]
+
+    // Add each cart item as a separate entry in custom fields
+    cartStore.items.forEach((item, index) => {
+      customFields.push({
+        display_name: `Order Item ${index + 1}`,
+        variable_name: `order_item_${index + 1}`,
+        value: `${item.eventTitle} - ${item.ticketType} (Qty: ${item.quantity})`,
+      })
+    })
+
+    // Add total tickets info
+    customFields.push({
+      display_name: 'Total Tickets',
+      variable_name: 'total_tickets',
+      value: cartStore.items.reduce((sum, item) => sum + item.quantity, 0) + ' tickets',
+    })
+
     const handler = window.PaystackPop.setup({
       key: paystackPublicKey,
       email: formData.value.email,
@@ -113,25 +143,13 @@ const payWithPaystack = () => {
       currency: 'NGN',
       ref: paymentReference,
       metadata: {
-        custom_fields: [
-          {
-            display_name: 'Customer Name',
-            variable_name: 'customer_name',
-            value: `${formData.value.firstName} ${formData.value.lastName}`,
-          },
-          {
-            display_name: 'Phone Number',
-            variable_name: 'phone_number',
-            value: formData.value.phone,
-          },
-          {
-            display_name: 'Order Items',
-            variable_name: 'order_items',
-            value: cartStore.items
-              .map((item) => `${item.eventTitle} - ${item.ticketType} (Qty: ${item.quantity})`)
-              .join(', '),
-          },
-        ],
+        custom_fields: customFields,
+        cart_id: `cart-${Date.now()}`,
+        customer_details: {
+          first_name: formData.value.firstName,
+          last_name: formData.value.lastName,
+          phone: formData.value.phone,
+        },
       },
       callback: function (response) {
         console.log('Payment successful. Reference: ' + response.reference)
