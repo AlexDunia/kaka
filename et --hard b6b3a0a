@@ -1,0 +1,22 @@
+[33mbeffd7a[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{0}: reset: moving to origin/main
+[33mbeffd7a[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{1}: reset: moving to origin/main
+[33mb6b3a0a[m HEAD@{2}: checkout: moving from gh-pages to main
+[33mfbf6b70[m[33m ([m[1;32mgh-pages[m[33m)[m HEAD@{3}: pull origin gh-pages: Merge made by the 'ort' strategy.
+[33m56e4cd9[m HEAD@{4}: commit: Add custom domain CNAME file
+[33mc022a4a[m HEAD@{5}: checkout: moving from main to gh-pages
+[33mb6b3a0a[m HEAD@{6}: commit: Save progress before switching to gh-pages
+[33mbeffd7a[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{7}: checkout: moving from gh-pages to main
+[33mc022a4a[m HEAD@{8}: commit: dist folder
+[33mbeffd7a[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{9}: checkout: moving from main to gh-pages
+[33mbeffd7a[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{10}: commit: host trail
+[33mfacfc73[m HEAD@{11}: reset: moving to origin/main
+[33mfacfc73[m HEAD@{12}: commit: updates
+[33m0f3941e[m HEAD@{13}: commit: updates
+[33m32928bb[m HEAD@{14}: commit: updates
+[33m9eeadeb[m HEAD@{15}: commit: updates today
+[33m765d8ee[m HEAD@{16}: commit: updates
+[33m027a512[m HEAD@{17}: commit: updates
+[33m603f18f[m HEAD@{18}: commit: interface changes and added fucntionalities
+[33mc13ced2[m HEAD@{19}: reset: moving to origin/main
+[33mc13ced2[m HEAD@{20}: Branch: renamed refs/heads/main to refs/heads/main
+[33mc13ced2[m HEAD@{22}: commit (initial): first commit

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import eventService from '@/services/eventService'
+import axios from 'axios'
 
 export const useEventStore = defineStore('events', () => {
   // State
@@ -14,8 +15,14 @@ export const useEventStore = defineStore('events', () => {
   const lastFetch = ref(null)
   const forceRefresh = ref(false)
 
+  // Pagination state
+  const currentPage = ref(1)
+  const totalItems = ref(0)
+  const itemsPerPage = ref(12)
+  const totalPages = ref(0)
+
   // Actions
-  const fetchAllEvents = async (refresh = false) => {
+  const fetchAllEvents = async (refresh = false, page = 1) => {
     // Skip fetching if we already have events and it hasn't been 5 minutes since the last fetch
     // Unless refresh is explicitly requested
     const fiveMinutesAgo = Date.now() - 5 * 60 * 1000
@@ -24,7 +31,8 @@ export const useEventStore = defineStore('events', () => {
       !forceRefresh.value &&
       events.value.length > 0 &&
       lastFetch.value &&
-      lastFetch.value > fiveMinutesAgo
+      lastFetch.value > fiveMinutesAgo &&
+      page === currentPage.value
     ) {
       console.log('Using cached events data')
       return events.value
@@ -32,23 +40,35 @@ export const useEventStore = defineStore('events', () => {
 
     isLoading.value = true
     error.value = null
+    currentPage.value = page
 
     try {
       console.log('Fetching all events from API')
-      const allEvents = await eventService.getAllEvents()
+      const response = await eventService.getAllEvents(page, itemsPerPage.value)
 
-      if (allEvents && Array.isArray(allEvents)) {
-        console.log(`Fetched ${allEvents.length} events from API`)
-        events.value = allEvents
+      // Debug log the exact response
+      console.log('Raw API response:', response)
+
+      // Check if the response has the expected structure with data property
+      if (response && response.data && Array.isArray(response.data)) {
+        console.log(`Fetched ${response.data.length} events from API`)
+        events.value = response.data
+
+        // Update pagination info if available
+        if (response.pagination) {
+          totalItems.value = response.pagination.total || 0
+          totalPages.value = response.pagination.pages || 0
+        }
+
         lastFetch.value = Date.now()
         forceRefresh.value = false
-        return allEvents
+        return response.data
       } else {
-        console.error('Invalid response format from events API:', allEvents)
+        console.error('Invalid response format from events API:', response)
         throw new Error('Invalid data format received from API')
       }
     } catch (err) {
-      error.value = err.message || 'Failed to fetch events'
+      error.value = err.message || 'Failed to fetch events from API:'
       console.error('Error fetching events from API:', err)
       throw err
     } finally {
@@ -67,6 +87,8 @@ export const useEventStore = defineStore('events', () => {
 
     try {
       const event = await eventService.getEventById(id)
+      console.log('Event by ID response:', event)
+
       if (event) {
         currentEvent.value = event
       } else {
@@ -81,21 +103,39 @@ export const useEventStore = defineStore('events', () => {
     }
   }
 
-  const fetchEventsByCategory = async (category, refresh = false) => {
+  const fetchEventsByCategory = async (category, refresh = false, page = 1) => {
     // Skip fetching if we're already on this category and have events
-    if (!refresh && currentCategory.value === category && events.value.length > 0) {
+    if (
+      !refresh &&
+      currentCategory.value === category &&
+      events.value.length > 0 &&
+      page === currentPage.value
+    ) {
       return events.value
     }
 
     isLoading.value = true
     error.value = null
     currentCategory.value = category
+    currentPage.value = page
 
     try {
-      const filteredEvents = await eventService.getEventsByCategory(category)
-      events.value = filteredEvents
-      lastFetch.value = Date.now()
-      return filteredEvents
+      const response = await eventService.getEventsByCategory(category, page, itemsPerPage.value)
+
+      if (response && response.data && Array.isArray(response.data)) {
+        events.value = response.data
+
+        // Update pagination info if available
+        if (response.pagination) {
+          totalItems.value = response.pagination.total || 0
+          totalPages.value = response.pagination.pages || 0
+        }
+
+        lastFetch.value = Date.now()
+        return response.data
+      } else {
+        throw new Error('Invalid data format received from API')
+      }
     } catch (err) {
       error.value = err.message || 'Failed to fetch events by category'
       throw err
@@ -104,7 +144,7 @@ export const useEventStore = defineStore('events', () => {
     }
   }
 
-  const fetchFeaturedEvents = async (refresh = false) => {
+  const fetchFeaturedEvents = async (refresh = false, limit = 6) => {
     // Skip fetching if we already have featured events and refresh is not requested
     if (!refresh && !forceRefresh.value && featuredEvents.value.length > 0) {
       return featuredEvents.value
@@ -114,10 +154,10 @@ export const useEventStore = defineStore('events', () => {
     error.value = null
 
     try {
-      const featured = await eventService.getFeaturedEvents()
-      if (featured && Array.isArray(featured)) {
-        featuredEvents.value = featured
-        return featured
+      const featured = await eventService.getFeaturedEvents(limit)
+      if (featured && featured.data && Array.isArray(featured.data)) {
+        featuredEvents.value = featured.data
+        return featured.data
       } else {
         throw new Error('Invalid featured events data format')
       }
@@ -228,17 +268,160 @@ export const useEventStore = defineStore('events', () => {
     }
   }
 
-  const searchEvents = async (query) => {
+  const searchEvents = async (
+    query,
+    category = null,
+    page = 1,
+    limit = 12,
+    sort = 'event_date',
+    direction = 'asc',
+    dateFrom = null,
+    dateTo = null,
+    priceMin = null,
+    priceMax = null,
+  ) => {
     isLoading.value = true
     error.value = null
     searchQuery.value = query
+    currentPage.value = page
+
+    if (category) {
+      currentCategory.value = category
+    }
+
+    // Added detailed logging at start of search
+    console.log(`Search initiated in store with: "${query}", category: ${category || 'all'}`)
 
     try {
-      const results = await eventService.searchEvents(query)
-      events.value = results
-      return results
+      // Build the query parameters with advanced filtering
+      let url = `${eventService.EVENTS_API_URL}?page=${page}&limit=${limit}`
+
+      // Add search query
+      if (query && query.trim() !== '') {
+        url += `&search=${encodeURIComponent(query.trim())}`
+      }
+
+      // Add category filter
+      if (category && category !== 'all') {
+        url += `&category=${encodeURIComponent(category)}`
+      }
+
+      // Add sort parameters
+      if (sort) {
+        url += `&sort=${encodeURIComponent(sort)}`
+      }
+
+      if (direction) {
+        url += `&direction=${encodeURIComponent(direction)}`
+      }
+
+      // Add date range filters
+      if (dateFrom) {
+        url += `&date_from=${encodeURIComponent(dateFrom)}`
+      }
+
+      if (dateTo) {
+        url += `&date_to=${encodeURIComponent(dateTo)}`
+      }
+
+      // Add price range filters
+      if (priceMin !== null && priceMin !== '') {
+        url += `&price_min=${encodeURIComponent(priceMin)}`
+      }
+
+      if (priceMax !== null && priceMax !== '') {
+        url += `&price_max=${encodeURIComponent(priceMax)}`
+      }
+
+      // Add security token
+      url += `&_token=${Math.random().toString(36).substring(2, 15)}`
+
+      // Log the search request for debugging (remove in production)
+      console.debug(`Performing search with URL: ${url}`)
+
+      // Try the main API endpoint first
+      let response
+      try {
+        response = await axios.get(url)
+      } catch (apiError) {
+        console.warn('Main API search failed, trying fallback:', apiError.message)
+
+        // If main API fails, try the fallback endpoint
+        let fallbackUrl = `${eventService.EVENTS_FALLBACK_API_URL}?page=${page}&limit=${limit}`
+
+        // Add basic search parameters to fallback
+        if (query && query.trim() !== '') {
+          fallbackUrl += `&search=${encodeURIComponent(query.trim())}`
+        }
+
+        if (category && category !== 'all') {
+          fallbackUrl += `&category=${encodeURIComponent(category)}`
+        }
+
+        console.debug(`Trying fallback search API: ${fallbackUrl}`)
+        response = await axios.get(fallbackUrl)
+      }
+
+      // Debug the raw response
+      console.debug('Raw search response:', response.data)
+      console.log('Search response status:', response.status)
+      console.log('Search response length:', response.data?.data?.length || 'N/A')
+
+      // Handle different response formats - robust approach
+      let eventData = []
+      let paginationData = null
+
+      // Case 1: Response has data property that is an array (standard format)
+      if (response.data && response.data.data && Array.isArray(response.data.data)) {
+        eventData = response.data.data
+        paginationData = response.data.pagination || null
+      }
+      // Case 2: Response is an array directly
+      else if (response.data && Array.isArray(response.data)) {
+        eventData = response.data
+      }
+      // Case 3: Unexpected format, try to extract any array we can find
+      else if (response.data && typeof response.data === 'object') {
+        // Loop through all properties looking for an array
+        for (const [key, value] of Object.entries(response.data)) {
+          if (Array.isArray(value) && value.length > 0 && value[0].id) {
+            console.debug(`Found events array in response.data.${key}`)
+            eventData = value
+            break
+          }
+        }
+      }
+
+      // If we found events, use them
+      if (eventData.length > 0) {
+        events.value = eventData
+
+        // Update pagination if available
+        if (paginationData) {
+          totalItems.value = paginationData.total || eventData.length
+          totalPages.value = paginationData.pages || 1
+        } else {
+          // Set reasonable defaults if no pagination info
+          totalItems.value = eventData.length
+          totalPages.value = 1
+        }
+
+        lastFetch.value = Date.now()
+        return eventData
+      } else {
+        // No events found - this is a valid result (empty search result)
+        events.value = []
+        totalItems.value = 0
+        totalPages.value = 0
+        return []
+      }
     } catch (err) {
-      error.value = err.message || 'Search failed'
+      error.value = err.message || 'Failed to search events'
+      console.error('Search error:', err)
+      // Set empty results and return empty array
+      events.value = []
+      totalItems.value = 0
+      totalPages.value = 0
       throw err
     } finally {
       isLoading.value = false
@@ -249,21 +432,23 @@ export const useEventStore = defineStore('events', () => {
   const resetFilters = async () => {
     searchQuery.value = ''
     currentCategory.value = 'all'
-    return await fetchAllEvents(true)
+
+    try {
+      // Try to fetch all events
+      return await fetchAllEvents(true)
+    } catch (err) {
+      // If fetching fails, at least reset the local state to avoid showing stale results
+      console.error('Failed to fetch events when resetting filters:', err)
+      events.value = []
+      totalItems.value = 0
+      totalPages.value = 0
+      return []
+    }
   }
 
   // Computed properties
   const filteredEvents = computed(() => {
-    if (!searchQuery.value) return events.value
-
-    const query = searchQuery.value.toLowerCase()
-    return events.value.filter(
-      (event) =>
-        event.title.toLowerCase().includes(query) ||
-        event.description.toLowerCase().includes(query) ||
-        event.location.toLowerCase().includes(query) ||
-        event.organizer.toLowerCase().includes(query),
-    )
+    return events.value
   })
 
   const upcomingEvents = computed(() => {
@@ -289,6 +474,11 @@ export const useEventStore = defineStore('events', () => {
     error,
     searchQuery,
     currentCategory,
+    currentPage,
+    totalItems,
+    itemsPerPage,
+    totalPages,
+    lastFetch,
 
     // Actions
     fetchAllEvents,

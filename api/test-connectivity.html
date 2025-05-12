@@ -3,33 +3,47 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>API Connection Test</title>
+    <title>API Test Page</title>
     <style>
       body {
         font-family: Arial, sans-serif;
         max-width: 800px;
         margin: 0 auto;
         padding: 20px;
+        line-height: 1.6;
+      }
+      h1 {
+        color: #333;
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      input,
+      select {
+        width: 100%;
+        padding: 8px;
+        box-sizing: border-box;
       }
       button {
-        padding: 10px 15px;
-        background: #4a90e2;
+        background-color: #4caf50;
         color: white;
+        padding: 10px 15px;
         border: none;
-        border-radius: 4px;
         cursor: pointer;
-        margin: 5px;
       }
-      .result {
+      #result {
         margin-top: 20px;
-        padding: 15px;
         border: 1px solid #ddd;
+        padding: 15px;
         border-radius: 4px;
-        background: #f9f9f9;
-        min-height: 100px;
-      }
-      .success {
-        color: green;
+        background-color: #f9f9f9;
+        overflow: auto;
+        max-height: 400px;
       }
       .error {
         color: red;
@@ -37,47 +51,112 @@
     </style>
   </head>
   <body>
-    <h1>API Connection Test</h1>
-    <p>This page tests if your API endpoints are accessible from your browser.</p>
+    <h1>API Test Tool</h1>
+    <p>Use this page to test the event search API directly.</p>
 
-    <div>
-      <button onclick="testAPI('http://localhost/api/test.php')">Test localhost URL</button>
-      <button onclick="testAPI('http://127.0.0.1/api/test.php')">Test 127.0.0.1 URL</button>
-      <button onclick="testAPI('./api/test.php')">Test Relative URL</button>
-      <button onclick="testAPI('/api/test.php')">Test Root-Relative URL</button>
+    <div class="form-group">
+      <label for="endpoint">API Endpoint:</label>
+      <select id="endpoint">
+        <option value="events.php">Primary API (events.php)</option>
+        <option value="test-search.php">Fallback API (test-search.php)</option>
+      </select>
     </div>
 
-    <div>
-      <h3>API Response:</h3>
-      <div id="result" class="result">Results will appear here</div>
+    <div class="form-group">
+      <label for="search">Search Term:</label>
+      <input type="text" id="search" placeholder="Enter search term" />
+    </div>
+
+    <div class="form-group">
+      <label for="category">Category:</label>
+      <select id="category">
+        <option value="all">All Categories</option>
+        <option value="music">Music</option>
+        <option value="art">Art</option>
+        <option value="food">Food</option>
+        <option value="tech">Tech</option>
+        <option value="sports">Sports</option>
+      </select>
+    </div>
+
+    <button onclick="testAPI()">Test API</button>
+
+    <div id="result">
+      <p>API response will appear here...</p>
     </div>
 
     <script>
-      async function testAPI(url) {
-        const resultDiv = document.getElementById('result')
-        resultDiv.innerHTML = `<p>Testing connection to: ${url}</p>`
+      async function testAPI() {
+        const searchTerm = document.getElementById('search').value.trim()
+        const category = document.getElementById('category').value
+        const endpoint = document.getElementById('endpoint').value
+
+        document.getElementById('result').innerHTML = '<p>Testing API...</p>'
 
         try {
-          const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-              Accept: 'application/json',
-            },
-          })
+          // Build URL
+          let url = `http://localhost/api/${endpoint}?page=1&limit=10`
 
-          const responseText = await response.text()
+          if (searchTerm) {
+            url += `&search=${encodeURIComponent(searchTerm)}`
+          }
 
-          try {
-            const data = JSON.parse(responseText)
-            resultDiv.innerHTML += `<p class="success">Connection successful!</p>`
-            resultDiv.innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`
-          } catch (e) {
-            resultDiv.innerHTML += `<p class="error">Received response but not valid JSON:</p>`
-            resultDiv.innerHTML += `<pre>${responseText}</pre>`
+          if (category !== 'all') {
+            url += `&category=${encodeURIComponent(category)}`
+          }
+
+          // Add cache buster
+          url += `&_=${Date.now()}`
+
+          console.log('Testing API with URL:', url)
+
+          // Make request
+          const response = await fetch(url)
+          const data = await response.json()
+
+          // Display results
+          const resultElement = document.getElementById('result')
+
+          if (response.ok) {
+            let html = `<h3>API Test Results</h3>`
+            html += `<p><strong>Status:</strong> ${response.status} ${response.statusText}</p>`
+            html += `<p><strong>URL:</strong> ${url}</p>`
+
+            if (data.data && Array.isArray(data.data)) {
+              html += `<p><strong>Found:</strong> ${data.data.length} events</p>`
+
+              if (data.data.length > 0) {
+                html += `<h4>Results:</h4><ul>`
+                data.data.forEach((event) => {
+                  html += `<li>${event.title} (${event.category})</li>`
+                })
+                html += `</ul>`
+              } else {
+                html += `<p>No events found matching your criteria.</p>`
+              }
+            } else {
+              html += `<p class="error">Invalid response format. Expected data array.</p>`
+            }
+
+            html += `<h4>Raw Response:</h4>`
+            html += `<pre>${JSON.stringify(data, null, 2)}</pre>`
+
+            resultElement.innerHTML = html
+          } else {
+            resultElement.innerHTML = `
+                        <h3 class="error">API Error</h3>
+                        <p><strong>Status:</strong> ${response.status} ${response.statusText}</p>
+                        <p><strong>URL:</strong> ${url}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `
           }
         } catch (error) {
-          resultDiv.innerHTML += `<p class="error">Error: ${error.message}</p>`
-          resultDiv.innerHTML += `<p>This indicates your browser cannot connect to the server at this URL.</p>`
+          document.getElementById('result').innerHTML = `
+                    <h3 class="error">Error</h3>
+                    <p>${error.message}</p>
+                    <p>Check the developer console for more details.</p>
+                `
+          console.error('API test error:', error)
         }
       }
     </script>

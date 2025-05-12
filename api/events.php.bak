@@ -1,0 +1,213 @@
+<?php
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    exit(0);
+}
+
+// Database config
+$host = 'localhost';
+$db   = 'events';
+$user = 'root';
+$pass = ''; // Add your actual password here if any
+$charset = 'utf8mb4';
+
+try {
+    // First, connect without specifying a database to check if 'events' exists
+    $pdo = new PDO("mysql:host=$host;charset=$charset", $user, $pass, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES => false,
+    ]);
+    
+    // Check if database exists, if not create it
+    $stmt = $pdo->query("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '$db'");
+    if (!$stmt->fetch()) {
+        // Database doesn't exist, create it
+        $pdo->exec("CREATE DATABASE `$db`");
+        echo json_encode(["message" => "Database created successfully"]);
+        
+        // Connect to the new database
+        $pdo = new PDO("mysql:host=$host;dbname=$db;charset=$charset", $user, $pass, [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false,
+        ]);
+        
+        // Create events table if it doesn't exist
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS `events` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `title` varchar(255) NOT NULL,
+                `description` text DEFAULT NULL,
+                `category` varchar(50) DEFAULT NULL,
+                `sub_categories` json DEFAULT NULL,
+                `event_date` datetime DEFAULT NULL,
+                `location` varchar(255) DEFAULT NULL,
+                `main_image` varchar(255) DEFAULT NULL,
+                `banner_image` varchar(255) DEFAULT NULL,
+                `price` decimal(10,2) DEFAULT NULL,
+                `total_tickets` int(11) DEFAULT NULL,
+                `available_tickets` int(11) DEFAULT NULL,
+                `featured` tinyint(1) DEFAULT 0,
+                `organizer` varchar(255) DEFAULT NULL,
+                `duration` varchar(50) DEFAULT NULL,
+                `ticketTypes` json DEFAULT NULL,
+                `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+                PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+        
+        // Insert sample data
+        $pdo->exec("
+            INSERT INTO `events` 
+            (`title`, `description`, `category`, `sub_categories`, `event_date`, `location`, `main_image`, `banner_image`, `price`, `total_tickets`, `available_tickets`, `featured`, `organizer`, `duration`, `ticketTypes`)
+            VALUES 
+            ('Summer Music Festival', 'Join us for three days of amazing music!', 'Music', '[\"Rock\", \"Pop\", \"Indie\"]', '2025-06-21 18:00:00', 'Central Park, NYC', 'https://example.com/images/main.jpg', 'https://example.com/images/banner.jpg', 49.99, 5000, 4000, 1, 'Music Corp', '3 days', '[{\"name\":\"VIP\",\"price\":150,\"quantity\":50,\"description\":\"Premium seating with free drinks\",\"isFeatured\":true},{\"name\":\"Gold\",\"price\":120,\"quantity\":80,\"description\":\"Great view with early access\",\"isFeatured\":true}]'),
+            ('Rock Concert', 'Experience the biggest rock bands live!', 'Music', '[\"Rock\", \"Alternative\"]', '2025-07-15 20:00:00', 'Madison Square Garden', 'https://example.com/images/rock.jpg', 'https://example.com/images/rockbanner.jpg', 75.99, 10000, 8000, 1, 'Rock Productions', '1 night', '[{\"name\":\"Front Row\",\"price\":200,\"quantity\":100,\"description\":\"Best seats in the house\",\"isFeatured\":true}]'),
+            ('Comedy Night', 'Laugh till you drop with our top comedians', 'Theatre/Comedy', '[\"Stand-up\", \"Improv\"]', '2025-08-05 19:30:00', 'Comedy Club', 'https://example.com/images/comedy.jpg', 'https://example.com/images/comedybanner.jpg', 35.50, 200, 180, 0, 'Laugh Inc', '2 hours', '[{\"name\":\"Premium\",\"price\":50,\"quantity\":40,\"description\":\"Front tables\",\"isFeatured\":true}]'),
+            ('Basketball Championship', 'Witness the finals of the season', 'Sports', '[\"Basketball\", \"Tournament\"]', '2025-06-30 17:00:00', 'Sports Arena', 'https://example.com/images/basketball.jpg', 'https://example.com/images/basketballbanner.jpg', 120.00, 15000, 12000, 1, 'Sports Events', '3 hours', '[{\"name\":\"Courtside\",\"price\":500,\"quantity\":50,\"description\":\"Courtside seating\",\"isFeatured\":true}]'),
+            ('Art Exhibition', 'Modern art from around the world', 'Art', '[\"Modern\", \"Exhibition\"]', '2025-09-10 10:00:00', 'Metropolitan Museum', 'https://example.com/images/art.jpg', 'https://example.com/images/artbanner.jpg', 25.00, 1000, 950, 0, 'Art Curators', '1 day', '[{\"name\":\"Guided Tour\",\"price\":40,\"quantity\":30,\"description\":\"Tour with curator\",\"isFeatured\":true}]'),
+            ('Food Festival', 'Taste cuisines from around the world', 'Food', '[\"International\", \"Tasting\"]', '2025-08-20 11:00:00', 'Food Park', 'https://example.com/images/food.jpg', 'https://example.com/images/foodbanner.jpg', 15.00, 5000, 4500, 1, 'Food Events', '2 days', '[{\"name\":\"VIP Pass\",\"price\":75,\"quantity\":200,\"description\":\"Early access and free samples\",\"isFeatured\":true}]'),
+            ('Tech Conference', 'Latest innovations and tech talks', 'Tech', '[\"Innovation\", \"AI\"]', '2025-07-25 09:00:00', 'Convention Center', 'https://example.com/images/tech.jpg', 'https://example.com/images/techbanner.jpg', 299.99, 3000, 2500, 1, 'Tech Today', '3 days', '[{\"name\":\"Full Access\",\"price\":499.99,\"quantity\":500,\"description\":\"All sessions and workshops\",\"isFeatured\":true}]'),
+            ('Movie Premiere', 'Be the first to see the biggest blockbuster', 'Movies', '[\"Premiere\", \"Action\"]', '2025-08-15 19:00:00', 'Grand Cinema', 'https://example.com/images/movie.jpg', 'https://example.com/images/moviebanner.jpg', 40.00, 500, 450, 1, 'Cinema Events', '3 hours', '[{\"name\":\"VIP\",\"price\":100,\"quantity\":50,\"description\":\"Meet the stars\",\"isFeatured\":true}]'),
+            ('Theater Play', 'Award-winning drama on stage', 'Theatre/Comedy', '[\"Drama\", \"Play\"]', '2025-09-05 20:00:00', 'Broadway Theater', 'https://example.com/images/theater.jpg', 'https://example.com/images/theaterbanner.jpg', 85.00, 800, 750, 0, 'Stage Productions', '2 hours', '[{\"name\":\"Premium\",\"price\":150,\"quantity\":100,\"description\":\"Best seats\",\"isFeatured\":true}]'),
+            ('Wine Festival', 'Sample wines from top vineyards', 'Festivals', '[\"Wine\", \"Tasting\"]', '2025-10-10 12:00:00', 'Vineyard Estate', 'https://example.com/images/wine.jpg', 'https://example.com/images/winebanner.jpg', 60.00, 1000, 900, 1, 'Wine Events', '1 day', '[{\"name\":\"Connoisseur\",\"price\":120,\"quantity\":200,\"description\":\"Premium wines and food pairing\",\"isFeatured\":true}]')
+        ");
+        
+        // Return a message and exit since we've just created the database and tables
+        echo json_encode([
+            'data' => [], 
+            'pagination' => [
+                'total' => 0,
+                'page' => 1,
+                'limit' => 10,
+                'pages' => 0
+            ],
+            'message' => 'Database and tables initialized with sample data. Please refresh.'
+        ]);
+        exit;
+    }
+    
+    // Now connect to the events database
+    $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
+    $options = [
+        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES   => false,
+    ];
+    
+    $pdo = new PDO($dsn, $user, $pass, $options);
+
+    // --- Fetch single event by ID if ?id=... is provided ---
+    if (isset($_GET['id'])) {
+        $id = intval($_GET['id']);
+        $stmt = $pdo->prepare('SELECT * FROM events WHERE id = ?');
+        $stmt->execute([$id]);
+        $event = $stmt->fetch();
+
+        if ($event) {
+            // Decode JSON fields
+            if (isset($event['sub_categories'])) {
+                $event['sub_categories'] = json_decode($event['sub_categories'], true);
+            }
+            if (isset($event['ticketTypes'])) {
+                $event['ticketTypes'] = json_decode($event['ticketTypes'], true);
+            }
+            echo json_encode($event);
+        } else {
+            http_response_code(404);
+            echo json_encode(['error' => 'Event not found']);
+        }
+        exit;
+    }
+
+    // --- Filter events by category ---
+    $category = isset($_GET['category']) ? $_GET['category'] : null;
+    $query = 'SELECT * FROM events';
+    $params = [];
+    
+    if ($category) {
+        // Handle special case for "All" which should return all events
+        if (strtolower($category) !== 'all') {
+            // Map navigation menu URLs to actual category names
+            $categoryMap = [
+                'music' => 'Music',
+                'movies' => 'Movies',
+                'theatre' => 'Theatre/Comedy',
+                'sports' => 'Sports',
+                'festivals' => 'Festivals',
+                'others' => 'Others'
+            ];
+            
+            $categoryName = isset($categoryMap[$category]) ? $categoryMap[$category] : $category;
+            $query .= ' WHERE category = ?';
+            $params[] = $categoryName;
+        }
+    }
+    
+    // Add search functionality
+    $search = isset($_GET['search']) ? $_GET['search'] : null;
+    if ($search) {
+        $whereClause = $category && strtolower($category) !== 'all' ? ' AND' : ' WHERE';
+        $query .= "$whereClause (title LIKE ? OR description LIKE ?)";
+        $params[] = "%$search%";
+        $params[] = "%$search%";
+    }
+    
+    // Add sorting
+    $sortBy = isset($_GET['sort']) ? $_GET['sort'] : 'event_date';
+    $sortDirection = isset($_GET['direction']) && strtolower($_GET['direction']) === 'desc' ? 'DESC' : 'ASC';
+    
+    // Whitelist allowed sorting columns to prevent SQL injection
+    $allowedSortColumns = ['event_date', 'title', 'price', 'created_at'];
+    $sortBy = in_array($sortBy, $allowedSortColumns) ? $sortBy : 'event_date';
+    
+    $query .= " ORDER BY $sortBy $sortDirection";
+    
+    // Add pagination
+    $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+    $limit = isset($_GET['limit']) ? min(50, max(1, intval($_GET['limit']))) : 10;
+    $offset = ($page - 1) * $limit;
+    
+    $countQuery = str_replace('SELECT *', 'SELECT COUNT(*)', $query);
+    $countQuery = preg_replace('/ORDER BY.*$/', '', $countQuery);
+    
+    $countStmt = $pdo->prepare($countQuery);
+    $countStmt->execute($params);
+    $total = $countStmt->fetchColumn();
+    
+    $query .= " LIMIT $limit OFFSET $offset";
+    
+    $stmt = $pdo->prepare($query);
+    $stmt->execute($params);
+    $events = $stmt->fetchAll();
+
+    // Decode JSON fields
+    foreach ($events as &$event) {
+        if (isset($event['sub_categories'])) {
+            $event['sub_categories'] = json_decode($event['sub_categories'], true);
+        }
+        if (isset($event['ticketTypes'])) {
+            $event['ticketTypes'] = json_decode($event['ticketTypes'], true);
+        }
+    }
+
+    // Return with pagination metadata
+    echo json_encode([
+        'data' => $events,
+        'pagination' => [
+            'total' => $total,
+            'page' => $page,
+            'limit' => $limit,
+            'pages' => ceil($total / $limit)
+        ]
+    ]);
+    
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode(['error' => 'Database error: ' . $e->getMessage()]);
+}
