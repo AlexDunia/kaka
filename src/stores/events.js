@@ -104,6 +104,9 @@ export const useEventStore = defineStore('events', () => {
   }
 
   const fetchEventsByCategory = async (category, refresh = false, page = 1) => {
+    // Add debug log to check what category is being passed
+    console.log(`fetchEventsByCategory called with category: ${category}`, { refresh, page })
+
     // Skip fetching if we're already on this category and have events
     if (
       !refresh &&
@@ -111,6 +114,7 @@ export const useEventStore = defineStore('events', () => {
       events.value.length > 0 &&
       page === currentPage.value
     ) {
+      console.log('Using cached events for category:', category)
       return events.value
     }
 
@@ -120,7 +124,16 @@ export const useEventStore = defineStore('events', () => {
     currentPage.value = page
 
     try {
-      const response = await eventService.getEventsByCategory(category, page, itemsPerPage.value)
+      // Normalize the category to ensure consistency
+      const normalizedCategory = category.toLowerCase().trim()
+      console.log('Using normalized category for API call:', normalizedCategory)
+
+      const response = await eventService.getEventsByCategory(
+        normalizedCategory,
+        page,
+        itemsPerPage.value,
+      )
+      console.log('Category API response:', response)
 
       if (response && response.data && Array.isArray(response.data)) {
         events.value = response.data
@@ -138,6 +151,7 @@ export const useEventStore = defineStore('events', () => {
       }
     } catch (err) {
       error.value = err.message || 'Failed to fetch events by category'
+      console.error('Error in fetchEventsByCategory:', err)
       throw err
     } finally {
       isLoading.value = false

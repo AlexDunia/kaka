@@ -3,7 +3,10 @@ import axios from 'axios'
 
 // Configuration
 const EVENTS_API_URL = 'http://localhost/api/events.php'
+const EVENTS_FALLBACK_API_URL = 'http://localhost/api/test-search.php'
+
 console.debug('EVENTS_API_URL configured as:', EVENTS_API_URL)
+console.debug('EVENTS_FALLBACK_API_URL configured as:', EVENTS_FALLBACK_API_URL)
 
 // Minimum loading time to ensure loaders are visible
 const MIN_LOADING_TIME = 800 // milliseconds
@@ -266,16 +269,30 @@ const dataService = {
   },
 
   async getEventsByCategory(category, page = 1, limit = 12) {
-    // Sanitize inputs
+    // Sanitize inputs and add debug information
+    console.log('getEventsByCategory called with raw category:', category)
+
+    // Ensure category is properly formatted
     category = sanitizeString(category)
 
+    // Make sure category is lowercase for consistency
+    if (category) {
+      category = category.toLowerCase().trim()
+    }
+
+    console.log('Sanitized and normalized category:', category)
+
     const mainApiCall = async () => {
-      const response = await axios.get(
-        `${EVENTS_API_URL}?category=${encodeURIComponent(category)}&page=${page}&limit=${limit}&_=${Date.now()}`,
-        {
-          headers: { 'X-Request-ID': Math.random().toString(36).substring(2, 15) },
-        },
-      )
+      console.log(`Calling API with category=${category}, page=${page}, limit=${limit}`)
+
+      const url = `${EVENTS_API_URL}?category=${encodeURIComponent(category)}&page=${page}&limit=${limit}&_=${Date.now()}`
+      console.log('API URL:', url)
+
+      const response = await axios.get(url, {
+        headers: { 'X-Request-ID': Math.random().toString(36).substring(2, 15) },
+      })
+      console.log('API response status:', response.status)
+      console.log('API response data structure:', Object.keys(response.data))
       return response.data
     }
 

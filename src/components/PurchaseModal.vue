@@ -210,9 +210,9 @@ const purchaseTickets = async () => {
 
 // Format price helper
 const formatPrice = (price) => {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('en-NG', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'NGN',
   }).format(price)
 }
 
@@ -361,7 +361,7 @@ const closeModal = () => {
                 </div>
                 <div class="purchase-modal__option-price">
                   {{
-                    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(
+                    new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(
                       event.price * 1.5,
                     )
                   }}

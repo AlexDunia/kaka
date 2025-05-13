@@ -54,11 +54,9 @@ const displayYear = computed(() => {
 // Format price
 const formattedPrice = computed(() => {
   if (!props.event?.price) return 'Free'
-  return typeof props.event.price === 'number'
-    ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(
-        props.event.price,
-      )
-    : props.event.price
+
+  // Return just the number value, we'll add the Naira sign in the template
+  return typeof props.event.price === 'number' ? props.event.price.toFixed(2) : props.event.price
 })
 
 // Get category display name
@@ -68,16 +66,17 @@ const categoryDisplayName = computed(() => {
 
   const displayNames = {
     music: 'Music',
+    movies: 'Movies',
+    theatre: 'Theatre',
     sports: 'Sports',
+    festivals: 'Festivals',
+    comedy: 'Comedy',
     art: 'Art',
     food: 'Food',
-    theatre: 'Theatre',
-    comedy: 'Comedy',
-    festival: 'Festival',
     tech: 'Tech',
     workshop: 'Workshop',
     conference: 'Conference',
-    other: 'Other',
+    others: 'Others',
   }
 
   return displayNames[category.toLowerCase()] || category
@@ -142,7 +141,10 @@ const viewDetails = () => {
             </svg>
             {{ eventLocation }}
           </div>
-          <span class="event-card__price">{{ formattedPrice }}</span>
+          <span class="event-card__price">
+            <span class="event-card__price-label">Starting from</span>
+            <span class="naira-price">₦{{ formattedPrice }}</span>
+          </span>
         </div>
       </div>
     </div>
@@ -323,9 +325,22 @@ const viewDetails = () => {
 }
 
 .event-card__price {
-  font-weight: 600;
+  font-weight: 700;
   color: #e84393;
-  font-size: 1.1rem;
+  font-size: 1.3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-top: 4px;
+}
+
+.event-card__price-label {
+  font-size: 0.73rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 /* Comprehensive responsive styling */
@@ -365,7 +380,11 @@ const viewDetails = () => {
   }
 
   .event-card__price {
-    font-size: 1rem;
+    font-size: 1.2rem;
+  }
+
+  .event-card__price-label {
+    font-size: 0.67rem;
   }
 
   .event-card__rating {
@@ -382,6 +401,10 @@ const viewDetails = () => {
 
   .event-card__image {
     height: 160px;
+  }
+
+  .event-card__price-label {
+    font-size: 0.66rem;
   }
 }
 
@@ -450,6 +473,14 @@ const viewDetails = () => {
   .event-card__header {
     margin-bottom: 10px;
   }
+
+  .event-card__price {
+    font-size: 0.95rem;
+  }
+
+  .event-card__price-label {
+    font-size: 0.63rem;
+  }
 }
 
 /* Device orientation handling */
@@ -487,5 +518,11 @@ const viewDetails = () => {
   background: linear-gradient(135deg, rgba(18, 18, 24, 0.6), rgba(18, 18, 24, 0.8));
   width: 100%;
   height: 100%;
+}
+
+.naira-price {
+  display: flex;
+  align-items: center;
+  font-weight: 700;
 }
 </style>

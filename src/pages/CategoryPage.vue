@@ -107,9 +107,42 @@ onUnmounted(() => {
 const loadEvents = async () => {
   try {
     error.value = null
-    await eventStore.fetchEventsByCategory(props.category, false, currentPage.value)
+
+    // Debug what category is being passed
+    console.log('Loading events for category:', props.category)
+
+    // Check if we have a 'comedy' category which might need mapping to 'theatre'
+    let categoryParam = props.category
+
+    // Some categories might need mapping to match what's in database
+    const categoryMapping = {
+      comedy: 'theatre', // Map comedy to theatre if needed - adjust based on your DB schema
+      // Add other mappings if needed
+    }
+
+    // Apply mapping if needed
+    if (categoryMapping[categoryParam]) {
+      console.log(
+        `Mapping category '${categoryParam}' to '${categoryMapping[categoryParam]}' to match database schema`,
+      )
+      categoryParam = categoryMapping[categoryParam]
+    }
+
+    await eventStore.fetchEventsByCategory(categoryParam, true, currentPage.value)
+
+    // Debug what was returned
+    console.log(`Found ${eventStore.events.length} events for category ${categoryParam}`)
+
+    // Inspect what we have in the returned events
+    if (eventStore.events.length > 0) {
+      console.log(
+        'Sample event categories:',
+        eventStore.events.map((e) => e.category),
+      )
+    }
   } catch (err) {
     error.value = err.message || `Failed to load ${props.category} events`
+    console.error('Error in loadEvents:', err)
     throw err
   }
 }

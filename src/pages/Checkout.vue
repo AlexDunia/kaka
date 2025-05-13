@@ -216,7 +216,10 @@ const handlePaymentSuccess = (reference) => {
 
 // Format price in Naira
 const formatPrice = (price) => {
-  return `₦${price.toLocaleString('en-NG')}`
+  return new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+  }).format(price)
 }
 
 // Continue shopping handler

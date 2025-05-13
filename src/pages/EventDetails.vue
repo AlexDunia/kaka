@@ -142,31 +142,33 @@ const percentageSold = computed(() => {
 const ticketTypes = computed(() => {
   if (!event.value) return []
 
-  // If event has ticket types defined, use those
+  // If event has ticketTypes defined from the database, use those
   if (event.value.ticketTypes && Array.isArray(event.value.ticketTypes)) {
+    console.log('Using ticket types from database:', event.value.ticketTypes)
+
     // Map event ticket types to display format
     return event.value.ticketTypes.map((ticket, index) => {
       // Generate different styles based on index
       const styles = [
         {
-          highlight: ticket.isFeatured,
+          highlight: ticket.name?.toLowerCase().includes('vip'),
           icon: 'ticket',
           isTable: false,
         },
         {
-          highlight: ticket.isFeatured,
+          highlight: ticket.name?.toLowerCase().includes('vip'),
           icon: 'award',
           isTable: false,
         },
         {
           highlight: false,
           icon: 'grid',
-          isTable: ticket.name.toLowerCase().includes('table'),
+          isTable: ticket.name?.toLowerCase().includes('table'),
         },
         {
-          highlight: ticket.isFeatured,
+          highlight: ticket.name?.toLowerCase().includes('vip'),
           icon: 'ticket',
-          isTable: ticket.name.toLowerCase().includes('table'),
+          isTable: ticket.name?.toLowerCase().includes('table'),
         },
       ]
 
@@ -174,24 +176,24 @@ const ticketTypes = computed(() => {
       const style = styles[index % styles.length]
 
       // Check if it's a table ticket by name
-      const isTableTicket = ticket.name.toLowerCase().includes('table')
-      const tableMatch = ticket.name.match(/table for (\d+)/i)
+      const isTableTicket = ticket.name?.toLowerCase().includes('table') || false
+      const tableMatch = ticket.name?.match(/table for (\d+)/i)
       const seatsCount = tableMatch ? parseInt(tableMatch[1]) : isTableTicket ? 4 : 0
 
       // Calculate available tickets for this type
       const available = ticket.quantity || 0
 
       return {
-        id: ticket.name.toLowerCase().replace(/\s+/g, '-'),
-        name: ticket.name,
-        description: ticket.description || 'Regular admission ticket',
-        price: ticket.price,
+        id: ticket.name?.toLowerCase().replace(/\s+/g, '-') || `ticket-${index}`,
+        name: ticket.name || `Ticket ${index + 1}`,
+        description: ticket.description || `${ticket.name || 'Regular'} admission ticket`,
+        price: parseFloat(ticket.price) || 0,
         available: available > 0,
         availableQuantity: available,
         maxPerPurchase: isTableTicket ? 2 : 10,
-        highlight: style.highlight || ticket.isFeatured,
+        highlight: style.highlight,
         icon: style.icon,
-        isTable: isTableTicket || style.isTable,
+        isTable: isTableTicket,
         seatsCount: seatsCount,
       }
     })
@@ -353,10 +355,11 @@ const formattedCategory = computed(() => {
 
 // After the existing computed properties, add a displaySubCategories computed property
 const displaySubCategories = computed(() => {
-  if (!event.value || !event.value.subCategories) return []
+  if (!event.value || !event.value.sub_categories) return []
 
+  // The sub_categories field is stored as JSON in the database and decoded by the API
   // Filter out empty strings and return array of subcategories
-  return event.value.subCategories.filter((cat) => cat && cat.trim() !== '')
+  return event.value.sub_categories.filter((cat) => cat && cat.trim() !== '')
 })
 
 // Merge event options

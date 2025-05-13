@@ -12,7 +12,10 @@ const props = defineProps({
 })
 
 function formatPrice(price) {
-  return `₦${Number(price).toLocaleString('en-NG')}`
+  return new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+  }).format(price)
 }
 
 const displayItems = computed(() =>
