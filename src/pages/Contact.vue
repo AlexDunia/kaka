@@ -77,7 +77,7 @@ const submitForm = async () => {
               </svg>
             </div>
             <h3 class="contact-info-card__title">Phone</h3>
-            <p class="contact-info-card__detail">+1 (555) 123-4567</p>
+            <p class="contact-info-card__detail">+2348108725914</p>
             <p class="contact-info-card__hours">Mon-Fri: 9am - 6pm</p>
           </div>
 
@@ -101,7 +101,7 @@ const submitForm = async () => {
               </svg>
             </div>
             <h3 class="contact-info-card__title">Email</h3>
-            <p class="contact-info-card__detail">support@tixdemand.com</p>
+            <p class="contact-info-card__detail">kakaworldevent@gmail.com</p>
             <p class="contact-info-card__hours">We respond within 24 hours</p>
           </div>
 
@@ -122,9 +122,8 @@ const submitForm = async () => {
                 <circle cx="12" cy="10" r="3"></circle>
               </svg>
             </div>
-            <h3 class="contact-info-card__title">Office</h3>
-            <p class="contact-info-card__detail">123 Event Street, Suite 500</p>
-            <p class="contact-info-card__hours">New York, NY 10001</p>
+            <h3 class="contact-info-card__title">Location</h3>
+            <p class="contact-info-card__detail">Lagos, Nigeria</p>
           </div>
         </div>
 

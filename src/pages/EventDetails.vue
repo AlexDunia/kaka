@@ -4,11 +4,17 @@ import { useRoute, useRouter } from 'vue-router'
 import { useEventStore } from '@/stores/events'
 import QRCode from 'qrcode.vue'
 import { useCartStore } from '@/stores/cart'
+import { useSeo } from '@/composables/useSeo'
+import { useSlug } from '@/composables/useSlug'
+import SeoImage from '@/components/SeoImage.vue'
 
 const route = useRoute()
 const router = useRouter()
 const eventStore = useEventStore()
 const cartStore = useCartStore()
+const { updatePageTitle, updateMetaDescription, updateSocialMeta, addEventStructuredData } =
+  useSeo()
+const { generateSlug } = useSlug()
 
 const loading = ref(true)
 const error = ref(null)
@@ -21,6 +27,15 @@ const notificationTimeout = ref(null)
 const toasterLoading = ref(false)
 const toasterTimeout = ref(null)
 const lastEventPage = ref(null)
+
+// --- New refs for Share Modal ---
+const showShareModal = ref(false)
+const isSharing = ref(false)
+const shareUrl = ref('')
+const shareTitle = ref('')
+const shareDescription = ref('')
+const shareImage = ref('')
+// --- End New refs for Share Modal ---
 
 // Only use main_image from DB, no fallback
 const eventImage = computed(() => {
@@ -43,6 +58,61 @@ const formattedDate = computed(() => {
         minute: '2-digit',
       })
 })
+
+// Update SEO data when event changes
+watch(
+  event,
+  (newEvent) => {
+    if (newEvent) {
+      // Update page title with event name
+      updatePageTitle(newEvent.title)
+
+      // Update meta description with event description (truncated if needed)
+      const description = newEvent.description
+        ? newEvent.description.substring(0, 155) + (newEvent.description.length > 155 ? '...' : '')
+        : `${newEvent.title} - Get tickets for this event on ${formattedDate.value}`
+
+      updateMetaDescription(description)
+
+      // Update URL if needed (we came from an ID-based URL but have title available)
+      if (route.params.id && !route.params.slug && newEvent.title) {
+        const slug = newEvent.slug || generateSlug(newEvent.title)
+        // Replace URL without reloading the page
+        router.replace(`/events/${slug}`)
+      }
+
+      // Update social sharing tags with canonical URL
+      const canonical =
+        window.location.origin +
+        (newEvent.slug
+          ? `/events/${newEvent.slug}`
+          : newEvent.title
+            ? `/events/${generateSlug(newEvent.title)}`
+            : `/event/${newEvent.id}`)
+
+      // --- Store share details when event loads/changes ---
+      shareUrl.value = canonical
+      shareTitle.value = newEvent.title
+      shareDescription.value = description
+      shareImage.value = eventImage.value // Already a computed property
+      // --- End store share details ---
+
+      updateSocialMeta({
+        title: newEvent.title,
+        description: description,
+        image: eventImage.value,
+        url: canonical,
+      })
+
+      // Add structured data for rich snippets in search results
+      addEventStructuredData({
+        ...newEvent,
+        url: canonical,
+      })
+    }
+  },
+  { immediate: true },
+)
 
 // Calculate available tickets based on total tickets if not explicitly set
 const availableTickets = computed(() => {
@@ -179,9 +249,9 @@ const selectedTicketType = ref(null)
 
 // Format price with currency and make the function a named helper
 function formatPrice(price) {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('en-NG', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'NGN',
   }).format(price)
 }
 
@@ -201,9 +271,16 @@ const openPurchaseModalWithTicket = (ticketTypeId) => {
 // Load event on mount
 onMounted(async () => {
   const eventId = route.params.id
+  const eventSlug = route.params.slug
 
   try {
-    await eventStore.fetchEventById(eventId)
+    if (eventSlug) {
+      // If we have a slug, fetch by slug
+      await eventStore.fetchEventBySlug(eventSlug)
+    } else if (eventId) {
+      // Otherwise, fetch by ID (legacy)
+      await eventStore.fetchEventById(eventId)
+    }
 
     if (!event.value) {
       error.value = 'Event not found'
@@ -253,30 +330,6 @@ const incrementQuantity = () => {
 const decrementQuantity = () => {
   if (ticketQuantity.value > 1) {
     ticketQuantity.value--
-  }
-}
-
-// Add favorites functionality
-const favorites = ref([])
-
-// Check if event is in favorites
-const isEventInFavorites = computed(() => {
-  return event.value && favorites.value.includes(event.value.id)
-})
-
-// Toggle favorite status
-const toggleFavorite = () => {
-  if (!event.value) return
-
-  if (isEventInFavorites.value) {
-    // Remove from favorites
-    const index = favorites.value.indexOf(event.value.id)
-    favorites.value.splice(index, 1)
-    showToaster('Removed from favorites')
-  } else {
-    // Add to favorites
-    favorites.value.push(event.value.id)
-    showToaster('Added to favorites')
   }
 }
 
@@ -401,6 +454,65 @@ const addToCart = () => {
   closePurchaseModal()
   showToaster(`${ticketQuantity.value} of ${event.value.title} successfully added to cart`, true)
 }
+
+// --- Share Modal Functions ---
+const openShareModal = async () => {
+  if (!event.value) return // Ensure event data is loaded
+  isSharing.value = true
+  // Simulate loading/preparation time
+  await new Promise((resolve) => setTimeout(resolve, 400))
+  isSharing.value = false
+  showShareModal.value = true
+}
+
+const closeShareModal = () => {
+  showShareModal.value = false
+}
+
+const shareLink = (platform) => {
+  const url = encodeURIComponent(shareUrl.value || window.location.href)
+  const title = encodeURIComponent(shareTitle.value || document.title)
+  // Use a shorter, more generic text for WhatsApp to avoid issues with length or special chars
+  const whatsAppText = encodeURIComponent(`${shareTitle.value} - Check out this event!`)
+  const genericText = encodeURIComponent(shareDescription.value || '')
+
+  let shareWindowUrl = ''
+
+  switch (platform) {
+    case 'twitter':
+      shareWindowUrl = `https://twitter.com/intent/tweet?url=${url}&text=${title}`
+      break
+    case 'facebook':
+      shareWindowUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`
+      break
+    case 'whatsapp':
+      // WhatsApp Web: Use a more direct approach. Mobile typically handles `https://wa.me/` better.
+      shareWindowUrl = `https://api.whatsapp.com/send?text=${whatsAppText}%20${url}`
+      break
+    case 'linkedin':
+      shareWindowUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${url}&title=${title}&summary=${genericText}`
+      break
+    case 'copy':
+      navigator.clipboard
+        .writeText(shareUrl.value || window.location.href)
+        .then(() => {
+          showToaster('Link copied to clipboard!')
+          closeShareModal() // Close modal after copying
+        })
+        .catch((err) => {
+          console.error('Failed to copy link: ', err)
+          showToaster('Failed to copy link.', false)
+        })
+      return // Don't open a window for copy
+    default:
+      console.warn('Unknown share platform:', platform)
+      return
+  }
+
+  // Open the share window
+  window.open(shareWindowUrl, '_blank', 'noopener,noreferrer,width=600,height=450')
+}
+// --- End Share Modal Functions ---
 </script>
 
 <template>
@@ -439,7 +551,13 @@ const addToCart = () => {
         <div class="event-info">
           <div class="event-info__main">
             <div class="event-info__image-container">
-              <img :src="eventImage" :alt="event.title" class="event-info__image" />
+              <SeoImage
+                :src="eventImage"
+                :alt="event.title"
+                :title="event.title"
+                imgClass="event-info__image"
+                responsive
+              />
               <div class="event-info__category">{{ formattedCategory }}</div>
               <div v-if="percentageSold > 75" class="event-info__badge">Hot!</div>
             </div>
@@ -578,29 +696,12 @@ const addToCart = () => {
                 </div>
               </div>
 
-              <div class="event-info__tickets-availability">
-                <h3 class="event-info__section-title">Ticket Availability</h3>
-                <div class="event-info__progress">
-                  <div
-                    class="event-info__progress-bar"
-                    :style="{ width: `${percentageSold}%` }"
-                  ></div>
-                </div>
-                <div class="event-info__progress-text">
-                  <div class="event-info__progress-stats">
-                    <span class="event-info__progress-number">{{ availableTickets }}</span>
-                    <span class="event-info__progress-label">tickets left</span>
-                  </div>
-                  <div class="event-info__progress-stats">
-                    <span class="event-info__progress-number">{{ percentageSold }}%</span>
-                    <span class="event-info__progress-label">sold</span>
-                  </div>
-                </div>
-              </div>
-
               <div class="event-info__action">
-                <button class="event-info__favorite-btn" @click="toggleFavorite">
+                <!-- Updated Share Button -->
+                <button class="event-info__share-btn" @click="openShareModal" :disabled="isSharing">
+                  <div v-if="isSharing" class="spinner"></div>
                   <svg
+                    v-else
                     xmlns="http://www.w3.org/2000/svg"
                     width="18"
                     height="18"
@@ -610,13 +711,14 @@ const addToCart = () => {
                     stroke-width="2"
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    :class="{ filled: isEventInFavorites }"
                   >
-                    <path
-                      d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
-                    ></path>
+                    <circle cx="18" cy="5" r="3"></circle>
+                    <circle cx="6" cy="12" r="3"></circle>
+                    <circle cx="18" cy="19" r="3"></circle>
+                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
                   </svg>
-                  <span>{{ isEventInFavorites ? 'Saved to Favorites' : 'Add to Favorites' }}</span>
+                  <span>{{ isSharing ? 'Preparing...' : 'Share Event' }}</span>
                 </button>
               </div>
             </div>
@@ -727,6 +829,121 @@ const addToCart = () => {
         </div>
       </div>
     </div>
+
+    <!-- Share Modal -->
+    <transition name="modal-fade">
+      <div v-if="showShareModal" class="share-modal-overlay" @click="closeShareModal">
+        <div class="share-modal" @click.stop>
+          <div class="share-modal__header">
+            <h3 class="share-modal__title">Share this Event</h3>
+            <button
+              class="share-modal__close"
+              @click="closeShareModal"
+              aria-label="Close share modal"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="share-modal__body">
+            <div class="share-modal__preview">
+              <div class="share-modal__preview-image">
+                <!-- Use SeoImage for consistent image handling -->
+                <SeoImage :src="shareImage" :alt="shareTitle" imgClass="preview-img" />
+              </div>
+              <div class="share-modal__preview-content">
+                <h4 class="share-modal__preview-title">{{ shareTitle }}</h4>
+                <p class="share-modal__preview-description">{{ shareDescription }}</p>
+                <span class="share-modal__preview-url">{{
+                  shareUrl.replace(/^https?:\/\//, '')
+                }}</span>
+              </div>
+            </div>
+
+            <div class="share-modal__platforms">
+              <button
+                @click="shareLink('twitter')"
+                class="share-platform share-platform--twitter"
+                aria-label="Share on Twitter"
+              >
+                <svg viewBox="0 0 24 24">
+                  <path
+                    d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"
+                  ></path>
+                </svg>
+                <span>Twitter</span>
+              </button>
+              <button
+                @click="shareLink('facebook')"
+                class="share-platform share-platform--facebook"
+                aria-label="Share on Facebook"
+              >
+                <svg viewBox="0 0 24 24">
+                  <path
+                    d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"
+                  ></path>
+                </svg>
+                <span>Facebook</span>
+              </button>
+              <button
+                @click="shareLink('whatsapp')"
+                class="share-platform share-platform--whatsapp"
+                aria-label="Share on WhatsApp"
+              >
+                <svg viewBox="0 0 24 24">
+                  <path
+                    d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.099-.198.05-.371-.025-.52s-.669-1.611-.916-2.206c-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.204-1.634a11.86 11.86 0 005.79 1.502h.004c6.554 0 11.887-5.335 11.89-11.893a11.821 11.821 0 00-3.48-8.413Z"
+                  ></path>
+                </svg>
+                <span>WhatsApp</span>
+              </button>
+              <button
+                @click="shareLink('linkedin')"
+                class="share-platform share-platform--linkedin"
+                aria-label="Share on LinkedIn"
+              >
+                <svg viewBox="0 0 24 24">
+                  <path
+                    d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"
+                  ></path>
+                  <rect x="2" y="9" width="4" height="12"></rect>
+                  <circle cx="4" cy="4" r="2"></circle>
+                </svg>
+                <span>LinkedIn</span>
+              </button>
+              <button
+                @click="shareLink('copy')"
+                class="share-platform share-platform--copy"
+                aria-label="Copy link"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                <span>Copy Link</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </transition>
 
     <!-- Premium modal -->
     <div v-if="showPurchaseModal" class="premium-modal-overlay" @click="closePurchaseModal">
@@ -1212,59 +1429,17 @@ const addToCart = () => {
   color: var(--primary);
 }
 
-.event-info__tickets-availability {
-  margin-top: 0.5rem;
-}
-
-.event-info__progress {
-  height: 8px;
-  background-color: rgba(255, 255, 255, 0.08);
-  border-radius: 100px;
-  overflow: hidden;
-  margin-bottom: 0.85rem;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.event-info__progress-bar {
-  height: 100%;
-  background: linear-gradient(90deg, var(--primary), #ff6b9d);
-  border-radius: 100px;
-  box-shadow: 0 2px 5px rgba(232, 67, 147, 0.3);
-}
-
-.event-info__progress-text {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.event-info__progress-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.event-info__progress-number {
-  font-weight: 600;
-  font-size: 1.1rem;
-  color: white;
-}
-
-.event-info__progress-label {
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.6);
-}
-
 .event-info__action {
   margin-top: 1rem;
   display: flex;
   gap: 1rem;
 }
 
-.event-info__favorite-btn {
-  display: flex;
+/* Updated Share Button Styles */
+.event-info__share-btn {
+  display: inline-flex; /* Use inline-flex for better alignment with spinner */
   align-items: center;
+  justify-content: center; /* Center content */
   gap: 0.75rem;
   background-color: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1274,21 +1449,46 @@ const addToCart = () => {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
+  min-width: 160px; /* Adjusted for slightly longer text */
+  position: relative; /* Needed for spinner */
+  overflow: hidden; /* To contain potential hover effects */
 }
 
-.event-info__favorite-btn:hover {
+.event-info__share-btn:hover:not(:disabled) {
   background-color: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.event-info__favorite-btn svg {
-  transition: all 0.2s;
+.event-info__share-btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
 }
 
+/* Spinner Animation */
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff; /* Or var(--primary) for branded spinner */
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Remove favorite specific styles if any were missed */
+/*
 .event-info__favorite-btn svg.filled {
   fill: var(--primary);
   stroke: var(--primary);
 }
+*/
 
 /* Ticket Card Styles */
 .ticket-card {
@@ -1531,6 +1731,243 @@ const addToCart = () => {
   .event-info__title {
     font-size: 1.75rem;
   }
+}
+
+/* Share Modal Styles */
+.share-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(10, 10, 20, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000; /* Higher than purchase modal */
+  backdrop-filter: blur(8px) saturate(150%);
+  transition: opacity 0.3s ease;
+}
+
+.share-modal {
+  background: linear-gradient(150deg, rgba(45, 45, 65, 0.98), rgba(35, 35, 55, 0.98));
+  border-radius: 16px;
+  width: 550px;
+  max-width: calc(100vw - 40px); /* Ensure some padding on small screens */
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 40px);
+}
+
+/* Modal fade animation */
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
+}
+.modal-fade-enter-active .share-modal,
+.modal-fade-leave-active .share-modal {
+  transition:
+    transform 0.3s cubic-bezier(0.25, 1, 0.5, 1),
+    opacity 0.3s ease;
+}
+.modal-fade-enter-from .share-modal,
+.modal-fade-leave-to .share-modal {
+  transform: translateY(30px) scale(0.95);
+  opacity: 0;
+}
+
+.share-modal__header {
+  padding: 1.25rem 1.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  flex-shrink: 0;
+}
+
+.share-modal__title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 0;
+  color: white;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.share-modal__close {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  padding: 0.35rem;
+  display: flex;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.share-modal__close:hover {
+  color: white;
+  background-color: rgba(255, 255, 255, 0.1);
+  transform: rotate(90deg) scale(1.1);
+}
+
+.share-modal__body {
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem; /* Slightly reduced gap */
+  overflow-y: auto; /* Allow scrolling for content if needed */
+}
+
+.share-modal__preview {
+  display: flex;
+  gap: 1.25rem; /* Reduced gap */
+  background: rgba(255, 255, 255, 0.04);
+  padding: 1.25rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.share-modal__preview-image {
+  width: 100px;
+  height: 100px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: rgba(255, 255, 255, 0.05); /* Placeholder bg */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.share-modal__preview-image .preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 8px; /* Ensure image itself has rounded corners if container clips */
+}
+
+.share-modal__preview-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden; /* Prevent text overflow */
+  flex: 1; /* Allow content to take available space */
+}
+
+.share-modal__preview-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: white;
+  margin: 0 0 0.4rem 0;
+  line-height: 1.3;
+  white-space: nowrap; /* Consider changing if titles are long */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.share-modal__preview-description {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.75);
+  margin: 0 0 0.5rem 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2; /* Show 2 lines, then ellipsis */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-height: calc(0.85rem * 1.4 * 2); /* Fallback for non-webkit */
+}
+
+.share-modal__preview-url {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: lowercase;
+  margin-top: auto; /* Push to bottom if space allows */
+}
+
+.share-modal__platforms {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); /* Wider buttons */
+  gap: 0.8rem; /* Slightly reduced gap */
+}
+
+.share-platform {
+  display: flex;
+  /* flex-direction: column; Remove for horizontal alignment */
+  align-items: center; /* Align icon and text horizontally */
+  justify-content: flex-start; /* Align content to the start */
+  gap: 0.75rem;
+  padding: 0.75rem 1rem; /* Adjusted padding */
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+  color: rgba(255, 255, 255, 0.8);
+  text-align: left; /* Align text to the left */
+}
+
+.share-platform svg {
+  width: 20px; /* Slightly smaller icons */
+  height: 20px;
+  fill: currentColor;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.share-platform span {
+  font-size: 0.85rem; /* Slightly larger text */
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.share-platform:hover {
+  transform: translateY(-3px) scale(1.02);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+  color: white;
+}
+
+.share-platform:hover svg {
+  transform: scale(1.1);
+}
+
+/* Platform-specific hover colors */
+.share-platform--twitter:hover {
+  color: #1da1f2;
+  border-color: rgba(29, 161, 242, 0.4);
+  background-color: rgba(29, 161, 242, 0.1);
+}
+.share-platform--facebook:hover {
+  color: #1877f2;
+  border-color: rgba(24, 119, 242, 0.4);
+  background-color: rgba(24, 119, 242, 0.1);
+}
+.share-platform--whatsapp:hover {
+  color: #25d366;
+  border-color: rgba(37, 211, 102, 0.4);
+  background-color: rgba(37, 211, 102, 0.1);
+}
+.share-platform--linkedin:hover {
+  color: #0a66c2;
+  border-color: rgba(10, 102, 194, 0.4);
+  background-color: rgba(10, 102, 194, 0.1);
+}
+.share-platform--copy:hover {
+  color: var(--primary);
+  border-color: rgba(232, 67, 147, 0.4);
+  background-color: rgba(232, 67, 147, 0.1);
 }
 
 /* Premium modal styles */

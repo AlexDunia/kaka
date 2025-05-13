@@ -5,6 +5,25 @@ import { storeToRefs } from 'pinia'
 import EventCard from '@/components/EventCard.vue'
 import SkeletonLoader from '@/components/SkeletonLoader.vue'
 import { useLoading } from '@/composables/useLoading'
+import { useSeo } from '@/composables/useSeo'
+
+// SEO setup
+const { updatePageTitle, updateMetaDescription, updateSocialMeta } = useSeo()
+
+// Update SEO metadata
+onMounted(() => {
+  updatePageTitle('Find and Book Amazing Events', false) // Override the default format
+  updateMetaDescription(
+    'Discover and book tickets for the best events, concerts, movies, theatre shows, sports events, and festivals near you.',
+  )
+  updateSocialMeta({
+    title: 'Kaka - Find and Book Amazing Events',
+    description:
+      'Discover and book tickets for the best events, concerts, movies, theatre shows, sports events, and festivals near you.',
+    url: window.location.href,
+    image: 'https://res.cloudinary.com/dnuhjsckk/image/upload/v1747056280/tdlogowhite_fvgocv.png',
+  })
+})
 
 // Store
 const eventStore = useEventStore()
@@ -203,10 +222,10 @@ onUnmounted(() => {
 
 <template>
   <div class="home-page">
-    <!-- Hero Section -->
-    <section class="hero-section">
+    <!-- Hero Banner -->
+    <div class="hero-banner">
       <div class="hero-content">
-        <h1>Discover Amazing Events,,,,,</h1>
+        <h1>Discover Amazing Events</h1>
         <p>Find and join events happening around you</p>
         <div class="search-container">
           <input
@@ -219,7 +238,7 @@ onUnmounted(() => {
           <button @click="handleSearch" class="search-button">Search</button>
         </div>
       </div>
-    </section>
+    </div>
 
     <!-- Loading Indicator for Initial Load -->
     <div v-if="isLoading && !initialLoadComplete" class="loading-container">
@@ -380,20 +399,36 @@ onUnmounted(() => {
   padding: 0 30px;
 }
 
-.hero-section {
-  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7)), url('/images/hero-bg.jpg');
-  background-size: cover;
-  background-position: center;
-  color: white;
-  padding: 100px 20px;
-  text-align: center;
+.hero-banner {
+  position: relative;
+  height: 300px;
   border-radius: 10px;
+  overflow: hidden;
   margin-bottom: 40px;
+  background: rgba(30, 30, 36, 0.4); /* Further reduced opacity to 40% */
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.hero-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  padding: 60px 20px;
+  text-align: center;
+  color: white;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 .hero-content h1 {
-  font-size: 2.5rem;
+  font-size: 2.8rem;
   margin-bottom: 10px;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
 }
 
 .hero-content p {
@@ -666,20 +701,12 @@ onUnmounted(() => {
     padding: 0 20px;
   }
 
-  .hero-section {
-    padding: 80px 20px;
-  }
-
-  .section-header h2 {
+  .hero-content h1 {
     font-size: 1.6rem;
   }
 }
 
 @media (max-width: 768px) {
-  .hero-section {
-    padding: 60px 20px;
-  }
-
   .hero-content h1 {
     font-size: 2rem;
   }
@@ -769,13 +796,12 @@ onUnmounted(() => {
     padding: 0 12px;
   }
 
-  .hero-section {
-    padding: 40px 15px;
-    margin-bottom: 30px;
+  .hero-content h1 {
+    font-size: 1.5rem;
   }
 
-  .category-tabs {
-    gap: 8px;
+  .section-header h2 {
+    font-size: 1.25rem;
   }
 
   .tab {
@@ -809,10 +835,6 @@ onUnmounted(() => {
 
 /* Landscape mode optimization */
 @media (max-height: 500px) and (orientation: landscape) {
-  .hero-section {
-    padding: 30px 20px;
-  }
-
   .search-container {
     flex-direction: row;
     gap: 10px;

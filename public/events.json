@@ -1,0 +1,110 @@
+{
+  "events": [
+    {
+      "id": 1,
+      "title": "Summer Music Outfestival",
+      "slug": "summer-music-outfestival",
+      "description": "An amazing summer music festival featuring local and international artists. Join us for a weekend of great music, food, and fun!",
+      "main_image": "https://placehold.co/600x400/333/white?text=Summer+Festival",
+      "event_date": "2023-07-15T18:00:00",
+      "location": "Lekki Beach, Lagos",
+      "organizer": "Kaka Events",
+      "category": "music",
+      "subCategories": ["Live Music", "Outdoor", "Festival"],
+      "price": 15000,
+      "totalTickets": 1000,
+      "availableTickets": 750,
+      "ticketTypes": [
+        {
+          "name": "Standard",
+          "description": "Regular admission ticket",
+          "price": 15000,
+          "quantity": 500,
+          "isFeatured": false
+        },
+        {
+          "name": "VIP",
+          "description": "Premium seating + complimentary drinks",
+          "price": 25000,
+          "quantity": 200,
+          "isFeatured": true
+        },
+        {
+          "name": "Table for 4",
+          "description": "Reserved seating for 4 people",
+          "price": 50000,
+          "quantity": 30,
+          "isFeatured": false
+        }
+      ],
+      "duration": "3 hours",
+      "eventOptions": ["Live performance", "Food & drinks available", "Indoor event"]
+    },
+    {
+      "id": 2,
+      "title": "Tech Conference 2023",
+      "slug": "tech-conference-2023",
+      "description": "Join industry leaders and innovators for our annual technology conference. Learn about the latest trends and network with professionals.",
+      "main_image": "https://placehold.co/600x400/333/white?text=Tech+Conference",
+      "event_date": "2023-08-10T09:00:00",
+      "location": "Landmark Centre, Lagos",
+      "organizer": "Kaka Events",
+      "category": "tech",
+      "subCategories": ["Conference", "Networking", "Workshops"],
+      "price": 20000,
+      "totalTickets": 500,
+      "availableTickets": 200,
+      "ticketTypes": [
+        {
+          "name": "Standard",
+          "description": "Regular admission ticket",
+          "price": 20000,
+          "quantity": 300,
+          "isFeatured": false
+        },
+        {
+          "name": "Premium",
+          "description": "Access to all workshops and VIP networking",
+          "price": 35000,
+          "quantity": 150,
+          "isFeatured": true
+        }
+      ],
+      "duration": "8 hours",
+      "eventOptions": ["Workshops", "Networking sessions", "Lunch included"]
+    },
+    {
+      "id": 3,
+      "title": "Comedy Night",
+      "slug": "comedy-night",
+      "description": "An evening of laughter with Nigeria's top comedians. Enjoy hilarious performances in a relaxed atmosphere.",
+      "main_image": "https://placehold.co/600x400/333/white?text=Comedy+Night",
+      "event_date": "2023-06-30T20:00:00",
+      "location": "Eko Hotel, Lagos",
+      "organizer": "Kaka Events",
+      "category": "comedy",
+      "subCategories": ["Standup", "Entertainment"],
+      "price": 10000,
+      "totalTickets": 300,
+      "availableTickets": 150,
+      "ticketTypes": [
+        {
+          "name": "General",
+          "description": "General admission seating",
+          "price": 10000,
+          "quantity": 200,
+          "isFeatured": false
+        },
+        {
+          "name": "Front Row",
+          "description": "Priority seating in the first three rows",
+          "price": 15000,
+          "quantity": 50,
+          "isFeatured": true
+        }
+      ],
+      "duration": "2 hours",
+      "eventOptions": ["Drinks available", "Indoor event"]
+    }
+  ]
+}

@@ -4,6 +4,7 @@ import { useEventStore } from '@/stores/events'
 import EventCard from '@/components/EventCard.vue'
 import SkeletonLoader from '@/components/SkeletonLoader.vue'
 import { useLoading } from '@/composables/useLoading'
+import { useSeo } from '@/composables/useSeo'
 
 const props = defineProps({
   category: {
@@ -42,6 +43,9 @@ const ensureLoadingCompletes = () => {
 const error = ref(null)
 const currentPage = ref(1)
 const skeletonColor = ref('rgba(255, 255, 255, 0.08)') // Subtle gray skeleton color
+
+// Get the SEO utilities
+const { updatePageTitle, updateMetaDescription, updateSocialMeta } = useSeo()
 
 // Load events on mount with safety
 onMounted(async () => {
@@ -169,6 +173,46 @@ const categoryColor = computed(() => {
 
   return colors[props.category] || { from: '#8E44AD', to: '#532865' }
 })
+
+// Category-specific images for better social sharing
+const categoryImages = {
+  music: 'https://example.com/images/music-category.jpg',
+  movies: 'https://example.com/images/movies-category.jpg',
+  theatre: 'https://example.com/images/theatre-category.jpg',
+  sports: 'https://example.com/images/sports-category.jpg',
+  festivals: 'https://example.com/images/festivals-category.jpg',
+  others: 'https://example.com/images/others-category.jpg',
+}
+
+// Add a watch for the category prop to update SEO
+watch(
+  () => props.category,
+  (newCategory) => {
+    if (newCategory) {
+      const formattedCategory = newCategory.charAt(0).toUpperCase() + newCategory.slice(1)
+      const title = `${formattedCategory} Events`
+      const description = `Find and book tickets for the best ${newCategory} events near you.`
+
+      // Update page title
+      updatePageTitle(title)
+
+      // Update meta description
+      updateMetaDescription(description)
+
+      // Update social sharing metadata
+      updateSocialMeta({
+        title: `${title} | Kaka`,
+        description: description,
+        url: window.location.href,
+        // Use a category-specific image if available, otherwise use default
+        image:
+          categoryImages[newCategory] ||
+          'https://res.cloudinary.com/dnuhjsckk/image/upload/v1747056280/tdlogowhite_fvgocv.png',
+      })
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <template>

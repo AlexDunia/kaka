@@ -13,6 +13,7 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
+    "@heroicons/vue": "^2.2.0",
     "axios": "^1.8.4",
     "jsbarcode": "^3.11.6",
     "pinia": "^3.0.1",

@@ -3,7 +3,6 @@ import axios from 'axios'
 
 // Configuration
 const EVENTS_API_URL = 'http://localhost/api/events.php'
-const EVENTS_FALLBACK_API_URL = 'http://localhost/api/test-search.php'
 console.debug('EVENTS_API_URL configured as:', EVENTS_API_URL)
 
 // Minimum loading time to ensure loaders are visible
@@ -471,6 +470,67 @@ const dataService = {
       console.error(`Error fetching subcategories for category ${categoryId}:`, error)
       throw error
     }
+  },
+
+  /**
+   * Get event details by slug
+   * @param {string} slug - The event slug
+   * @returns {Promise<Object>} - Event details
+   */
+  async getEventBySlug(slug) {
+    const mainApiCall = async () => {
+      try {
+        const response = await api.get(`${EVENTS_API_URL}?slug=${encodeURIComponent(slug)}`)
+        return response.data
+      } catch (error) {
+        console.error('Error fetching event by slug from main API:', error)
+        throw error
+      }
+    }
+
+    const fallbackApiCall = async () => {
+      try {
+        // For a fallback, we'll fetch all events and find the one with matching slug
+        const allEvents = await this.getAllEvents()
+        if (allEvents && allEvents.data && Array.isArray(allEvents.data)) {
+          // Convert slug to lowercase and create a URL-friendly version for comparison
+          const normalizedSlug = slug
+            .toLowerCase()
+            .replace(/\s+/g, '-')
+            .replace(/[^\w-]/g, '')
+
+          // Find event with matching slug or create one from the title
+          const event = allEvents.data.find(
+            (event) =>
+              // If the event has a slug property, compare directly
+              (event.slug && event.slug.toLowerCase() === slug.toLowerCase()) ||
+              // Otherwise, create a slug from the title and compare
+              (event.title &&
+                event.title
+                  .toLowerCase()
+                  .replace(/\s+/g, '-')
+                  .replace(/[^\w-]/g, '') === normalizedSlug),
+          )
+
+          if (event) {
+            // Add the slug to the event object if it doesn't exist
+            if (!event.slug) {
+              event.slug = event.title
+                .toLowerCase()
+                .replace(/\s+/g, '-')
+                .replace(/[^\w-]/g, '')
+            }
+            return event
+          }
+        }
+        throw new Error('Event not found')
+      } catch (error) {
+        console.error('Error in fallback for getEventBySlug:', error)
+        throw error
+      }
+    }
+
+    return await handleApiWithFallback(mainApiCall, fallbackApiCall)
   },
 }
 

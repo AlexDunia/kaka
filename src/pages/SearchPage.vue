@@ -678,7 +678,10 @@ const categoryOptions = [
             class="search-results__item"
             :style="{ animationDelay: `${index * fadeInDelay}ms` }"
           >
-            <EventCard :event="event" />
+            <!-- <EventCard :event="event" /> -->
+            <!-- Temporarily commented out for debugging -->
+            <div>{{ event?.title || 'No Title' }}</div>
+            <!-- Simple display for testing -->
           </div>
         </div>
 

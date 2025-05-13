@@ -2,6 +2,8 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import SkeletonLoader from '@/components/SkeletonLoader.vue'
+import SeoImage from '@/components/SeoImage.vue'
+import { useSlug } from '@/composables/useSlug'
 
 const props = defineProps({
   event: {
@@ -24,6 +26,7 @@ const props = defineProps({
 })
 
 const router = useRouter()
+const { getEventUrl } = useSlug()
 
 // Create computed properties from event if available
 const eventTitle = computed(() => props.event?.title || '')
@@ -81,8 +84,10 @@ const categoryDisplayName = computed(() => {
 })
 
 const viewDetails = () => {
-  if (!props.showDetails || !props.event?.id) return
-  router.push(`/event/${props.event.id}`)
+  if (!props.showDetails || !props.event) return
+  // Use the useSlug composable to get the proper URL
+  const url = getEventUrl(props.event)
+  router.push(url)
 }
 </script>
 
@@ -95,8 +100,13 @@ const viewDetails = () => {
   <!-- Show actual event card when data is available -->
   <div v-else-if="event" class="event-card" @click="viewDetails">
     <div class="event-card__image">
-      <img v-if="eventImage" :src="eventImage" :alt="eventTitle" />
-      <div v-else class="event-card__image-placeholder"></div>
+      <SeoImage
+        :src="eventImage"
+        :alt="eventTitle"
+        :title="eventTitle"
+        imgClass="event-card-image"
+        lazy
+      />
       <div class="event-card__category">{{ categoryDisplayName }}</div>
 
       <div class="event-card__date" v-if="displayDate">

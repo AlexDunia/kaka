@@ -1,10 +1,15 @@
 <script setup>
 import { RouterLink, RouterView } from 'vue-router'
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useCartStore } from '@/stores/cart'
+import { useRoute } from 'vue-router'
+import { useSeo } from '@/composables/useSeo'
 
 const isMobileMenuOpen = ref(false)
 const scrollPosition = ref(0)
+const currentYear = ref(new Date().getFullYear())
+const route = useRoute()
+const { updateMetaDescription, updateSocialMeta } = useSeo()
 
 const toggleMobileMenu = () => {
   isMobileMenuOpen.value = !isMobileMenuOpen.value
@@ -17,6 +22,24 @@ const updateScroll = () => {
 const closeMenu = () => {
   isMobileMenuOpen.value = false
 }
+
+// Update meta tags when route changes
+watch(
+  () => route.meta,
+  (meta) => {
+    if (meta.description) {
+      updateMetaDescription(meta.description)
+    }
+
+    // Update social sharing meta tags
+    updateSocialMeta({
+      title: meta.title ? `${meta.title} | Kaka` : 'Kaka - Find and Book Amazing Events',
+      description: meta.description || 'Discover and book tickets for events near you',
+      url: window.location.href,
+    })
+  },
+  { immediate: true },
+)
 
 onMounted(() => {
   window.addEventListener('scroll', updateScroll)
@@ -151,7 +174,7 @@ const cartCount = computed(() => cartStore.itemCount)
           />
         </div>
         <div class="footer-center-col">
-          <span class="footer-copyright">© 2015 kakaworldcompany</span>
+          <span class="footer-copyright">© {{ currentYear }} kakaworldcompany</span>
         </div>
         <div class="footer-social-col">
           <a

@@ -362,8 +362,8 @@ export const useEventStore = defineStore('events', () => {
         response = await axios.get(fallbackUrl)
       }
 
-      // Debug the raw response
-      console.debug('Raw search response:', response.data)
+      // Debug the raw response - Changed from .debug to .log
+      console.log('<<< RAW API RESPONSE RECEIVED >>>:', response.data)
       console.log('Search response status:', response.status)
       console.log('Search response length:', response.data?.data?.length || 'N/A')
 
@@ -465,6 +465,47 @@ export const useEventStore = defineStore('events', () => {
       .sort((a, b) => new Date(b.date) - new Date(a.date))
   })
 
+  const fetchEventBySlug = async (slug, refresh = false) => {
+    // If we already have the event loaded with the same slug and refresh is not requested
+    if (!refresh && currentEvent.value && currentEvent.value.slug === slug) {
+      return currentEvent.value
+    }
+
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const apiResponse = await eventService.getEventBySlug(slug)
+      console.log('Event by slug API response:', apiResponse)
+
+      // Check if the response structure is { data: [eventObject, ...], ... }
+      // and the data array is not empty.
+      if (
+        apiResponse &&
+        apiResponse.data &&
+        Array.isArray(apiResponse.data) &&
+        apiResponse.data.length > 0
+      ) {
+        const fetchedEventObject = apiResponse.data[0]
+        currentEvent.value = fetchedEventObject
+        return fetchedEventObject
+      } else {
+        // If the structure is not as expected or data array is empty
+        console.warn('Event not found or invalid data structure from getEventBySlug:', apiResponse)
+        error.value = 'Event not found'
+        currentEvent.value = null // Explicitly set to null
+        return null // Indicate event was not found or data was malformed
+      }
+    } catch (err) {
+      console.error('Error in fetchEventBySlug:', err)
+      error.value = err.message || 'Failed to fetch event details'
+      currentEvent.value = null // Clear currentEvent on error
+      throw err // Re-throw the error so the component can handle it
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   return {
     // State
     events,
@@ -490,6 +531,7 @@ export const useEventStore = defineStore('events', () => {
     deleteEvent,
     searchEvents,
     resetFilters,
+    fetchEventBySlug,
 
     // Computed
     filteredEvents,

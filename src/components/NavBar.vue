@@ -160,7 +160,6 @@ const cartCount = computed(() => cartStore.itemCount)
 
 .navbar__action:hover {
   color: white;
-  background-color: rgba(255, 255, 255, 0.05);
 }
 
 .navbar__action--auth {
@@ -204,7 +203,6 @@ const cartCount = computed(() => cartStore.itemCount)
 }
 
 .navbar__action--cart:hover {
-  background: var(--primary, #c04888);
   color: #fff;
   border-color: #fff;
 }
