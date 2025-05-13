@@ -21,7 +21,7 @@ onMounted(() => {
     description:
       'Discover and book tickets for the best events, concerts, movies, theatre shows, sports events, and festivals near you.',
     url: window.location.href,
-    image: 'https://res.cloudinary.com/dnuhjsckk/image/upload/v1747056280/tdlogowhite_fvgocv.png',
+    image: 'https://res.cloudinary.com/dnuhjsckk/image/upload/v1747162284/kakalink_elyn4g.jpg',
   })
 })
 
