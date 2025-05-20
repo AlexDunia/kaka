@@ -1,0 +1,29 @@
+# Enable rewrite engine
+RewriteEngine On
+RewriteBase /
+
+# Ensure correct MIME type for JavaScript files
+<FilesMatch "\.js$">
+    ForceType application/javascript
+</FilesMatch>
+
+<FilesMatch "\.mjs$">
+    ForceType text/javascript
+</FilesMatch>
+
+# Standard static files - let them pass through
+RewriteCond %{REQUEST_URI} \.(js|css|jpg|jpeg|png|gif|ico|svg|woff2|ttf|eot|map)$
+RewriteRule ^ - [L]
+
+# Explicitly handle the assets directory
+RewriteRule ^assets/(.*)\.(js|mjs)$ assets/$1.$2 [L]
+
+# For specific Vite-generated asset files
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^assets/.*\.(js|mjs|css)$ - [L]
+
+# All other routes to index.html for SPA
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . index.html [L] 

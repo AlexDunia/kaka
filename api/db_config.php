@@ -5,6 +5,13 @@ $db_name = 'events_ticketing'; // Change this to your database name
 $db_user = 'root';             // Change this to your database username
 $db_pass = '';                 // Change this to your database password
 
+$host = 'localhost';
+$port = 3307; // You're using MySQL on port 3307
+$db   = 'events';
+$user = 'root';
+$pass = ''; // Add your actual password here if any
+$charset = 'utf8mb4';
+
 // Create database connection
 function getDbConnection() {
     global $db_host, $db_name, $db_user, $db_pass;

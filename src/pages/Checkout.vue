@@ -10,9 +10,14 @@ const router = useRouter()
 const cartStore = useCartStore()
 const loading = ref(true)
 const error = ref(null)
+const verifyingPayment = ref(false)
+const verificationError = ref(null)
 
 // Paystack Public Key
 const paystackPublicKey = 'pk_test_a23671022344a4de4ca87e5b42f68b3f5d84bfd9'
+
+// Payment backend URL - using the simplified version with no DB operations
+const paymentVerificationUrl = 'http://localhost/api/payment.php'
 
 // Form data
 const formData = ref({
@@ -26,19 +31,20 @@ const formData = ref({
 const errors = ref({})
 const isSubmitting = ref(false)
 const showSuccess = ref(false)
+const transactionData = ref(null)
 
 // Try to get last event page from sessionStorage
 const lastEventPage = ref(sessionStorage.getItem('lastEventPage') || null)
 
 // Load Paystack script when component mounts
-onMounted(() => {
+onMounted(async () => {
   try {
     if (cartStore.isEmpty) {
       error.value = 'Your cart is empty'
       return
     }
 
-    // Load Paystack script dynamically
+    // Load Paystack script dynamically - skip backend test
     const script = document.createElement('script')
     script.src = 'https://js.paystack.co/v1/inline.js'
     script.async = true
@@ -153,10 +159,8 @@ const payWithPaystack = () => {
       },
       callback: function (response) {
         console.log('Payment successful. Reference: ' + response.reference)
-
-        // Simulate verification success
-        const reference = response.reference
-        handlePaymentSuccess(reference)
+        // Verify the payment with our backend
+        handlePaymentSuccess(response.reference)
       },
       onClose: function () {
         if (!showSuccess.value) {
@@ -186,32 +190,97 @@ const handleSubmit = async (e) => {
   payWithPaystack()
 }
 
-// Handle successful payment
-const handlePaymentSuccess = (reference) => {
-  // Simulate verification
-  // Store transaction data in localStorage
-  localStorage.setItem(
-    'lastTransaction',
-    JSON.stringify({
+// Handle successful payment by verifying with backend
+const handlePaymentSuccess = async (reference) => {
+  try {
+    verifyingPayment.value = true
+    verificationError.value = null
+
+    console.log('Payment successful! Reference:', reference)
+    console.log('Verifying payment with backend...')
+
+    // Prepare data to send to our backend
+    const data = {
       reference: reference,
-      tickets: cartStore.items.map((item) => ({
-        ticketId: `TKT-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+      customerName: `${formData.value.firstName} ${formData.value.lastName}`,
+      customerEmail: formData.value.email,
+      customerPhone: formData.value.phone,
+      cartItems: cartStore.items.map((item) => ({
         eventId: item.eventId,
         eventTitle: item.eventTitle,
         ticketType: item.ticketType,
         quantity: item.quantity,
+        pricePerTicket: item.pricePerTicket,
       })),
-      amount: cartStore.total,
-      date: new Date().toISOString(),
-    }),
-  )
+    }
 
-  // Clear cart and show success
-  cartStore.clearCart()
-  showSuccess.value = true
+    console.log('Sending data to:', paymentVerificationUrl)
 
-  // Redirect after a delay
-  setTimeout(() => router.push('/'), 2500)
+    // Make API request to our payment.php endpoint
+    const response = await fetch(paymentVerificationUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Authorization: 'Bearer app_12345_my_custom_secure_key',
+      },
+      body: JSON.stringify(data),
+    })
+
+    console.log('Response status:', response.status)
+
+    if (!response.ok) {
+      throw new Error(`Server returned ${response.status}: ${response.statusText}`)
+    }
+
+    // Parse the JSON response
+    const responseText = await response.text()
+    console.log('Response body:', responseText)
+
+    let result
+    try {
+      result = JSON.parse(responseText)
+    } catch (e) {
+      console.error('Failed to parse response as JSON:', e)
+      throw new Error('Invalid response from server')
+    }
+
+    // Check if verification was successful
+    if (result.status !== 'success') {
+      throw new Error(result.message || 'Payment verification failed')
+    }
+
+    console.log('Payment verification successful:', result)
+
+    // Store transaction data
+    transactionData.value = result
+
+    // Store transaction data in localStorage
+    localStorage.setItem(
+      'lastTransaction',
+      JSON.stringify({
+        reference: reference,
+        tickets: result.tickets || [],
+        amount: cartStore.total,
+        date: new Date().toISOString(),
+        verified: true,
+        transactionId: result.transaction_id,
+      }),
+    )
+
+    // Clear cart and show success
+    cartStore.clearCart()
+    showSuccess.value = true
+    verifyingPayment.value = false
+
+    // Redirect after a delay
+    setTimeout(() => router.push('/'), 2500)
+  } catch (err) {
+    console.error('Payment verification error:', err)
+    verifyingPayment.value = false
+    verificationError.value = err.message || 'Failed to verify payment. Please contact support.'
+    isSubmitting.value = false
+  }
 }
 
 // Format price in Naira
@@ -310,10 +379,18 @@ const continueShopping = () => {
               />
               <span v-if="errors.phone" class="checkout__error">{{ errors.phone }}</span>
             </div>
-            <button type="submit" class="checkout__submit" :disabled="isSubmitting">
+            <button
+              type="submit"
+              class="checkout__submit"
+              :disabled="isSubmitting || verifyingPayment"
+            >
               <span v-if="isSubmitting">Processing…</span>
+              <span v-else-if="verifyingPayment">Verifying Payment…</span>
               <span v-else>Pay with Paystack</span>
             </button>
+            <div v-if="verificationError" class="verification-error">
+              {{ verificationError }}
+            </div>
           </form>
         </div>
         <div class="checkout-card right">
@@ -343,6 +420,7 @@ const continueShopping = () => {
           </div>
         </div>
       </div>
+
       <div v-if="loading" class="checkout__loading">Loading payment gateway...</div>
       <div v-else-if="error" class="checkout__error">
         <p>{{ error }}</p>
@@ -351,7 +429,11 @@ const continueShopping = () => {
       <div v-else-if="showSuccess" class="checkout__success">
         <div class="success-icon">✓</div>
         <div class="success-title">Thank you for your purchase</div>
-        <div class="success-desc">A confirmation has been sent to your email.</div>
+        <div class="success-desc">Your payment has been verified and your tickets are ready.</div>
+        <div v-if="transactionData" class="transaction-details">
+          <p>Transaction ID: {{ transactionData.transaction_id }}</p>
+          <p>Ticket IDs: {{ transactionData.tickets.join(', ') }}</p>
+        </div>
       </div>
     </div>
   </div>
@@ -475,10 +557,20 @@ const continueShopping = () => {
   border-color: #c04888;
   background: #201c29;
 }
-.checkout__error {
+.checkout__error,
+.verification-error {
   color: #e74c3c;
   font-size: 0.92rem;
   margin-left: 0.1rem;
+}
+.verification-error {
+  margin-top: 0.8rem;
+  text-align: center;
+  font-weight: 500;
+  background: rgba(231, 76, 60, 0.1);
+  padding: 0.7rem;
+  border-radius: 6px;
+  border: 1px solid rgba(231, 76, 60, 0.2);
 }
 .checkout__submit {
   margin-top: 1.2rem;
@@ -624,6 +716,18 @@ const continueShopping = () => {
 .continue-shopping-checkout:hover {
   background: #a13a6e;
   color: #fff;
+}
+.transaction-details {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+  text-align: left;
+}
+.transaction-details p {
+  color: #e0e0e0;
+  font-size: 0.95rem;
+  margin: 0.3rem 0;
 }
 @media (max-width: 1100px) {
   .checkout-flex-cards {

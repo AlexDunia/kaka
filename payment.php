@@ -3,9 +3,18 @@
 header('Content-Type: application/json');
 
 // CORS headers to allow requests from your frontend
-header('Access-Control-Allow-Origin: http://localhost:5173'); // Replace with your frontend URL in production
+header('Access-Control-Allow-Origin: *'); // Allow all origins during development
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+// Enable error reporting during development
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+// Include database configuration
+require_once 'api/db_config.php';
+// We'll use the second set of credentials ($host, $port, $db, $user, $pass, $charset)
 
 // Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -19,12 +28,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['status' => 'error', 'message' => 'Method not allowed']);
     exit();
 }
-
-// Database configuration - UPDATE these with your existing event database credentials
-$dbHost = 'localhost';
-$dbName = 'your_existing_event_db'; // CHANGE THIS to your existing event database name
-$dbUser = 'root';
-$dbPass = '';
 
 // Paystack configuration
 $paystackSecretKey = 'sk_test_XXXXXXXXXXXXXXXXXXXX'; // Replace with your actual test secret key
@@ -135,8 +138,9 @@ try {
         }
     }
     
-    // Connect to the database
-    $pdo = new PDO("mysql:host=$dbHost;dbname=$dbName", $dbUser, $dbPass);
+    // Connect to the database using credentials from db_config.php (second set)
+    $dsn = "mysql:host=$host;port=$port;dbname=$db;charset=$charset";
+    $pdo = new PDO($dsn, $user, $pass);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
     // Parse the orderItems and turn it into JSON for the ticket_details column

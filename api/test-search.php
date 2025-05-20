@@ -67,8 +67,8 @@ try {
     
     // Add search 
     if (isset($_GET['search']) && !empty($_GET['search'])) {
-        $search = $_GET['search'];
-        $where[] = '(title LIKE ? OR description LIKE ? OR location LIKE ? OR organizer LIKE ?)';
+        $search = strtolower($_GET['search']);
+        $where[] = '(LOWER(title) LIKE ? OR LOWER(description) LIKE ? OR LOWER(location) LIKE ? OR LOWER(organizer) LIKE ?)';
         $params[] = "%$search%";
         $params[] = "%$search%";
         $params[] = "%$search%";

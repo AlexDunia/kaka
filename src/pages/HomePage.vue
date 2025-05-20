@@ -17,7 +17,7 @@ onMounted(() => {
     'Discover and book tickets for the best events, concerts, movies, theatre shows, sports events, and festivals near you.',
   )
   updateSocialMeta({
-    title: 'Kaka - Find and Book Amazing Events',
+    title: 'KakaWorld - Find and Book Events',
     description:
       'Discover and book tickets for the best events, concerts, movies, theatre shows, sports events, and festivals near you.',
     url: window.location.href,

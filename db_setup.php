@@ -5,11 +5,9 @@
  * This script will add the transactions table to your existing events database
  */
 
-// Database configuration - update with your existing event database credentials
-$host = 'localhost';
-$username = 'root';
-$password = '';
-$dbname = 'your_existing_event_db'; // CHANGE THIS to your existing event database name
+// Include database configuration
+require_once 'api/db_config.php';
+// We'll use the second set of credentials ($host, $port, $db, $user, $pass, $charset)
 
 // Output header
 echo "===================================\n";
@@ -17,11 +15,12 @@ echo "Adding Transactions Table to Event Database\n";
 echo "===================================\n\n";
 
 try {
-    // Connect to the existing database
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname", $username, $password);
+    // Connect to the existing database using credentials from db_config.php (second set)
+    $dsn = "mysql:host=$host;port=$port;dbname=$db;charset=$charset";
+    $pdo = new PDO($dsn, $user, $pass);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
-    echo "✓ Connected to existing database '$dbname' successfully\n";
+    echo "✓ Connected to existing database '$db' successfully\n";
     
     // Check if the transactions table exists
     $stmt = $pdo->query("SHOW TABLES LIKE 'transactions'");
@@ -105,7 +104,7 @@ try {
     echo "✓ Setup completed successfully!\n";
     echo "\nTo start using the system:\n";
     echo "1. Make sure to update your Paystack secret key in payment.php\n";
-    echo "2. Update database credentials in payment.php to match this file\n";
+    echo "2. Database configuration is now taken from api/db_config.php\n";
     echo "3. Add the Paystack script to your index.html\n";
     echo "4. Test a checkout with the provided Vue.js integration\n";
     
