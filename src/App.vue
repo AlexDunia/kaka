@@ -381,8 +381,10 @@ const cartCount = computed(() => cartStore.itemCount)
 .mobile-menu-toggle span {
   display: block;
   width: 100%;
-  height: 2px;
+  height: 3px;
   background-color: #ffffff;
+  border-radius: 2px;
+  margin: 0.22em 0;
   transition: all 0.3s ease;
 }
 

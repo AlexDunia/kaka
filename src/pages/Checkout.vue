@@ -14,10 +14,10 @@ const verifyingPayment = ref(false)
 const verificationError = ref(null)
 
 // Paystack Public Key
-const paystackPublicKey = 'pk_test_a23671022344a4de4ca87e5b42f68b3f5d84bfd9'
+const paystackPublicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY
 
 // Payment backend URL - using the simplified version with no DB operations
-const paymentVerificationUrl = 'http://localhost/api/payment.php'
+const paymentVerificationUrl = '/api/proxy.php'
 
 // Form data
 const formData = ref({
@@ -148,6 +148,8 @@ const payWithPaystack = () => {
       amount: cartStore.total * 100, // Amount in kobo
       currency: 'NGN',
       ref: paymentReference,
+      split_code: 'SPL_nFLxrxoL3v', // 👈 Replace with your actual split code
+
       metadata: {
         custom_fields: customFields,
         cart_id: `cart-${Date.now()}`,
@@ -222,7 +224,6 @@ const handlePaymentSuccess = async (reference) => {
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
-        Authorization: 'Bearer app_12345_my_custom_secure_key',
       },
       body: JSON.stringify(data),
     })
@@ -430,10 +431,6 @@ const continueShopping = () => {
         <div class="success-icon">✓</div>
         <div class="success-title">Thank you for your purchase</div>
         <div class="success-desc">Your payment has been verified and your tickets are ready.</div>
-        <div v-if="transactionData" class="transaction-details">
-          <p>Transaction ID: {{ transactionData.transaction_id }}</p>
-          <p>Ticket IDs: {{ transactionData.tickets.join(', ') }}</p>
-        </div>
       </div>
     </div>
   </div>
@@ -746,10 +743,13 @@ const continueShopping = () => {
 }
 @media (max-width: 600px) {
   .checkout-container {
-    padding: 0 0.2rem;
+    padding: 2rem 1.2rem;
+    border-radius: 14px;
   }
   .checkout-card {
-    padding: 1.2rem 0.5rem 1.2rem 0.5rem;
+    padding: 1.7rem 1.2rem 1.7rem 1.2rem;
+    margin: 1.1rem 0;
+    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
   }
   .checkout-title {
     font-size: 1.4rem;

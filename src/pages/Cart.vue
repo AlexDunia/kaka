@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
 
@@ -8,6 +8,13 @@ defineOptions({ name: 'CartPage' })
 const cart = useCartStore()
 const router = useRouter()
 const notification = ref(null)
+const isMobile = ref(window.innerWidth <= 700)
+
+function handleResize() {
+  isMobile.value = window.innerWidth <= 700
+}
+onMounted(() => window.addEventListener('resize', handleResize))
+onUnmounted(() => window.removeEventListener('resize', handleResize))
 
 function showNotification(msg) {
   notification.value = msg
@@ -107,12 +114,26 @@ function proceedToCheckout() {
             </div>
           </div>
         </div>
+        <!-- Cart summary for desktop/tablet -->
         <div class="cart-summary">
           <div class="cart-summary-row">
             <span>Subtotal</span>
             <span>{{ '₦' + cart.total.toLocaleString('en-NG') }}</span>
           </div>
           <div class="cart-actions">
+            <button class="cart-clear-btn" @click="clearCart">Clear Cart</button>
+            <button class="cart-checkout-btn" @click="proceedToCheckout">
+              Proceed to Checkout
+            </button>
+          </div>
+        </div>
+        <!-- Cart summary for mobile (fixed footer) -->
+        <div class="cart-footer-summary" v-if="!cart.isEmpty && isMobile">
+          <div class="cart-footer-row">
+            <span>Subtotal</span>
+            <span>{{ '₦' + cart.total.toLocaleString('en-NG') }}</span>
+          </div>
+          <div class="cart-footer-actions">
             <button class="cart-clear-btn" @click="clearCart">Clear Cart</button>
             <button class="cart-checkout-btn" @click="proceedToCheckout">
               Proceed to Checkout
@@ -490,5 +511,304 @@ function proceedToCheckout() {
 .fade-leave-to {
   opacity: 0;
   transform: translate(-50%, -1rem);
+}
+
+@media (max-width: 700px) {
+  .cart-bg {
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 0.5rem;
+  }
+  .cart-container {
+    width: 92%;
+    max-width: 440px;
+    margin: 0.5rem auto 0 auto;
+    background: #18151f;
+    border-radius: 18px;
+    box-shadow: 0 4px 32px rgba(30, 30, 60, 0.18);
+    padding: 0.2rem 1.1rem 6.5rem 1.1rem;
+    gap: 1.2rem;
+    box-sizing: border-box;
+  }
+  .cart-title {
+    font-size: 1.05rem;
+    margin: 0 0 0.8rem 0;
+    color: #c04888;
+    font-weight: 900;
+    letter-spacing: 0.01em;
+    text-align: left;
+    padding-left: 0.2rem;
+  }
+  .cart-list {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-bottom: 7.5rem; /* Ensure content is not hidden behind footer */
+  }
+  .cart-item {
+    width: 75%;
+    max-width: 320px;
+    min-width: 180px;
+    margin: 0 auto 0.7rem auto;
+  }
+  .cart-item:not(:last-child)::after {
+    content: '';
+    display: block;
+    position: absolute;
+    left: 1.2rem;
+    right: 1.2rem;
+    bottom: -0.5rem;
+    height: 1px;
+    background: linear-gradient(90deg, #23202b 60%, transparent 100%);
+    opacity: 0.5;
+    border-radius: 1px;
+  }
+  .cart-item:hover {
+    box-shadow:
+      0 8px 32px 0 rgba(192, 72, 136, 0.18),
+      0 2px 12px 0 rgba(30, 30, 60, 0.13);
+    transform: translateY(-2px) scale(1.012);
+  }
+  .cart-item-image {
+    width: 62px;
+    height: 62px;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #23202b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin: 0;
+    border: 2px solid #23202b;
+    box-shadow: 0 2px 8px rgba(30, 30, 60, 0.13);
+    transition: box-shadow 0.18s;
+  }
+  .cart-item-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 14px;
+    display: block;
+  }
+  .cart-item-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    align-items: flex-start;
+    padding: 0.1rem 0.1rem 0.1rem 0.2rem;
+    min-width: 0;
+  }
+  .cart-item-info {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    width: 100%;
+    gap: 0.7rem;
+  }
+  .cart-event-title {
+    font-size: 1.09rem;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 0.1rem;
+    line-height: 1.22;
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: 0.01em;
+  }
+  .cart-price {
+    font-size: 1.09rem;
+    font-weight: 800;
+    color: #e04e95;
+    margin-left: 0.7rem;
+    white-space: nowrap;
+    align-self: flex-start;
+    letter-spacing: 0.01em;
+  }
+  .cart-ticket-type {
+    font-size: 0.99rem;
+    color: #bdbdbd;
+    font-weight: 600;
+    margin-bottom: 0.05rem;
+    margin-top: 0.1rem;
+    letter-spacing: 0.01em;
+  }
+  .cart-address {
+    font-size: 0.93rem;
+    color: #888;
+    margin-bottom: 0.1rem;
+    gap: 0.3rem;
+    font-weight: 500;
+  }
+  .cart-qty-label {
+    display: none;
+  }
+  .cart-item-actions {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.7rem;
+    margin-top: 0.3rem;
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .cart-qty-group {
+    padding: 0.12rem 0.4rem;
+    gap: 0.18rem;
+  }
+  .qty-btn {
+    font-size: 1.18rem;
+    padding: 0 0.8rem;
+    background: #18151f;
+    color: #c04888;
+    border: 1.5px solid #23202b;
+    border-radius: 8px;
+    min-width: 34px;
+    min-height: 34px;
+    font-weight: 900;
+    transition:
+      background 0.18s,
+      color 0.18s,
+      transform 0.18s,
+      box-shadow 0.18s;
+    box-shadow: 0 1px 4px rgba(192, 72, 136, 0.08);
+  }
+  .qty-btn:focus,
+  .qty-btn:hover:not(:disabled) {
+    background: #c04888;
+    color: #fff;
+    border-color: #e04e95;
+    transform: scale(1.11);
+    box-shadow: 0 2px 8px rgba(192, 72, 136, 0.18);
+  }
+  .cart-qty {
+    font-size: 1.09rem;
+    font-weight: 800;
+    color: #fff;
+    min-width: 2.2rem;
+    text-align: center;
+    background: none;
+    letter-spacing: 0.01em;
+  }
+  .cart-remove-inline {
+    margin-left: 0.7rem;
+    background: none;
+    border: none;
+    color: #e74c3c;
+    font-size: 1.18rem;
+    cursor: pointer;
+    padding: 0.3rem 0.5rem;
+    border-radius: 8px;
+    transition:
+      background 0.18s,
+      color 0.18s,
+      box-shadow 0.18s,
+      transform 0.18s;
+    display: flex;
+    align-items: center;
+    outline: none;
+  }
+  .cart-remove-inline:focus,
+  .cart-remove-inline:hover {
+    background: #23202b;
+    color: #c04888;
+    box-shadow: 0 2px 8px rgba(192, 72, 136, 0.18);
+    transform: scale(1.13) rotate(-7deg);
+  }
+  .cart-summary {
+    display: none !important;
+  }
+  .cart-footer-summary {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1200;
+    background: linear-gradient(90deg, #18151f 80%, #23202b 100%);
+    border-top: 1.5px solid #23202b;
+    box-shadow: 0 -2px 16px rgba(30, 30, 60, 0.13);
+    padding: 1.1rem 1.2rem 1.5rem 1.2rem;
+    width: 100vw;
+    max-width: 100vw;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    align-items: stretch;
+  }
+  .cart-footer-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #fff;
+    font-size: 1.13rem;
+    font-weight: 900;
+    margin-bottom: 0.3rem;
+    letter-spacing: 0.01em;
+  }
+  .cart-footer-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+  }
+  .cart-clear-btn,
+  .cart-checkout-btn {
+    width: 100%;
+    min-width: 0;
+    font-size: 1.13rem;
+    height: 3.1rem;
+    padding: 0.9rem 0;
+    border-radius: 12px;
+    font-weight: 900;
+    letter-spacing: 0.01em;
+    box-shadow: 0 2px 8px rgba(192, 72, 136, 0.13);
+    transition:
+      box-shadow 0.18s,
+      background 0.18s,
+      color 0.18s,
+      transform 0.18s;
+  }
+}
+@media (max-width: 480px) {
+  .cart-container {
+    width: 99%;
+    max-width: 99vw;
+    padding: 0.1rem 0.5rem 6.5rem 0.5rem;
+  }
+  .cart-item {
+    padding: 1.5rem 0.4rem 1.5rem 0.4rem;
+    width: 100%;
+    max-width: 100%;
+    margin-bottom: 0.5rem;
+  }
+  .cart-item-image {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+  }
+  .cart-event-title {
+    font-size: 0.99rem;
+  }
+  .cart-ticket-type,
+  .cart-address {
+    font-size: 0.81rem;
+  }
+  .cart-summary {
+    padding: 0.8rem 0.4rem 1.1rem 0.4rem;
+    border-radius: 13px;
+    margin: 1.2rem 0 0.7rem 0;
+  }
+  .cart-checkout-btn,
+  .cart-clear-btn {
+    font-size: 1.01rem;
+    height: 2.5rem;
+    border-radius: 9px;
+  }
 }
 </style>

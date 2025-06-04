@@ -144,45 +144,24 @@ const ticketTypes = computed(() => {
 
   // If event has ticketTypes defined from the database, use those
   if (event.value.ticketTypes && Array.isArray(event.value.ticketTypes)) {
-    console.log('Using ticket types from database:', event.value.ticketTypes)
-
+    // Find the max price among all ticket types
+    const maxPrice = Math.max(...event.value.ticketTypes.map((t) => parseFloat(t.price) || 0))
     // Map event ticket types to display format
     return event.value.ticketTypes.map((ticket, index) => {
       // Generate different styles based on index
       const styles = [
-        {
-          highlight: ticket.name?.toLowerCase().includes('vip'),
-          icon: 'ticket',
-          isTable: false,
-        },
-        {
-          highlight: ticket.name?.toLowerCase().includes('vip'),
-          icon: 'award',
-          isTable: false,
-        },
-        {
-          highlight: false,
-          icon: 'grid',
-          isTable: ticket.name?.toLowerCase().includes('table'),
-        },
-        {
-          highlight: ticket.name?.toLowerCase().includes('vip'),
-          icon: 'ticket',
-          isTable: ticket.name?.toLowerCase().includes('table'),
-        },
+        { icon: 'ticket', isTable: false },
+        { icon: 'award', isTable: false },
+        { icon: 'grid', isTable: ticket.name?.toLowerCase().includes('table') },
+        { icon: 'ticket', isTable: ticket.name?.toLowerCase().includes('table') },
       ]
-
-      // Select a style based on index or use first style as default
       const style = styles[index % styles.length]
-
-      // Check if it's a table ticket by name
       const isTableTicket = ticket.name?.toLowerCase().includes('table') || false
       const tableMatch = ticket.name?.match(/table for (\d+)/i)
       const seatsCount = tableMatch ? parseInt(tableMatch[1]) : isTableTicket ? 4 : 0
-
-      // Calculate available tickets for this type
       const available = ticket.quantity || 0
-
+      // Only highlight if this ticket is the most expensive
+      const highlight = (parseFloat(ticket.price) || 0) === maxPrice
       return {
         id: ticket.name?.toLowerCase().replace(/\s+/g, '-') || `ticket-${index}`,
         name: ticket.name || `Ticket ${index + 1}`,
@@ -191,18 +170,16 @@ const ticketTypes = computed(() => {
         available: available > 0,
         availableQuantity: available,
         maxPerPurchase: isTableTicket ? 2 : 10,
-        highlight: style.highlight,
+        highlight,
         icon: style.icon,
         isTable: isTableTicket,
         seatsCount: seatsCount,
       }
     })
   }
-
   // Fallback to generated ticket types based on base price
   const basePrice = event.value.price || 0
-
-  return [
+  const fallbackTypes = [
     {
       id: 'standard',
       name: 'Standard',
@@ -219,7 +196,6 @@ const ticketTypes = computed(() => {
       price: basePrice * 1.5,
       available: true,
       maxPerPurchase: 6,
-      highlight: true,
       icon: 'award',
     },
     {
@@ -245,6 +221,9 @@ const ticketTypes = computed(() => {
       icon: 'grid',
     },
   ].filter((type) => type.available)
+  // Find max price in fallback
+  const maxFallbackPrice = Math.max(...fallbackTypes.map((t) => t.price))
+  return fallbackTypes.map((t) => ({ ...t, highlight: t.price === maxFallbackPrice }))
 })
 
 const selectedTicketType = ref(null)
@@ -994,19 +973,7 @@ const shareLink = (platform) => {
                     :disabled="ticketQuantity <= 1"
                     aria-label="Decrease quantity"
                   >
-                    <svg
-                      width="22"
-                      height="22"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="white"
-                      stroke-width="2.5"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      style="display: block"
-                    >
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
+                    -
                   </button>
                   <span class="premium-modal__quantity-value">{{ ticketQuantity }}</span>
                   <button
@@ -1015,20 +982,7 @@ const shareLink = (platform) => {
                     :disabled="ticketQuantity >= 10"
                     aria-label="Increase quantity"
                   >
-                    <svg
-                      width="22"
-                      height="22"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="white"
-                      stroke-width="2.5"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      style="display: block"
-                    >
-                      <line x1="12" y1="5" x2="12" y2="19" />
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
+                    +
                   </button>
                 </div>
               </div>
@@ -1620,6 +1574,13 @@ const shareLink = (platform) => {
   font-weight: 700;
   color: white;
   line-height: 1;
+  word-break: break-all;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  white-space: normal;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  display: block;
 }
 
 .ticket-card--highlight .ticket-card__price-amount {
@@ -2128,37 +2089,41 @@ const shareLink = (platform) => {
 }
 
 .premium-modal__quantity-btn {
-  background: none;
-  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
   color: #fff;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
   transition:
-    background-color 0.2s,
+    background 0.2s,
+    border 0.2s,
     color 0.2s;
-  font-size: 1.3rem;
-  position: relative;
-  z-index: 1;
+  font-size: 1.5rem;
+  box-shadow: 0 2px 8px rgba(232, 67, 147, 0.08);
 }
 
 .premium-modal__quantity-btn svg {
+  width: 24px;
+  height: 24px;
   stroke: white !important;
   fill: none;
+  display: block;
 }
 
 .premium-modal__quantity-btn:disabled {
-  color: #fff;
   opacity: 0.5;
   cursor: not-allowed;
 }
 
 .premium-modal__quantity-btn:not(:disabled):hover {
-  background-color: rgba(232, 67, 147, 0.13);
+  background-color: var(--primary, #e84393);
+  border-color: var(--primary, #e84393);
+  color: #fff;
 }
 
 .premium-modal__quantity-value {
@@ -2463,5 +2428,17 @@ const shareLink = (platform) => {
 .premium-modal__quantity-btn--plus svg {
   stroke: white !important;
   fill: none;
+}
+
+.premium-modal__favorite,
+.premium-modal__qr {
+  font-size: 0.85rem;
+  padding: 0.55rem 0.7rem;
+  min-width: 0;
+}
+.premium-modal__favorite span,
+.premium-modal__qr span {
+  font-size: 0.85rem;
+  letter-spacing: 0.01em;
 }
 </style>
