@@ -2,7 +2,8 @@
 import axios from 'axios'
 
 // Configuration
-const EVENTS_API_URL = '/api/events.php'
+// const EVENTS_API_URL = '/api/events.php'
+const EVENTS_API_URL = 'http://localhost/api/events.php'
 const EVENTS_FALLBACK_API_URL = 'http://localhost/api/test-search.php'
 
 console.debug('EVENTS_API_URL configured as:', EVENTS_API_URL)
