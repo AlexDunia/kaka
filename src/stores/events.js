@@ -34,6 +34,7 @@ export const useEventStore = defineStore('events', () => {
       lastFetch.value > fiveMinutesAgo &&
       page === currentPage.value
     ) {
+      console.log('Using cached events data')
       return events.value
     }
 

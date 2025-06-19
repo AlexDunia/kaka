@@ -27,7 +27,13 @@ onMounted(() => {
 
 // Store
 const eventStore = useEventStore()
-const { events, featuredEvents, error, searchQuery: storeSearchQuery } = storeToRefs(eventStore)
+const {
+  events,
+  featuredEvents,
+  error,
+  searchQuery: storeSearchQuery,
+  isLoading: storeLoading,
+} = storeToRefs(eventStore)
 
 // Local state
 const searchTerm = ref('')
@@ -36,11 +42,47 @@ const skeletonColor = ref('rgba(255, 255, 255, 0.08)') // Subtle gray skeleton c
 const safetyTimer = ref(null)
 
 // Use our loading composables
-const { isLoading } = useLoading()
-const { isLoading: loadingFeatured } = useLoading()
+const { isLoading, startLoading, stopLoading } = useLoading({ initialState: true })
+const {
+  isLoading: loadingFeatured,
+  startLoading: startLoadingFeatured,
+  stopLoading: stopLoadingFeatured,
+} = useLoading()
 const { isLoading: initialLoadComplete, stopLoading: completeInitialLoad } = useLoading({
   initialState: false,
 })
+
+// Watch store loading state
+watch(storeLoading, (newValue) => {
+  if (newValue) {
+    startLoading()
+  } else {
+    stopLoading()
+  }
+})
+
+// Watch events to update loading state
+watch(
+  events,
+  (newEvents) => {
+    if (newEvents && newEvents.length > 0) {
+      stopLoading()
+      completeInitialLoad()
+    }
+  },
+  { immediate: true },
+)
+
+// Watch featured events to update loading state
+watch(
+  featuredEvents,
+  (newFeatured) => {
+    if (newFeatured && newFeatured.length > 0) {
+      stopLoadingFeatured()
+    }
+  },
+  { immediate: true },
+)
 
 // Set active tab with loading and safety
 const activeTab = ref('all')
@@ -87,12 +129,20 @@ const resetSearch = async () => {
 
 // Lifecycle hooks
 onMounted(async () => {
-  if (!events.value || events.value.length === 0) {
-    await eventStore.fetchEvents()
-  }
+  try {
+    if (!events.value || events.value.length === 0) {
+      startLoading()
+      await eventStore.fetchAllEvents()
+    }
 
-  // Load featured events
-  await eventStore.fetchFeaturedEvents()
+    // Load featured events
+    startLoadingFeatured()
+    await eventStore.fetchFeaturedEvents()
+  } catch (err) {
+    console.error('Error loading events:', err)
+  } finally {
+    ensureLoadingCompletes() // Call the safety function
+  }
 })
 
 // Watch for changes in events store to update UI
@@ -154,7 +204,7 @@ onUnmounted(() => {
     </div>
 
     <!-- Loading Indicator for Initial Load -->
-    <div v-if="isLoading && !initialLoadComplete" class="loading-container">
+    <div v-if="isLoading && !initialLoadComplete && !events.length" class="loading-container">
       <SkeletonLoader type="rect" width="100%" height="40px" :color="skeletonColor" />
       <p>Loading events...</p>
     </div>
@@ -211,12 +261,12 @@ onUnmounted(() => {
     </section>
 
     <!-- Featured Events Section -->
-    <section v-if="initialLoadComplete || featuredEvents.length > 0" class="featured-events">
+    <section v-if="!isLoading || featuredEvents.length > 0" class="featured-events">
       <div class="section-header">
         <h2>Featured Events</h2>
       </div>
 
-      <div v-if="loadingFeatured" class="featured-skeleton">
+      <div v-if="loadingFeatured && !featuredEvents.length" class="featured-skeleton">
         <SkeletonLoader type="grid" :count="3" :color="skeletonColor" />
       </div>
       <div v-else-if="featuredEvents.length === 0" class="empty-state">
@@ -229,9 +279,7 @@ onUnmounted(() => {
 
     <!-- Upcoming Events Section - Only show if not searching -->
     <section
-      v-if="
-        (!storeSearchQuery || storeSearchQuery === '') && (initialLoadComplete || events.length > 0)
-      "
+      v-if="(!storeSearchQuery || storeSearchQuery === '') && (!isLoading || events.length > 0)"
       class="upcoming-events"
     >
       <div class="section-header">

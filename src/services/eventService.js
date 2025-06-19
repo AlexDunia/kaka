@@ -2,9 +2,12 @@
 import axios from 'axios'
 
 // Configuration
-const EVENTS_API_URL = '/api/events.php'
-// const EVENTS_API_URL = 'http://localhost/api/events.php'
+// const EVENTS_API_URL = '/api/events.php'
+const EVENTS_API_URL = 'http://localhost/api/events.php'
 const EVENTS_FALLBACK_API_URL = 'http://localhost/api/test-search.php'
+
+console.debug('EVENTS_API_URL configured as:', EVENTS_API_URL)
+console.debug('EVENTS_FALLBACK_API_URL configured as:', EVENTS_FALLBACK_API_URL)
 
 // Minimum loading time to ensure loaders are visible
 const MIN_LOADING_TIME = 800 // milliseconds
@@ -100,6 +103,8 @@ const api = axios.create({
 // Add request interceptor for security
 api.interceptors.request.use(
   (config) => {
+    console.debug(`API Request: ${config.method.toUpperCase()} ${config.url}`)
+
     // Add CSRF token to all non-GET requests
     if (config.method.toUpperCase() !== 'GET') {
       config.headers['X-CSRF-Token'] = getCSRFToken()
@@ -117,6 +122,7 @@ api.interceptors.request.use(
     return config
   },
   (error) => {
+    console.error('API Request Error:', error)
     return Promise.reject(error)
   },
 )
@@ -124,13 +130,17 @@ api.interceptors.request.use(
 // Add response interceptor for enhanced error handling
 api.interceptors.response.use(
   (response) => {
+    console.debug(`API Response: ${response.status} from ${response.config.url}`)
+
     // Verify response integrity
     if (!response.data) {
+      console.error('Empty response data')
       throw new Error('Empty response received from server')
     }
 
     // Check for error signals in the response data
     if (response.data.error) {
+      console.error('API Error in response data:', response.data.error)
       throw new Error(response.data.error)
     }
 
@@ -141,6 +151,11 @@ api.interceptors.response.use(
 
     if (error.response) {
       // Server responded with an error status code
+      console.error(
+        `API Error: ${error.response.status} from ${error.config.url}`,
+        error.response.data,
+      )
+
       if (error.response.data && error.response.data.message) {
         errorMessage = error.response.data.message
       } else if (error.response.status === 401) {
@@ -167,12 +182,16 @@ api.interceptors.response.use(
       }
     } else if (error.request) {
       // Request was made but no response
+      console.error('API No Response Error:', error.request)
       errorMessage = 'No response from server. Please check your connection.'
 
       // Handle timeout specifically
       if (error.code === 'ECONNABORTED') {
         errorMessage = 'Request timed out. Please try again later.'
       }
+    } else {
+      // Error in request configuration
+      console.error('API Request Config Error:', error.message)
     }
 
     // Modify the error object to include a user-friendly message
@@ -219,6 +238,7 @@ const dataService = {
     }
 
     const fallbackApiCall = async () => {
+      console.log('Using fallback API for getAllEvents')
       const response = await axios.get(
         `${EVENTS_FALLBACK_API_URL}?page=${page}&limit=${limit}&_=${Date.now()}`,
         {
@@ -233,33 +253,54 @@ const dataService = {
   },
 
   async getEventById(id) {
-    // Validate ID before sending to API
-    if (!id || isNaN(parseInt(id))) {
-      throw new Error('Invalid event ID')
-    }
+    try {
+      // Validate ID before sending to API
+      if (!id || isNaN(parseInt(id))) {
+        throw new Error('Invalid event ID')
+      }
 
-    const response = await axios.get(`${EVENTS_API_URL}?id=${parseInt(id)}`, {
-      headers: { 'X-Request-ID': Math.random().toString(36).substring(2, 15) },
-    })
-    return response.data // Single event doesn't use the data/pagination structure
+      const response = await axios.get(`${EVENTS_API_URL}?id=${parseInt(id)}`, {
+        headers: { 'X-Request-ID': Math.random().toString(36).substring(2, 15) },
+      })
+      return response.data // Single event doesn't use the data/pagination structure
+    } catch (error) {
+      console.error(`Error fetching event ID ${id}:`, error)
+      throw error
+    }
   },
 
   async getEventsByCategory(category, page = 1, limit = 12) {
-    // Sanitize and normalize category for consistency
+    // Sanitize inputs and add debug information
+    console.log('getEventsByCategory called with raw category:', category)
+
+    // Ensure category is properly formatted
     category = sanitizeString(category)
-    const normalizedCategory = category.toLowerCase().trim()
+
+    // Make sure category is lowercase for consistency
+    if (category) {
+      category = category.toLowerCase().trim()
+    }
+
+    console.log('Sanitized and normalized category:', category)
 
     const mainApiCall = async () => {
-      const url = `${EVENTS_API_URL}?category=${encodeURIComponent(normalizedCategory)}&page=${page}&limit=${limit}`
+      console.log(`Calling API with category=${category}, page=${page}, limit=${limit}`)
+
+      const url = `${EVENTS_API_URL}?category=${encodeURIComponent(category)}&page=${page}&limit=${limit}&_=${Date.now()}`
+      console.log('API URL:', url)
+
       const response = await axios.get(url, {
         headers: { 'X-Request-ID': Math.random().toString(36).substring(2, 15) },
       })
+      console.log('API response status:', response.status)
+      console.log('API response data structure:', Object.keys(response.data))
       return response.data
     }
 
     const fallbackApiCall = async () => {
+      console.log('Using fallback API for getEventsByCategory')
       const response = await axios.get(
-        `${EVENTS_FALLBACK_API_URL}?category=${encodeURIComponent(normalizedCategory)}&page=${page}&limit=${limit}`,
+        `${EVENTS_FALLBACK_API_URL}?category=${encodeURIComponent(category)}&page=${page}&limit=${limit}&_=${Date.now()}`,
         {
           headers: { 'X-Request-ID': Math.random().toString(36).substring(2, 15) },
         },
@@ -267,101 +308,186 @@ const dataService = {
       return response.data
     }
 
+    // Ensure consistent loading experience with skeleton visibility
     return ensureMinLoadTime(handleApiWithFallback(mainApiCall, fallbackApiCall))
   },
 
   async getFeaturedEvents(limit = 6) {
     const mainApiCall = async () => {
-      const response = await axios.get(`${EVENTS_API_URL}?featured=1&limit=${limit}`, {
-        headers: { 'X-Request-ID': Math.random().toString(36).substring(2, 15) },
-      })
+      // Add cache busting parameter for fresh results
+      const cacheBuster = Date.now()
+      const response = await axios.get(
+        `${EVENTS_API_URL}?featured=1&limit=${limit}&_=${cacheBuster}`,
+        {
+          headers: { 'X-Request-ID': Math.random().toString(36).substring(2, 15) },
+        },
+      )
       return response.data
     }
 
     const fallbackApiCall = async () => {
-      const response = await axios.get(`${EVENTS_FALLBACK_API_URL}?featured=1&limit=${limit}`, {
-        headers: { 'X-Request-ID': Math.random().toString(36).substring(2, 15) },
-      })
+      console.log('Using fallback API for getFeaturedEvents')
+      // Fallback for featured events - just use regular events and mark them as featured
+      const response = await axios.get(
+        `${EVENTS_FALLBACK_API_URL}?limit=${limit}&_=${Date.now()}`,
+        {
+          headers: { 'X-Request-ID': Math.random().toString(36).substring(2, 15) },
+        },
+      )
+
+      // Add featured flag to response data
+      if (response.data && response.data.data) {
+        response.data.data = response.data.data.map((event) => ({ ...event, featured: true }))
+      }
+
       return response.data
     }
 
+    // Wrap the API call with ensureMinLoadTime to guarantee skeleton display
     return ensureMinLoadTime(handleApiWithFallback(mainApiCall, fallbackApiCall))
   },
 
   async searchEvents(query, category = null, page = 1, limit = 12) {
-    // Sanitize inputs
-    query = sanitizeString(query)
-    if (category) {
-      category = sanitizeString(category)
-    }
+    try {
+      // Build URL with all parameters
+      let url = `${EVENTS_API_URL}?page=${page}&limit=${limit}`
 
-    const response = await axios.get(
-      `${EVENTS_API_URL}?search=${encodeURIComponent(query)}${
-        category ? `&category=${encodeURIComponent(category)}` : ''
-      }&page=${page}&limit=${limit}`,
-      {
-        headers: { 'X-Request-ID': Math.random().toString(36).substring(2, 15) },
-      },
-    )
-    return response.data
+      // Add sanitized search query if provided
+      if (query && query.trim()) {
+        url += `&search=${encodeURIComponent(sanitizeString(query))}`
+      }
+
+      // Add category filter if provided
+      if (category && category !== 'all') {
+        url += `&category=${encodeURIComponent(sanitizeString(category))}`
+      }
+
+      // Add cache busting parameter
+      url += `&_=${Date.now()}`
+
+      // Wrap the API call with ensureMinLoadTime
+      return ensureMinLoadTime(
+        axios
+          .get(url, {
+            headers: {
+              'X-Request-ID': Math.random().toString(36).substring(2, 15),
+              'X-Search-Query': sanitizeString(query || ''), // For logging/debugging
+            },
+          })
+          .then((response) => response.data),
+      )
+    } catch (error) {
+      console.error(`Error searching events with query "${query}":`, error)
+      throw error
+    }
   },
 
   async createEvent(eventData) {
-    const response = await axios.post(EVENTS_API_URL, sanitizeObject(eventData), {
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Request-ID': Math.random().toString(36).substring(2, 15),
-        'X-CSRF-Token': getCSRFToken(),
-      },
-    })
-    return response.data
+    try {
+      // Generate CSRF token for this request
+      const csrfToken = getCSRFToken()
+
+      // Sanitize all input data
+      const sanitizedData = sanitizeObject(eventData)
+
+      const response = await api.post('/events.php', sanitizedData, {
+        headers: {
+          'X-CSRF-Token': csrfToken,
+        },
+      })
+      return response.data
+    } catch (error) {
+      console.error('Error creating event:', error)
+      throw error
+    }
   },
 
   async updateEvent(id, eventData) {
-    const response = await axios.put(`${EVENTS_API_URL}?id=${id}`, sanitizeObject(eventData), {
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Request-ID': Math.random().toString(36).substring(2, 15),
-        'X-CSRF-Token': getCSRFToken(),
-      },
-    })
-    return response.data
+    try {
+      // Validate ID
+      if (!id || isNaN(parseInt(id))) {
+        throw new Error('Invalid event ID')
+      }
+
+      // Generate CSRF token for this request
+      const csrfToken = getCSRFToken()
+
+      // Sanitize all input data
+      const sanitizedData = sanitizeObject(eventData)
+
+      const response = await api.put(`/events.php?id=${parseInt(id)}`, sanitizedData, {
+        headers: {
+          'X-CSRF-Token': csrfToken,
+        },
+      })
+      return response.data
+    } catch (error) {
+      console.error(`Error updating event ${id}:`, error)
+      throw error
+    }
   },
 
   async deleteEvent(id) {
-    const response = await axios.delete(`${EVENTS_API_URL}?id=${id}`, {
-      headers: {
-        'X-Request-ID': Math.random().toString(36).substring(2, 15),
-        'X-CSRF-Token': getCSRFToken(),
-      },
-    })
-    return response.data
+    try {
+      // Validate ID
+      if (!id || isNaN(parseInt(id))) {
+        throw new Error('Invalid event ID')
+      }
+
+      // Generate CSRF token for this request
+      const csrfToken = getCSRFToken()
+
+      const response = await api.delete(`/events.php?id=${parseInt(id)}`, {
+        headers: {
+          'X-CSRF-Token': csrfToken,
+        },
+      })
+      return response.data
+    } catch (error) {
+      console.error(`Error deleting event ${id}:`, error)
+      throw error
+    }
   },
 
   // CATEGORIES
   async getAllCategories() {
-    const response = await axios.get(`${EVENTS_API_URL}?type=categories`, {
-      headers: { 'X-Request-ID': Math.random().toString(36).substring(2, 15) },
-    })
-    return response.data
+    try {
+      const response = await api.get('/categories.php', {
+        headers: { 'X-Request-ID': Math.random().toString(36).substring(2, 15) },
+      })
+      return response.data
+    } catch (error) {
+      console.error('Failed to fetch categories from API:', error)
+      throw error
+    }
   },
 
   // SUBCATEGORIES
   async getAllSubCategories() {
-    const response = await axios.get(`${EVENTS_API_URL}?type=subcategories`, {
-      headers: { 'X-Request-ID': Math.random().toString(36).substring(2, 15) },
-    })
-    return response.data
+    try {
+      const response = await api.get('/subcategories.php', {
+        headers: { 'X-Request-ID': Math.random().toString(36).substring(2, 15) },
+      })
+      return response.data
+    } catch (error) {
+      console.error('Failed to fetch subcategories from API:', error)
+      throw error
+    }
   },
 
   async getSubCategoriesByCategory(categoryId) {
-    const response = await axios.get(
-      `${EVENTS_API_URL}?type=subcategories&category=${categoryId}`,
-      {
-        headers: { 'X-Request-ID': Math.random().toString(36).substring(2, 15) },
-      },
-    )
-    return response.data
+    try {
+      // Validate categoryId
+      if (!categoryId) {
+        throw new Error('Invalid category ID')
+      }
+
+      const allSubCategories = await this.getAllSubCategories()
+      return allSubCategories.filter((subCat) => subCat.categoryId === categoryId)
+    } catch (error) {
+      console.error(`Error fetching subcategories for category ${categoryId}:`, error)
+      throw error
+    }
   },
 
   /**
@@ -371,34 +497,80 @@ const dataService = {
    */
   async getEventBySlug(slug) {
     const mainApiCall = async () => {
-      const response = await axios.get(`${EVENTS_API_URL}?slug=${encodeURIComponent(slug)}`, {
-        headers: { 'X-Request-ID': Math.random().toString(36).substring(2, 15) },
-      })
-      return response.data
+      try {
+        const response = await api.get(`${EVENTS_API_URL}?slug=${encodeURIComponent(slug)}`)
+        return response.data
+      } catch (error) {
+        console.error('Error fetching event by slug from main API:', error)
+        throw error
+      }
     }
 
     const fallbackApiCall = async () => {
-      const response = await axios.get(
-        `${EVENTS_FALLBACK_API_URL}?slug=${encodeURIComponent(slug)}`,
-        {
-          headers: { 'X-Request-ID': Math.random().toString(36).substring(2, 15) },
-        },
-      )
-      return response.data
+      try {
+        // For a fallback, we'll fetch all events and find the one with matching slug
+        const allEvents = await this.getAllEvents()
+        if (allEvents && allEvents.data && Array.isArray(allEvents.data)) {
+          // Convert slug to lowercase and create a URL-friendly version for comparison
+          const normalizedSlug = slug
+            .toLowerCase()
+            .replace(/\s+/g, '-')
+            .replace(/[^\w-]/g, '')
+
+          // Find event with matching slug or create one from the title
+          const event = allEvents.data.find(
+            (event) =>
+              // If the event has a slug property, compare directly
+              (event.slug && event.slug.toLowerCase() === slug.toLowerCase()) ||
+              // Otherwise, create a slug from the title and compare
+              (event.title &&
+                event.title
+                  .toLowerCase()
+                  .replace(/\s+/g, '-')
+                  .replace(/[^\w-]/g, '') === normalizedSlug),
+          )
+
+          if (event) {
+            // Add the slug to the event object if it doesn't exist
+            if (!event.slug) {
+              event.slug = event.title
+                .toLowerCase()
+                .replace(/\s+/g, '-')
+                .replace(/[^\w-]/g, '')
+            }
+            return event
+          }
+        }
+        throw new Error('Event not found')
+      } catch (error) {
+        console.error('Error in fallback for getEventBySlug:', error)
+        throw error
+      }
     }
 
-    return handleApiWithFallback(mainApiCall, fallbackApiCall)
+    return await handleApiWithFallback(mainApiCall, fallbackApiCall)
   },
 }
 
-// Helper function to handle API calls with fallback
+// Fallback mechanism if the main API times out
 const handleApiWithFallback = async (apiCall, fallbackCall = null) => {
   try {
-    return await apiCall()
+    const result = await apiCall()
+    return result
   } catch (error) {
-    if (fallbackCall) {
-      return await fallbackCall()
+    console.error('API Error occurred:', error)
+
+    // If it's a timeout or network error and we have a fallback
+    if ((error.code === 'ECONNABORTED' || !error.response) && fallbackCall) {
+      console.log('Attempting fallback API call')
+      try {
+        return await fallbackCall()
+      } catch (fallbackError) {
+        console.error('Fallback API also failed:', fallbackError)
+        throw fallbackError
+      }
     }
+
     throw error
   }
 }
