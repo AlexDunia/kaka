@@ -529,7 +529,7 @@ function proceedToCheckout() {
   .cart-title {
     width: 95%;
     margin: 0.5rem auto 1.2rem;
-    font-size: 1.3rem;
+    font-size: 20px;
   }
 
   .cart-list {
@@ -563,7 +563,7 @@ function proceedToCheckout() {
   }
 
   .cart-event-title {
-    font-size: 1rem;
+    font-size: 14px;
     line-height: 1.3;
     margin-bottom: 0.2rem;
   }
@@ -599,24 +599,11 @@ function proceedToCheckout() {
   }
 
   .qty-btn {
-    font-size: 1.2rem;
-    padding: 0;
-    width: 24px;
-    height: 24px;
-    min-width: unset;
-    min-height: unset;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: none;
-    color: #c04888;
+    display: none;
   }
 
   .cart-qty {
-    font-size: 1rem;
-    min-width: 1.5rem;
-    text-align: center;
+    display: none;
   }
 
   .cart-remove-inline {
@@ -636,7 +623,7 @@ function proceedToCheckout() {
 
   .cart-footer-actions {
     display: flex;
-    gap: 0.75rem;
+    gap: 0.5rem;
     justify-content: space-between;
   }
 
@@ -646,18 +633,18 @@ function proceedToCheckout() {
     font-size: 0.85rem;
     white-space: nowrap;
     overflow: visible;
-    padding: 0 1rem;
+    padding: 0 0.75rem;
     display: flex;
     align-items: center;
     justify-content: center;
   }
 
   .cart-clear-btn {
-    min-width: 90px;
+    min-width: 80px;
   }
 
   .cart-checkout-btn {
-    min-width: 140px;
+    min-width: 130px;
   }
 }
 
@@ -673,45 +660,6 @@ function proceedToCheckout() {
   .cart-item-image {
     width: 60px;
     height: 60px;
-  }
-}
-
-@media (max-width: 360px) {
-  /* Styles for screens 360px wide and below */
-
-  .cart-qty-group {
-  }
-
-  .cart-event-title {
-    font-size: 14px;
-  }
-
-  .cart-qty {
-    display: none;
-  }
-
-  .qty-btn {
-    display: none;
-  }
-
-  .cart-title {
-    width: 95%;
-    font-size: 20px;
-  }
-
-  .cart-footer-actions {
-    gap: 0.5rem;
-  }
-
-  .cart-clear-btn {
-    padding: 0 0.75rem;
-    min-width: 80px;
-  }
-
-  .cart-checkout-btn {
-    padding: 0 0.75rem;
-    min-width: 130px;
-    font-size: 0.85rem;
   }
 }
 </style>
