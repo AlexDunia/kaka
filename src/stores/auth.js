@@ -1,12 +1,14 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import authService from '@/services/authService'
+import { useRouter } from 'vue-router'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
   const token = ref(null)
   const loading = ref(false)
   const error = ref(null)
+  const router = useRouter()
 
   // Load initial state from localStorage
   const initializeStore = () => {
@@ -18,8 +20,12 @@ export const useAuthStore = defineStore('auth', () => {
         user.value = JSON.parse(storedUser)
         token.value = storedToken
       }
-    } catch (err) {
-      console.error('Error initializing auth store:', err)
+    } catch {
+      // Clear potentially corrupted data
+      localStorage.removeItem('user')
+      localStorage.removeItem('auth_token')
+      user.value = null
+      token.value = null
     }
   }
 
@@ -39,10 +45,13 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await authService.login(email, password)
       user.value = response.user
       token.value = response.token
+      localStorage.setItem('user', JSON.stringify(response.user))
+      localStorage.setItem('auth_token', response.token)
+      router.push('/')
       return response
     } catch (err) {
       error.value = err.message || 'Login failed'
-      throw err
+      throw error.value
     } finally {
       loading.value = false
     }
@@ -63,13 +72,21 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  const logout = () => {
+  const logout = async () => {
     try {
-      authService.logout()
+      await authService.logout()
       user.value = null
       token.value = null
-    } catch (err) {
-      console.error('Error during logout:', err)
+      localStorage.removeItem('user')
+      localStorage.removeItem('auth_token')
+      router.push('/login')
+    } catch {
+      // Even if the API call fails, we still want to clear local data
+      user.value = null
+      token.value = null
+      localStorage.removeItem('user')
+      localStorage.removeItem('auth_token')
+      router.push('/login')
     }
   }
 
@@ -101,4 +118,3 @@ export const useAuthStore = defineStore('auth', () => {
     forgotPassword,
   }
 })
- 

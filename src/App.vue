@@ -11,16 +11,33 @@ const currentYear = ref(new Date().getFullYear())
 const route = useRoute()
 const { updateMetaDescription, updateSocialMeta } = useSeo()
 
+const navigationLinks = [
+  { path: '/', name: 'All' },
+  { path: '/music', name: 'Music' },
+  { path: '/movies', name: 'Movies' },
+  { path: '/theatre', name: 'Theatre/Comedy' },
+  { path: '/sports', name: 'Sports' },
+  { path: '/festivals', name: 'Festivals' },
+  { path: '/others', name: 'Others' },
+  { path: '/contact', name: 'Contact us' },
+]
+
 const toggleMobileMenu = () => {
   isMobileMenuOpen.value = !isMobileMenuOpen.value
-}
-
-const updateScroll = () => {
-  scrollPosition.value = window.scrollY
+  if (isMobileMenuOpen.value) {
+    document.body.style.overflow = 'hidden'
+  } else {
+    document.body.style.overflow = ''
+  }
 }
 
 const closeMenu = () => {
   isMobileMenuOpen.value = false
+  document.body.style.overflow = ''
+}
+
+const updateScroll = () => {
+  scrollPosition.value = window.scrollY
 }
 
 // Update meta tags when route changes
@@ -48,6 +65,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('scroll', updateScroll)
+  document.body.style.overflow = ''
 })
 
 const cartStore = useCartStore()
@@ -68,7 +86,7 @@ const cartCount = computed(() => cartStore.itemCount)
           </RouterLink>
         </div>
 
-        <nav class="main-nav" :class="{ 'mobile-open': isMobileMenuOpen }">
+        <nav class="main-nav">
           <RouterLink
             to="/"
             @click="closeMenu"
@@ -147,14 +165,67 @@ const cartCount = computed(() => cartStore.itemCount)
             <span v-if="cartCount > 0" class="cart-badge">{{ cartCount }}</span>
           </RouterLink>
 
-          <button class="mobile-menu-toggle" @click="toggleMobileMenu">
-            <span></span>
-            <span></span>
-            <span></span>
+          <button
+            class="mobile-menu-toggle"
+            :class="{ active: isMobileMenuOpen }"
+            @click="toggleMobileMenu"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
           </button>
         </div>
       </div>
     </header>
+
+    <!-- Mobile Navigation Modal -->
+    <Transition name="modal">
+      <div v-if="isMobileMenuOpen" class="mobile-nav-modal" :class="{ open: isMobileMenuOpen }">
+        <div class="mobile-nav-content">
+          <button class="modal-close" @click="closeMenu">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M18 6L6 18" />
+              <path d="M6 6L18 18" />
+            </svg>
+          </button>
+          <nav class="mobile-nav-list">
+            <RouterLink
+              v-for="(link, index) in navigationLinks"
+              :key="link.path"
+              :to="link.path"
+              class="mobile-nav-item nav-item"
+              :style="{ '--index': index }"
+              :class="{ active: $route.path === link.path }"
+              @click="closeMenu"
+            >
+              {{ link.name }}
+            </RouterLink>
+          </nav>
+        </div>
+      </div>
+    </Transition>
 
     <main class="app-content">
       <RouterView v-slot="{ Component }">
@@ -178,10 +249,10 @@ const cartCount = computed(() => cartStore.itemCount)
         </div>
         <div class="footer-social-col">
           <a
-            href="https://t.me/yourtelegram"
+            href="https://instagram.com/kakaworld"
             target="_blank"
             rel="noopener"
-            aria-label="Telegram"
+            aria-label="Instagram"
             class="footer-social-link"
           >
             <svg
@@ -194,15 +265,29 @@ const cartCount = computed(() => cartStore.itemCount)
               stroke-linecap="round"
               stroke-linejoin="round"
             >
-              <path d="M22 2L11 13" />
-              <path d="M22 2L15 22L11 13L2 9L22 2Z" />
+              <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+              <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+              <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
             </svg>
           </a>
           <a
-            href="https://linkedin.com/in/yourprofile"
+            href="https://tiktok.com/@kakaworld"
             target="_blank"
             rel="noopener"
-            aria-label="LinkedIn"
+            aria-label="TikTok"
+            class="footer-social-link"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+              <path
+                d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64c.298 0 .593.044.876.13V9.4a6.33 6.33 0 00-1-.08A6.34 6.34 0 003 15.66a6.34 6.34 0 0010.86 4.48V14.8a8.81 8.81 0 005.73 2.15V13.5a5.85 5.85 0 01-3.82-1.43 4.3 4.3 0 002.89-1.2 4.3 4.3 0 001.93-3.62v-.56z"
+              />
+            </svg>
+          </a>
+          <a
+            href="https://facebook.com/kakaworld"
+            target="_blank"
+            rel="noopener"
+            aria-label="Facebook"
             class="footer-social-link"
           >
             <svg
@@ -215,10 +300,28 @@ const cartCount = computed(() => cartStore.itemCount)
               stroke-linecap="round"
               stroke-linejoin="round"
             >
-              <rect x="2" y="2" width="20" height="20" rx="5" />
-              <path d="M16 8a6 6 0 0 1 6 6v6" />
-              <line x1="8" y1="11" x2="8" y2="16" />
-              <line x1="8" y1="8" x2="8" y2="8" />
+              <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
+            </svg>
+          </a>
+          <a
+            href="https://x.com/kakaworld"
+            target="_blank"
+            rel="noopener"
+            aria-label="X (Twitter)"
+            class="footer-social-link"
+          >
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M4 4l11.733 16h4.267l-11.733-16z"></path>
+              <path d="M4 20l6.768-6.768M20 4l-6.768 6.768"></path>
             </svg>
           </a>
         </div>
@@ -262,24 +365,11 @@ const cartCount = computed(() => cartStore.itemCount)
   align-items: center;
 }
 
-.logo-text {
-  color: #ffffff;
-  font-size: 1.5rem;
-  font-weight: 600;
-  position: relative;
-  padding-left: 1.5rem;
-}
-
-.logo-text::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 1rem;
-  height: 1rem;
-  background-color: #e04e95;
-  border-radius: 2px;
+.logo-img {
+  height: 45px;
+  width: auto;
+  display: block;
+  margin-right: 0.5rem;
 }
 
 .main-nav {
@@ -294,53 +384,20 @@ const cartCount = computed(() => cartStore.itemCount)
   text-decoration: none;
   font-size: 0.9rem;
   font-weight: 500;
-  transition: color 0.3s ease;
   padding: 0.5rem 0;
   position: relative;
   cursor: pointer;
   z-index: 1;
 }
 
-.nav-item::after {
-  content: '';
-  position: absolute;
-  bottom: -5px;
-  left: 0;
-  width: 0;
-  height: 2px;
-  background-color: #e04e95;
-  transition: width 0.3s ease;
-  border-radius: 1px;
-}
-
-.nav-item:hover {
-  color: #ffffff;
-}
-
-.nav-item:hover::after {
-  width: 100%;
-}
-
 .nav-item.active {
   color: #ffffff;
-  position: relative;
-}
-
-.nav-item.active::after {
-  content: '';
-  position: absolute;
-  bottom: -5px;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background-color: #e04e95;
-  border-radius: 1px;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 2rem;
 }
 
 .cart-icon {
@@ -368,24 +425,103 @@ const cartCount = computed(() => cartStore.itemCount)
 
 .mobile-menu-toggle {
   display: none;
-  flex-direction: column;
-  justify-content: space-between;
-  width: 24px;
-  height: 18px;
   background: transparent;
   border: none;
+  color: #ffffff;
   cursor: pointer;
   padding: 0;
 }
 
-.mobile-menu-toggle span {
-  display: block;
+/* Mobile Navigation Modal */
+.mobile-nav-modal {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 85%;
+  max-width: 400px;
+  height: 100vh;
+  background-color: #121212;
+  z-index: 1050;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(100%);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mobile-nav-modal.open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+}
+
+.mobile-nav-content {
   width: 100%;
-  height: 3px;
-  background-color: #ffffff;
-  border-radius: 2px;
-  margin: 0.22em 0;
-  transition: all 0.3s ease;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 2rem 0;
+}
+
+.modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  line-height: 1;
+}
+
+.mobile-nav-list {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 1rem 0;
+  margin-top: 2rem;
+}
+
+.mobile-nav-item {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+  padding: 1rem 1.5rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: calc(var(--index) * 0.1s);
+}
+
+.mobile-nav-item:last-of-type {
+  border-bottom: none;
+}
+
+.mobile-nav-modal.open .mobile-nav-item {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.mobile-nav-item.active {
+  color: #ffffff;
+}
+
+/* Modal Transition */
+.modal-enter-active,
+.modal-leave-active {
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+  transform: translateX(100%);
 }
 
 .app-content {
@@ -395,35 +531,12 @@ const cartCount = computed(() => cartStore.itemCount)
 
 /* Mobile styles */
 @media (max-width: 992px) {
-  .main-nav {
-    position: fixed;
-    top: 64px;
-    left: 0;
-    right: 0;
-    background-color: #121212;
-    flex-direction: column;
-    padding: 1rem 0;
-    align-items: flex-start;
-    height: 0;
-    overflow: hidden;
-    transition: height 0.3s ease;
-    visibility: hidden;
-  }
-
-  .main-nav.mobile-open {
-    height: auto;
-    visibility: visible;
-    padding: 1rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  }
-
-  .nav-item {
-    width: 100%;
-    padding: 0.75rem 1rem;
-  }
-
   .mobile-menu-toggle {
     display: flex;
+  }
+
+  .main-nav {
+    display: none;
   }
 }
 
@@ -440,7 +553,7 @@ const cartCount = computed(() => cartStore.itemCount)
 
 .app-footer {
   background-color: var(--secondary);
-  padding: 4rem 0 2rem;
+  padding: 3rem 1rem 2rem;
   width: 100%;
   margin-top: 2rem;
   border-top: 1px solid rgba(255, 255, 255, 0.03);
@@ -450,10 +563,11 @@ const cartCount = computed(() => cartStore.itemCount)
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 2.2rem 0 1.2rem 0;
+  padding: 0;
   max-width: 1200px;
   margin: 0 auto;
   width: 100%;
+  gap: 2rem;
 }
 
 .footer-logo-col {
@@ -466,7 +580,7 @@ const cartCount = computed(() => cartStore.itemCount)
   flex: 1 1 auto;
   text-align: center;
   color: #fff;
-  font-size: 1.08rem;
+  font-size: 1rem;
   font-weight: 500;
   opacity: 0.85;
 }
@@ -475,86 +589,130 @@ const cartCount = computed(() => cartStore.itemCount)
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 1.2rem;
+  gap: 1rem;
 }
 
 .footer-social-link {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.04);
   color: #fff;
-  transition:
-    background 0.18s,
-    color 0.18s,
-    transform 0.18s;
-  font-size: 1.2rem;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
 }
 
 .footer-social-link:hover {
-  background: var(--primary, #c04888);
+  background: rgba(255, 255, 255, 0.1);
   color: #fff;
-  transform: translateY(-2px) scale(1.08);
+  transform: translateY(-2px);
 }
 
-@media (max-width: 700px) {
-  .footer-simple {
-    flex-direction: column;
-    gap: 1.2rem;
-    padding: 1.5rem 0 0.7rem 0;
-  }
-
-  .footer-center-col {
-    order: 3;
-    font-size: 0.98rem;
-    margin-top: 0.7rem;
-  }
-
-  .footer-logo-img {
-    height: 50px;
-  }
-
-  .logo-img {
-    height: 45px;
-  }
-
-  .footer-social-col {
-    gap: 0.7rem;
-  }
+.footer-social-link svg {
+  width: 20px;
+  height: 20px;
+  transition: all 0.3s ease;
 }
 
-/* Header and Footer Logo Styles */
-.logo-img {
-  height: 55px;
-  width: auto;
-  display: block;
-  margin-right: 0.5rem;
-  transition: none;
+.footer-social-link:hover svg {
+  transform: scale(1.1);
 }
 
-.logo a,
-.logo-img:hover {
-  opacity: 1;
-  transform: none;
+/* Platform-specific hover colors */
+.footer-social-link[aria-label='Instagram']:hover {
+  background: linear-gradient(
+    45deg,
+    #f09433 0%,
+    #e6683c 25%,
+    #dc2743 50%,
+    #cc2366 75%,
+    #bc1888 100%
+  );
+  box-shadow: 0 4px 12px rgba(220, 39, 67, 0.2);
 }
 
-.header-logo-img {
-  height: 50px;
-  width: auto;
-  display: block;
-  margin-right: 0.5rem;
-  border-radius: 7px;
-  box-shadow: 0 2px 8px rgba(192, 72, 136, 0.08);
+.footer-social-link[aria-label='TikTok']:hover {
+  background: #000000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  color: #00f2ea;
+}
+
+.footer-social-link[aria-label='Facebook']:hover {
+  background: #1877f2;
+  box-shadow: 0 4px 12px rgba(24, 119, 242, 0.2);
+}
+
+.footer-social-link[aria-label='X (Twitter)']:hover {
+  background: #000000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .footer-logo-img {
-  height: 60px;
+  height: 45px;
   width: auto;
   display: block;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(192, 72, 136, 0.1);
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .app-footer {
+    padding: 2rem 1rem 1.5rem;
+  }
+
+  .footer-simple {
+    flex-direction: column;
+    gap: 1.5rem;
+    text-align: center;
+  }
+
+  .footer-logo-col {
+    justify-content: center;
+  }
+
+  .footer-center-col {
+    font-size: 0.9rem;
+    order: 2;
+  }
+
+  .footer-social-col {
+    order: 1;
+    gap: 1.2rem;
+  }
+
+  .footer-logo-img {
+    height: 40px;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-footer {
+    padding: 1.5rem 1rem 1rem;
+  }
+
+  .footer-simple {
+    gap: 1.2rem;
+  }
+
+  .footer-social-col {
+    gap: 1rem;
+  }
+
+  .footer-social-link {
+    width: 36px;
+    height: 36px;
+  }
+
+  .footer-social-link svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .footer-logo-img {
+    height: 35px;
+  }
 }
 </style>

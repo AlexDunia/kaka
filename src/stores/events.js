@@ -34,7 +34,6 @@ export const useEventStore = defineStore('events', () => {
       lastFetch.value > fiveMinutesAgo &&
       page === currentPage.value
     ) {
-      console.log('Using cached events data')
       return events.value
     }
 
@@ -43,15 +42,9 @@ export const useEventStore = defineStore('events', () => {
     currentPage.value = page
 
     try {
-      console.log('Fetching all events from API')
       const response = await eventService.getAllEvents(page, itemsPerPage.value)
 
-      // Debug log the exact response
-      console.log('Raw API response:', response)
-
-      // Check if the response has the expected structure with data property
       if (response && response.data && Array.isArray(response.data)) {
-        console.log(`Fetched ${response.data.length} events from API`)
         events.value = response.data
 
         // Update pagination info if available
@@ -64,12 +57,11 @@ export const useEventStore = defineStore('events', () => {
         forceRefresh.value = false
         return response.data
       } else {
-        console.error('Invalid response format from events API:', response)
-        throw new Error('Invalid data format received from API')
+        throw new Error('Invalid response format from events API')
       }
     } catch (err) {
       error.value = err.message || 'Failed to fetch events from API:'
-      console.error('Error fetching events from API:', err)
+      events.value = []
       throw err
     } finally {
       isLoading.value = false
@@ -87,7 +79,6 @@ export const useEventStore = defineStore('events', () => {
 
     try {
       const event = await eventService.getEventById(id)
-      console.log('Event by ID response:', event)
 
       if (event) {
         currentEvent.value = event
@@ -104,9 +95,6 @@ export const useEventStore = defineStore('events', () => {
   }
 
   const fetchEventsByCategory = async (category, refresh = false, page = 1) => {
-    // Add debug log to check what category is being passed
-    console.log(`fetchEventsByCategory called with category: ${category}`, { refresh, page })
-
     // Skip fetching if we're already on this category and have events
     if (
       !refresh &&
@@ -114,7 +102,6 @@ export const useEventStore = defineStore('events', () => {
       events.value.length > 0 &&
       page === currentPage.value
     ) {
-      console.log('Using cached events for category:', category)
       return events.value
     }
 
@@ -126,14 +113,12 @@ export const useEventStore = defineStore('events', () => {
     try {
       // Normalize the category to ensure consistency
       const normalizedCategory = category.toLowerCase().trim()
-      console.log('Using normalized category for API call:', normalizedCategory)
 
       const response = await eventService.getEventsByCategory(
         normalizedCategory,
         page,
         itemsPerPage.value,
       )
-      console.log('Category API response:', response)
 
       if (response && response.data && Array.isArray(response.data)) {
         events.value = response.data
@@ -151,7 +136,6 @@ export const useEventStore = defineStore('events', () => {
       }
     } catch (err) {
       error.value = err.message || 'Failed to fetch events by category'
-      console.error('Error in fetchEventsByCategory:', err)
       throw err
     } finally {
       isLoading.value = false
@@ -192,11 +176,9 @@ export const useEventStore = defineStore('events', () => {
       const processedData = { ...eventData }
 
       // Send data to API through service
-      console.log('Store: Sending event data to API')
       const newEvent = await eventService.createEvent(processedData)
 
       // If we get here, the API call was successful and the event was saved to the database
-      console.log('Store: Event saved to database, updating frontend state', newEvent)
 
       // Only update the frontend state if we got a valid response with an ID
       if (newEvent && newEvent.id) {
@@ -211,7 +193,6 @@ export const useEventStore = defineStore('events', () => {
     } catch (err) {
       // Set error message and re-throw to let component handle it
       error.value = err.message || 'Failed to create event in database'
-      console.error('Store: Failed to save event to database:', err)
       throw err
     } finally {
       isLoading.value = false
@@ -303,9 +284,6 @@ export const useEventStore = defineStore('events', () => {
       currentCategory.value = category
     }
 
-    // Added detailed logging at start of search
-    console.log(`Search initiated in store with: "${query}", category: ${category || 'all'}`)
-
     try {
       // Build the query parameters with advanced filtering
       let url = `${eventService.EVENTS_API_URL}?page=${page}&limit=${limit}`
@@ -350,89 +328,49 @@ export const useEventStore = defineStore('events', () => {
       // Add security token
       url += `&_token=${Math.random().toString(36).substring(2, 15)}`
 
-      // Log the search request for debugging (remove in production)
-      console.debug(`Performing search with URL: ${url}`)
-
       // Try the main API endpoint first
       let response
       try {
         response = await axios.get(url)
-      } catch (apiError) {
-        console.warn('Main API search failed, trying fallback:', apiError.message)
-
+      } catch {
         // If main API fails, try the fallback endpoint
         let fallbackUrl = `${eventService.EVENTS_FALLBACK_API_URL}?page=${page}&limit=${limit}`
-
-        // Add basic search parameters to fallback
-        if (query && query.trim() !== '') {
-          fallbackUrl += `&search=${encodeURIComponent(query.trim())}`
+        if (query) {
+          fallbackUrl += `&q=${encodeURIComponent(query)}`
         }
-
-        if (category && category !== 'all') {
+        if (category) {
           fallbackUrl += `&category=${encodeURIComponent(category)}`
         }
-
-        console.debug(`Trying fallback search API: ${fallbackUrl}`)
         response = await axios.get(fallbackUrl)
       }
 
-      // Debug the raw response - Changed from .debug to .log
-      console.log('<<< RAW API RESPONSE RECEIVED >>>:', response.data)
-      console.log('Search response status:', response.status)
-      console.log('Search response length:', response.data?.data?.length || 'N/A')
-
       // Handle different response formats - robust approach
       let eventData = []
-      let paginationData = null
 
-      // Case 1: Response has data property that is an array (standard format)
-      if (response.data && response.data.data && Array.isArray(response.data.data)) {
-        eventData = response.data.data
-        paginationData = response.data.pagination || null
-      }
-      // Case 2: Response is an array directly
-      else if (response.data && Array.isArray(response.data)) {
+      // If response.data is an array, use it directly
+      if (Array.isArray(response.data)) {
         eventData = response.data
       }
-      // Case 3: Unexpected format, try to extract any array we can find
-      else if (response.data && typeof response.data === 'object') {
-        // Loop through all properties looking for an array
-        for (const [key, value] of Object.entries(response.data)) {
+      // If response.data.data is an array, use that
+      else if (response.data?.data && Array.isArray(response.data.data)) {
+        eventData = response.data.data
+      }
+      // Otherwise, look for any array property in response.data that contains event objects
+      else {
+        for (const value of Object.values(response.data)) {
           if (Array.isArray(value) && value.length > 0 && value[0].id) {
-            console.debug(`Found events array in response.data.${key}`)
             eventData = value
             break
           }
         }
       }
 
-      // If we found events, use them
-      if (eventData.length > 0) {
-        events.value = eventData
-
-        // Update pagination if available
-        if (paginationData) {
-          totalItems.value = paginationData.total || eventData.length
-          totalPages.value = paginationData.pages || 1
-        } else {
-          // Set reasonable defaults if no pagination info
-          totalItems.value = eventData.length
-          totalPages.value = 1
-        }
-
-        lastFetch.value = Date.now()
-        return eventData
-      } else {
-        // No events found - this is a valid result (empty search result)
-        events.value = []
-        totalItems.value = 0
-        totalPages.value = 0
-        return []
-      }
+      events.value = eventData
+      totalItems.value = response.data.total || eventData.length
+      currentPage.value = page
+      return eventData
     } catch (err) {
       error.value = err.message || 'Failed to search events'
-      console.error('Search error:', err)
-      // Set empty results and return empty array
       events.value = []
       totalItems.value = 0
       totalPages.value = 0
@@ -449,14 +387,10 @@ export const useEventStore = defineStore('events', () => {
 
     try {
       // Try to fetch all events
-      return await fetchAllEvents(true)
-    } catch (err) {
-      // If fetching fails, at least reset the local state to avoid showing stale results
-      console.error('Failed to fetch events when resetting filters:', err)
+      await fetchAllEvents(true)
+    } catch {
       events.value = []
       totalItems.value = 0
-      totalPages.value = 0
-      return []
     }
   }
 
@@ -490,7 +424,6 @@ export const useEventStore = defineStore('events', () => {
 
     try {
       const apiResponse = await eventService.getEventBySlug(slug)
-      console.log('Event by slug API response:', apiResponse)
 
       // Check if the response structure is { data: [eventObject, ...], ... }
       // and the data array is not empty.
@@ -505,13 +438,11 @@ export const useEventStore = defineStore('events', () => {
         return fetchedEventObject
       } else {
         // If the structure is not as expected or data array is empty
-        console.warn('Event not found or invalid data structure from getEventBySlug:', apiResponse)
         error.value = 'Event not found'
         currentEvent.value = null // Explicitly set to null
         return null // Indicate event was not found or data was malformed
       }
     } catch (err) {
-      console.error('Error in fetchEventBySlug:', err)
       error.value = err.message || 'Failed to fetch event details'
       currentEvent.value = null // Clear currentEvent on error
       throw err // Re-throw the error so the component can handle it

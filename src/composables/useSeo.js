@@ -11,7 +11,11 @@ export function useSeo() {
    */
   const updatePageTitle = (title, includeAppName = true) => {
     nextTick(() => {
-      document.title = includeAppName ? `${title} | Kaka` : title
+      // Add location context for better SEO
+      const locationContext = ' in Nigeria'
+      document.title = includeAppName
+        ? `${title}${locationContext} | KakaWorld`
+        : `${title}${locationContext}`
     })
   }
 
@@ -22,7 +26,9 @@ export function useSeo() {
   const updateMetaDescription = (description) => {
     const metaDescription = document.querySelector('meta[name="description"]')
     if (metaDescription) {
-      metaDescription.setAttribute('content', description)
+      // Add location context and call-to-action for better SEO
+      const enhancedDescription = `${description} Book your tickets now on KakaWorld, Nigeria's premier event booking platform.`
+      metaDescription.setAttribute('content', enhancedDescription)
     }
   }
 
@@ -35,21 +41,27 @@ export function useSeo() {
    * @param {string} data.url - URL of the page
    */
   const updateSocialMeta = ({ title, description, image, url }) => {
+    // Add location context for better local SEO
+    const enhancedTitle = title + (title.includes('Nigeria') ? '' : ' in Nigeria')
+    const enhancedDescription =
+      description +
+      (description.includes('Nigeria') ? '' : ' Experience the best events in Nigeria.')
+
     // Update Open Graph meta tags
     if (title) {
       const ogTitle = document.querySelector('meta[property="og:title"]')
-      if (ogTitle) ogTitle.setAttribute('content', title)
+      if (ogTitle) ogTitle.setAttribute('content', enhancedTitle)
 
       const twitterTitle = document.querySelector('meta[property="twitter:title"]')
-      if (twitterTitle) twitterTitle.setAttribute('content', title)
+      if (twitterTitle) twitterTitle.setAttribute('content', enhancedTitle)
     }
 
     if (description) {
       const ogDescription = document.querySelector('meta[property="og:description"]')
-      if (ogDescription) ogDescription.setAttribute('content', description)
+      if (ogDescription) ogDescription.setAttribute('content', enhancedDescription)
 
       const twitterDescription = document.querySelector('meta[property="twitter:description"]')
-      if (twitterDescription) twitterDescription.setAttribute('content', description)
+      if (twitterDescription) twitterDescription.setAttribute('content', enhancedDescription)
     }
 
     if (image) {
@@ -58,6 +70,13 @@ export function useSeo() {
 
       const twitterImage = document.querySelector('meta[property="twitter:image"]')
       if (twitterImage) twitterImage.setAttribute('content', image)
+
+      // Add image dimensions for better social sharing
+      const ogImageWidth = document.querySelector('meta[property="og:image:width"]')
+      if (ogImageWidth) ogImageWidth.setAttribute('content', '1200')
+
+      const ogImageHeight = document.querySelector('meta[property="og:image:height"]')
+      if (ogImageHeight) ogImageHeight.setAttribute('content', '630')
     }
 
     if (url) {
@@ -66,6 +85,10 @@ export function useSeo() {
 
       const twitterUrl = document.querySelector('meta[property="twitter:url"]')
       if (twitterUrl) twitterUrl.setAttribute('content', url)
+
+      // Update canonical URL
+      const canonical = document.querySelector('link[rel="canonical"]')
+      if (canonical) canonical.setAttribute('href', url)
     }
   }
 
@@ -82,7 +105,7 @@ export function useSeo() {
 
     if (!event) return
 
-    // Create event schema
+    // Create event schema with enhanced information
     const eventSchema = {
       '@context': 'https://schema.org',
       '@type': 'Event',
@@ -90,7 +113,9 @@ export function useSeo() {
       description: event.description,
       image: event.main_image,
       startDate: event.event_date,
-      endDate: event.end_date || event.event_date, // Use end_date if available, otherwise use event_date
+      endDate: event.end_date || event.event_date,
+      eventStatus: 'https://schema.org/EventScheduled',
+      eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
       location: {
         '@type': 'Place',
         name: event.venue,
@@ -98,8 +123,13 @@ export function useSeo() {
           '@type': 'PostalAddress',
           addressLocality: event.city,
           addressRegion: event.state,
-          addressCountry: event.country || 'US',
+          addressCountry: 'Nigeria',
         },
+      },
+      organizer: {
+        '@type': 'Organization',
+        name: event.organizer || 'KakaWorld',
+        url: 'https://kakaworld.com',
       },
       performer: {
         '@type': 'PerformingGroup',
@@ -109,16 +139,56 @@ export function useSeo() {
         '@type': 'Offer',
         availability: 'https://schema.org/InStock',
         price: event.price,
-        priceCurrency: 'USD',
+        priceCurrency: 'NGN',
+        validFrom: event.ticket_sale_start || new Date().toISOString(),
         url: window.location.href,
+        priceValidUntil: event.event_date,
+      },
+      superEvent: {
+        '@type': 'Event',
+        name: event.category ? `${event.category} Events in Nigeria` : 'Events in Nigeria',
+        url: `https://kakaworld.com/${event.category || ''}`,
       },
     }
 
-    // Create new JSON-LD script
-    const script = document.createElement('script')
-    script.type = 'application/ld+json'
-    script.textContent = JSON.stringify(eventSchema)
-    document.head.appendChild(script)
+    // Add breadcrumbs for better navigation structure
+    const breadcrumbSchema = {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        {
+          '@type': 'ListItem',
+          position: 1,
+          name: 'Home',
+          item: 'https://kakaworld.com',
+        },
+        {
+          '@type': 'ListItem',
+          position: 2,
+          name: event.category
+            ? event.category.charAt(0).toUpperCase() + event.category.slice(1)
+            : 'Events',
+          item: `https://kakaworld.com/${event.category || 'events'}`,
+        },
+        {
+          '@type': 'ListItem',
+          position: 3,
+          name: event.title,
+          item: window.location.href,
+        },
+      ],
+    }
+
+    // Create new JSON-LD scripts
+    const eventScript = document.createElement('script')
+    eventScript.type = 'application/ld+json'
+    eventScript.textContent = JSON.stringify(eventSchema)
+    document.head.appendChild(eventScript)
+
+    const breadcrumbScript = document.createElement('script')
+    breadcrumbScript.type = 'application/ld+json'
+    breadcrumbScript.textContent = JSON.stringify(breadcrumbSchema)
+    document.head.appendChild(breadcrumbScript)
   }
 
   return {

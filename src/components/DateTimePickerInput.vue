@@ -107,7 +107,6 @@ const id = ref(`datetime-picker-${uuidv4()}`)
 const formattedValue = computed(() => {
   if (!props.modelValue) return ''
 
-  // Format date according to specified format
   try {
     const date = new Date(props.modelValue)
 
@@ -137,8 +136,7 @@ const formattedValue = computed(() => {
       .replace('A', period)
 
     return `${formattedDate} ${formattedTime}`
-  } catch (e) {
-    console.error('Error formatting date:', e)
+  } catch {
     return ''
   }
 })

@@ -237,16 +237,9 @@ function formatPrice(price) {
 }
 
 // Open purchase modal with pre-selected ticket type
-const openPurchaseModalWithTicket = (ticketTypeId) => {
-  console.log('Opening modal for ticket type:', ticketTypeId)
-
+const openPurchaseModal = (ticketTypeId) => {
   selectedTicketType.value = ticketTypeId
-
-  // Small delay to ensure Vue has updated the props
-  setTimeout(() => {
-    showPurchaseModal.value = true
-    console.log('Modal should be visible now')
-  }, 50)
+  showPurchaseModal.value = true
 }
 
 // Load event on mount
@@ -316,7 +309,6 @@ const decrementQuantity = () => {
 
 // Close purchase modal - combined version
 const closePurchaseModal = () => {
-  console.log('Closing purchase modal')
   showPurchaseModal.value = false
   selectedTicketType.value = null
   ticketQuantity.value = 1
@@ -390,7 +382,7 @@ watch(
       const ticketId = query.ticket
       const ticket = ticketTypes.value.find((t) => t.id === ticketId)
       if (ticket) {
-        openPurchaseModalWithTicket(ticketId)
+        openPurchaseModal(ticketId)
       }
     }
   },
@@ -451,48 +443,57 @@ const closeShareModal = () => {
   showShareModal.value = false
 }
 
-const shareLink = (platform) => {
-  const url = encodeURIComponent(shareUrl.value || window.location.href)
-  const title = encodeURIComponent(shareTitle.value || document.title)
-  // Use a shorter, more generic text for WhatsApp to avoid issues with length or special chars
-  const whatsAppText = encodeURIComponent(`${shareTitle.value} - Check out this event!`)
-  const genericText = encodeURIComponent(shareDescription.value || '')
-
-  let shareWindowUrl = ''
-
-  switch (platform) {
-    case 'twitter':
-      shareWindowUrl = `https://twitter.com/intent/tweet?url=${url}&text=${title}`
-      break
-    case 'facebook':
-      shareWindowUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`
-      break
-    case 'whatsapp':
-      // WhatsApp Web: Use a more direct approach. Mobile typically handles `https://wa.me/` better.
-      shareWindowUrl = `https://api.whatsapp.com/send?text=${whatsAppText}%20${url}`
-      break
-    case 'linkedin':
-      shareWindowUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${url}&title=${title}&summary=${genericText}`
-      break
-    case 'copy':
-      navigator.clipboard
-        .writeText(shareUrl.value || window.location.href)
-        .then(() => {
-          showToaster('Link copied to clipboard!')
-          closeShareModal() // Close modal after copying
-        })
-        .catch((err) => {
-          console.error('Failed to copy link: ', err)
-          showToaster('Failed to copy link.', false)
-        })
-      return // Don't open a window for copy
-    default:
-      console.warn('Unknown share platform:', platform)
-      return
+const shareEvent = async (platform) => {
+  const shareData = {
+    title: event.value.title,
+    text: event.value.description,
+    url: window.location.href,
   }
 
-  // Open the share window
-  window.open(shareWindowUrl, '_blank', 'noopener,noreferrer,width=600,height=450')
+  try {
+    switch (platform) {
+      case 'clipboard':
+        await navigator.clipboard.writeText(window.location.href)
+        showShareSuccess.value = true
+        setTimeout(() => {
+          showShareSuccess.value = false
+        }, 2000)
+        break
+      case 'facebook':
+        window.open(
+          `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`,
+          '_blank',
+        )
+        break
+      case 'twitter':
+        window.open(
+          `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+            event.value.title,
+          )}&url=${encodeURIComponent(window.location.href)}`,
+          '_blank',
+        )
+        break
+      case 'whatsapp':
+        window.open(
+          `https://wa.me/?text=${encodeURIComponent(
+            `${event.value.title} - ${window.location.href}`,
+          )}`,
+          '_blank',
+        )
+        break
+      case 'native':
+        if (navigator.share) {
+          await navigator.share(shareData)
+        } else {
+          throw new Error('Native sharing not supported')
+        }
+        break
+      default:
+        throw new Error('Unknown share platform')
+    }
+  } catch {
+    error.value = 'Failed to share event'
+  }
 }
 // --- End Share Modal Functions ---
 
@@ -1900,24 +1901,28 @@ const scrollToTickets = () => {
 
 .share-modal__platforms {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); /* Wider buttons */
-  gap: 0.8rem; /* Slightly reduced gap */
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  width: 100%;
 }
 
 .share-platform {
   display: flex;
-  /* flex-direction: column; Remove for horizontal alignment */
-  align-items: center; /* Align icon and text horizontally */
-  justify-content: flex-start; /* Align content to the start */
+  align-items: center;
+  justify-content: flex-start;
   gap: 0.75rem;
-  padding: 0.75rem 1rem; /* Adjusted padding */
+  padding: 0.75rem 1rem;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.25, 1, 0.5, 1);
   color: rgba(255, 255, 255, 0.8);
-  text-align: left; /* Align text to the left */
+  text-align: left;
+  width: 100%; /* Ensure full width */
+  min-width: 140px; /* Minimum width to prevent text wrapping */
+  white-space: nowrap; /* Prevent text from wrapping */
+  overflow: visible; /* Allow text to be visible */
 }
 
 .share-platform svg {
@@ -1929,9 +1934,27 @@ const scrollToTickets = () => {
 }
 
 .share-platform span {
-  font-size: 0.85rem; /* Slightly larger text */
+  font-size: 0.85rem;
   font-weight: 500;
   white-space: nowrap;
+  overflow: visible;
+}
+
+@media (max-width: 480px) {
+  .share-modal__platforms {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .share-platform {
+    padding: 0.85rem 1rem;
+    justify-content: flex-start;
+    min-width: unset;
+  }
+
+  .share-platform span {
+    font-size: 0.9rem;
+  }
 }
 
 .share-platform:hover {

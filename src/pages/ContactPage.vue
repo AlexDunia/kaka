@@ -1,5 +1,11 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import emailjs from '@emailjs/browser'
+
+// Initialize EmailJS
+onMounted(() => {
+  emailjs.init(import.meta.env.VITE_EMAILJS_PUBLIC_KEY)
+})
 
 const formData = ref({
   name: '',
@@ -9,39 +15,35 @@ const formData = ref({
 })
 
 const loading = ref(false)
-const error = ref(null)
+const error = ref('')
 const success = ref(false)
+const isSubmitting = ref(false)
 
-const submitForm = async () => {
-  // Validate form
-  if (!formData.value.name || !formData.value.email || !formData.value.message) {
-    error.value = 'Please fill in all required fields'
-    return
-  }
-
-  // Reset status
-  error.value = null
-  loading.value = true
+const handleSubmit = async () => {
+  isSubmitting.value = true
+  success.value = false
+  error.value = ''
 
   try {
-    // In a real app, this would be an API call
-    // Simulate API call with timeout
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    // Show success message
-    success.value = true
-
-    // Reset form
-    formData.value = {
-      name: '',
-      email: '',
-      subject: '',
-      message: '',
+    const emailParams = {
+      from_name: formData.value.name,
+      from_email: formData.value.email,
+      message: formData.value.message,
+      subject: formData.value.subject,
     }
+
+    await emailjs.send(
+      import.meta.env.VITE_EMAILJS_SERVICE_ID,
+      import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
+      emailParams,
+    )
+
+    success.value = true
+    formData.value = { name: '', email: '', subject: '', message: '' }
   } catch (_) {
-    error.value = 'Failed to send your message. Please try again.'
+    error.value = 'Failed to send message. Please try again later.'
   } finally {
-    loading.value = false
+    isSubmitting.value = false
   }
 }
 </script>
@@ -148,7 +150,7 @@ const submitForm = async () => {
             <button class="btn" @click="success = false">Send Another Message</button>
           </div>
 
-          <form v-else class="contact-form" @submit.prevent="submitForm">
+          <form v-else class="contact-form" @submit.prevent="handleSubmit">
             <h2 class="contact-form__title">Send Us a Message</h2>
 
             <div v-if="error" class="contact-form__error">
@@ -215,177 +217,349 @@ const submitForm = async () => {
 
 <style scoped>
 .contact-page {
-  padding: 3rem 0;
+  padding: 4rem 0;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.1) 100%);
+  min-height: calc(100vh - 60px);
 }
 
 .contact-page__header {
   text-align: center;
-  margin-bottom: 3rem;
+  margin-bottom: 4rem;
+  animation: fadeIn 0.8s ease-out;
 }
 
 .contact-page__title {
-  font-size: 2.5rem;
-  margin-bottom: 0.5rem;
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, var(--primary) 0%, #ff79c6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 700;
+  letter-spacing: -0.5px;
 }
 
 .contact-page__subtitle {
-  font-size: 1.1rem;
-  color: rgba(255, 255, 255, 0.8);
+  font-size: 1.2rem;
+  color: rgba(255, 255, 255, 0.9);
   max-width: 600px;
   margin: 0 auto;
+  line-height: 1.6;
 }
 
 .contact-page__content {
   display: grid;
   grid-template-columns: 1fr 2fr;
-  gap: 2rem;
+  gap: 3rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 2rem;
 }
 
 .contact-page__info {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 2rem;
 }
 
 .contact-info-card {
-  background-color: var(--card-bg);
-  border-radius: 10px;
-  padding: 1.5rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.3s ease;
+  transform: translateY(0);
+}
+
+.contact-info-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .contact-info-card__icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 50px;
-  height: 50px;
-  background-color: rgba(232, 67, 147, 0.1);
-  border-radius: 50%;
-  margin-bottom: 1rem;
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, rgba(232, 67, 147, 0.2) 0%, rgba(232, 67, 147, 0.1) 100%);
+  border-radius: 16px;
+  margin-bottom: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.contact-info-card:hover .contact-info-card__icon {
+  transform: scale(1.1);
+  background: linear-gradient(135deg, rgba(232, 67, 147, 0.3) 0%, rgba(232, 67, 147, 0.2) 100%);
 }
 
 .contact-info-card__icon svg {
   color: var(--primary);
+  transition: all 0.3s ease;
+  width: 28px;
+  height: 28px;
+}
+
+.contact-info-card:hover .contact-info-card__icon svg {
+  transform: scale(1.1);
 }
 
 .contact-info-card__title {
-  font-size: 1.25rem;
-  margin-bottom: 0.5rem;
+  font-size: 1.4rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
 }
 
 .contact-info-card__detail {
   color: var(--primary);
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.5rem;
   font-weight: 500;
+  font-size: 1.1rem;
+  transition: all 0.3s ease;
+}
+
+.contact-info-card:hover .contact-info-card__detail {
+  color: #ff79c6;
 }
 
 .contact-info-card__hours {
-  font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .contact-page__form-container {
-  background-color: var(--card-bg);
-  border-radius: 10px;
-  padding: 2rem;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(10px);
+  border-radius: 24px;
+  padding: 3rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  animation: slideUp 0.8s ease-out;
 }
 
 .contact-form-success {
   text-align: center;
-  padding: 2rem 0;
+  padding: 3rem 0;
 }
 
 .contact-form-success svg {
-  color: var(--success);
-  margin-bottom: 1rem;
+  color: #50fa7b;
+  margin-bottom: 1.5rem;
+  width: 60px;
+  height: 60px;
+  animation: successPop 0.5s ease-out;
 }
 
 .contact-form-success h3 {
-  color: var(--success);
-  font-size: 1.5rem;
+  color: #50fa7b;
+  font-size: 1.8rem;
   margin-bottom: 1rem;
+  font-weight: 600;
 }
 
 .contact-form-success p {
   margin-bottom: 2rem;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1.1rem;
+  line-height: 1.6;
 }
 
 .contact-form__title {
-  margin-bottom: 1.5rem;
-  font-size: 1.5rem;
+  margin-bottom: 2rem;
+  font-size: 1.8rem;
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 600;
 }
 
 .contact-form__error {
-  background-color: rgba(255, 77, 77, 0.2);
-  color: var(--error);
-  padding: 0.75rem;
-  border-radius: 6px;
-  margin-bottom: 1rem;
-  font-size: 0.9rem;
+  background: rgba(255, 77, 77, 0.1);
+  border-left: 4px solid #ff5555;
+  color: #ff5555;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+  animation: shake 0.5s ease-out;
 }
 
 .contact-form__field {
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.5rem;
 }
 
 .contact-form__label {
   display: block;
-  margin-bottom: 0.5rem;
-  font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
 }
 
 .contact-form__input,
 .contact-form__textarea {
-  transition: border-color 0.3s ease;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 1rem;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.contact-form__input:hover,
+.contact-form__textarea:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .contact-form__input:focus,
 .contact-form__textarea:focus {
+  background: rgba(255, 255, 255, 0.07);
   border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(232, 67, 147, 0.1);
 }
 
 .contact-form__textarea {
   resize: vertical;
-  min-height: 120px;
+  min-height: 140px;
 }
 
 .contact-form__submit {
   width: 100%;
-  padding: 0.75rem;
-  font-weight: bold;
+  padding: 1rem;
+  font-weight: 600;
+  font-size: 1.1rem;
+  background: linear-gradient(135deg, var(--primary) 0%, #ff79c6 100%);
+  border: none;
+  border-radius: 12px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  transform: translateY(0);
+}
+
+.contact-form__submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(232, 67, 147, 0.2);
+}
+
+.contact-form__submit:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .contact-form__submit:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+  background: linear-gradient(135deg, #666 0%, #888 100%);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes successPop {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+
+@media (max-width: 1200px) {
+  .contact-page__content {
+    max-width: 1000px;
+  }
 }
 
 @media (max-width: 992px) {
   .contact-page__content {
     grid-template-columns: 1fr;
     gap: 2rem;
+    padding: 0 1.5rem;
   }
 
   .contact-page__info {
     flex-direction: row;
+    flex-wrap: wrap;
   }
 
   .contact-info-card {
     flex: 1;
+    min-width: 280px;
   }
 }
 
 @media (max-width: 768px) {
+  .contact-page {
+    padding: 3rem 0;
+  }
+
   .contact-page__title {
-    font-size: 2rem;
+    font-size: 2.5rem;
   }
 
   .contact-page__info {
     flex-direction: column;
+  }
+
+  .contact-page__form-container {
+    padding: 2rem;
+  }
+
+  .contact-info-card {
+    min-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .contact-page__title {
+    font-size: 2rem;
+  }
+
+  .contact-page__content {
+    padding: 0 1rem;
   }
 
   .contact-page__form-container {

@@ -2,34 +2,59 @@
  * Payment service utility functions for interacting with the backend
  */
 
+import axios from 'axios'
+
 /**
  * Verify a Paystack payment with the backend
- * @param {string} reference - The Paystack payment reference
- * @returns {Promise} Promise that resolves with the verification result
+ * @param {string} reference - The payment reference from Paystack
+ * @returns {Promise<Object>} The verification result
  */
-export const verifyPaystackPayment = async (reference) => {
+export async function verifyPayment(reference) {
   try {
-    // Replace with your actual backend URL
-    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost/your-backend-path'
-
-    const response = await fetch(`${backendUrl}/verify-payment.php`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ reference }),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Server responded with status: ${response.status}`)
-    }
-
-    const data = await response.json()
-    return data
-  } catch (error) {
-    console.error('Payment verification error:', error)
-    throw error
+    const response = await axios.post('/api/verify-payment', { reference })
+    return response.data
+  } catch {
+    throw new Error('Payment verification failed')
   }
+}
+
+/**
+ * Save tickets to local storage
+ * @param {Array} tickets - Array of ticket objects to save
+ */
+export function saveTicketsToLocalStorage(tickets) {
+  try {
+    localStorage.setItem('savedTickets', JSON.stringify(tickets))
+  } catch {
+    throw new Error('Failed to save tickets')
+  }
+}
+
+/**
+ * Get saved tickets from local storage
+ * @returns {Array} Array of saved ticket objects
+ */
+export function getTicketsFromLocalStorage() {
+  try {
+    const tickets = localStorage.getItem('savedTickets')
+    return tickets ? JSON.parse(tickets) : []
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Parse and validate a payment amount
+ * @param {string|number} amount - The amount to parse
+ * @returns {number} The parsed amount in the smallest currency unit
+ * @throws {Error} If the amount is invalid
+ */
+export function parseAmount(amount) {
+  const parsedAmount = typeof amount === 'string' ? parseFloat(amount) : amount
+  if (isNaN(parsedAmount) || parsedAmount < 0) {
+    throw new Error('Invalid payment amount')
+  }
+  return Math.round(parsedAmount * 100)
 }
 
 /**
@@ -78,7 +103,6 @@ export const getSavedTickets = () => {
     const parsed = JSON.parse(savedData)
     return parsed.tickets || []
   } catch (error) {
-    console.error('Error parsing saved tickets:', error)
     return []
   }
 }
