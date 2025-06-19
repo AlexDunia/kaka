@@ -90,6 +90,16 @@ export function useSeo() {
       const canonical = document.querySelector('link[rel="canonical"]')
       if (canonical) canonical.setAttribute('href', url)
     }
+
+    // Add article meta tags for events
+    const ogType = document.querySelector('meta[property="og:type"]')
+    if (ogType) ogType.setAttribute('content', 'article')
+
+    // Add additional meta tags for local SEO
+    updateOrCreateMetaTag('geo.region', 'NG')
+    updateOrCreateMetaTag('geo.placename', 'Nigeria')
+    updateOrCreateMetaTag('geo.position', '9.082;8.6753') // Nigeria's approximate center
+    updateOrCreateMetaTag('ICBM', '9.082, 8.6753')
   }
 
   /**
@@ -125,11 +135,21 @@ export function useSeo() {
           addressRegion: event.state,
           addressCountry: 'Nigeria',
         },
+        geo: {
+          '@type': 'GeoCoordinates',
+          latitude: event.latitude || '9.082',
+          longitude: event.longitude || '8.6753',
+        },
       },
       organizer: {
         '@type': 'Organization',
         name: event.organizer || 'KakaWorld',
         url: 'https://kakaworld.com',
+        sameAs: [
+          'https://facebook.com/kakaworld',
+          'https://twitter.com/kakaworld',
+          'https://instagram.com/kakaworld',
+        ],
       },
       performer: {
         '@type': 'PerformingGroup',
@@ -191,10 +211,62 @@ export function useSeo() {
     document.head.appendChild(breadcrumbScript)
   }
 
+  /**
+   * Helper function to update or create meta tags
+   * @param {string} name - Meta tag name
+   * @param {string} content - Meta tag content
+   */
+  const updateOrCreateMetaTag = (name, content) => {
+    let metaTag = document.querySelector(`meta[name="${name}"]`)
+    if (!metaTag) {
+      metaTag = document.createElement('meta')
+      metaTag.setAttribute('name', name)
+      document.head.appendChild(metaTag)
+    }
+    metaTag.setAttribute('content', content)
+  }
+
+  /**
+   * Add dynamic sitemap links for events
+   * @param {Array} events - Array of event objects
+   */
+  const addDynamicSitemapLinks = (events) => {
+    if (!events || !events.length) return
+
+    const sitemapUrls = events.map((event) => ({
+      loc: `https://kakaworld.com/events/${event.slug || event.id}`,
+      lastmod: new Date(event.updated_at || event.created_at).toISOString(),
+      changefreq: 'daily',
+      priority: '0.8',
+    }))
+
+    // Create XML string
+    const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+    <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+      ${sitemapUrls
+        .map(
+          (url) => `
+        <url>
+          <loc>${url.loc}</loc>
+          <lastmod>${url.lastmod}</lastmod>
+          <changefreq>${url.changefreq}</changefreq>
+          <priority>${url.priority}</priority>
+        </url>
+      `,
+        )
+        .join('')}
+    </urlset>`
+
+    // Save to events-sitemap.xml
+    // Note: This would need server-side implementation to actually save the file
+    console.log('Dynamic sitemap generated:', xmlString)
+  }
+
   return {
     updatePageTitle,
     updateMetaDescription,
     updateSocialMeta,
     addEventStructuredData,
+    addDynamicSitemapLinks,
   }
 }

@@ -27,7 +27,6 @@ export const verifyPaystackPayment = async (reference) => {
     const data = await response.json()
     return data
   } catch (error) {
-    console.error('Payment verification error:', error)
     throw error
   }
 }
@@ -69,16 +68,12 @@ export const saveTicketsLocally = (ticketData) => {
  * @returns {Array} Array of saved tickets or empty array if none
  */
 export const getSavedTickets = () => {
-  const savedData = localStorage.getItem('userTickets')
-  if (!savedData) {
-    return []
-  }
+  const savedTickets = localStorage.getItem('savedTickets')
+  if (!savedTickets) return []
 
   try {
-    const parsed = JSON.parse(savedData)
-    return parsed.tickets || []
-  } catch (error) {
-    console.error('Error parsing saved tickets:', error)
+    return JSON.parse(savedTickets)
+  } catch {
     return []
   }
 }

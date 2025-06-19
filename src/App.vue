@@ -79,7 +79,7 @@ const cartCount = computed(() => cartStore.itemCount)
         <div class="logo">
           <RouterLink to="/">
             <img
-              src="https://res.cloudinary.com/dnuhjsckk/image/upload/v1747056280/tdlogowhite_fvgocv.png"
+              src="https://res.cloudinary.com/dnuhjsckk/image/upload/v1750341458/tdlogo_lfg0lh.png"
               alt="TD Logo"
               class="logo-img"
             />
@@ -239,7 +239,7 @@ const cartCount = computed(() => cartStore.itemCount)
       <div class="footer-simple">
         <div class="footer-logo-col">
           <img
-            src="https://res.cloudinary.com/dnuhjsckk/image/upload/v1747056280/tdlogowhite_fvgocv.png"
+            src="https://res.cloudinary.com/dnuhjsckk/image/upload/v1750341458/tdlogo_lfg0lh.png"
             alt="TD Logo"
             class="footer-logo-img"
           />
@@ -366,7 +366,7 @@ const cartCount = computed(() => cartStore.itemCount)
 }
 
 .logo-img {
-  height: 45px;
+  height: 60px;
   width: auto;
   display: block;
   margin-right: 0.5rem;
@@ -386,8 +386,11 @@ const cartCount = computed(() => cartStore.itemCount)
   font-weight: 500;
   padding: 0.5rem 0;
   position: relative;
-  cursor: pointer;
   z-index: 1;
+}
+
+.nav-item:hover {
+  cursor: pointer;
 }
 
 .nav-item.active {
@@ -495,8 +498,14 @@ const cartCount = computed(() => cartStore.itemCount)
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   opacity: 0;
   transform: translateY(20px);
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   transition-delay: calc(var(--index) * 0.1s);
+}
+
+.mobile-nav-item:hover {
+  cursor: pointer;
 }
 
 .mobile-nav-item:last-of-type {

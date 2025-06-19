@@ -36,37 +36,22 @@ const skeletonColor = ref('rgba(255, 255, 255, 0.08)') // Subtle gray skeleton c
 const safetyTimer = ref(null)
 
 // Use our loading composables
-const { isLoading, startLoading } = useLoading()
-const { isLoading: loadingFeatured, startLoading: startFeaturedLoading } = useLoading()
-const {
-  isLoading: initialLoadComplete,
-  startLoading: startInitialLoading,
-  stopLoading: completeInitialLoad,
-} = useLoading({
+const { isLoading } = useLoading()
+const { isLoading: loadingFeatured } = useLoading()
+const { isLoading: initialLoadComplete, stopLoading: completeInitialLoad } = useLoading({
   initialState: false,
 })
 
 // Set active tab with loading and safety
 const activeTab = ref('all')
-const setActiveTab = async (category) => {
-  ensureLoadingCompletes()
-
-  try {
-    await startLoading(async () => {
-      activeTab.value = category
-      await eventStore.fetchEventsByCategory(category)
-    })
-  } catch (e) {
-    console.error('Error setting active tab:', e)
-    isLoading.value = false // Ensure we stop showing the skeleton
-  }
+const setActiveTab = (tab) => {
+  activeTab.value = tab
 }
 
 // Computed
 const filteredEvents = computed(() => {
   // If we're in a search context, display the raw events from the store (already filtered by API)
   if (storeSearchQuery.value && storeSearchQuery.value.trim() !== '') {
-    console.log('Using store-filtered events for search results')
     return eventStore.events
   }
 
@@ -88,7 +73,6 @@ const filteredEvents = computed(() => {
 // When search term is updated in store, sync with local searchTerm
 watch(storeSearchQuery, (newValue) => {
   searchTerm.value = newValue || ''
-  console.log('Search term updated from store:', searchTerm.value)
 })
 
 // Methods with safety
@@ -96,86 +80,19 @@ const getEventsByCategory = async (category) => {
   await setActiveTab(category)
 }
 
-const handleSearch = async () => {
-  ensureLoadingCompletes()
-
-  try {
-    await startLoading(async () => {
-      if (searchTerm.value.trim()) {
-        console.log('Calling eventStore.searchEvents with:', searchTerm.value)
-        await eventStore.searchEvents(searchTerm.value)
-
-        // Force refresh of filtered events
-        activeTab.value = 'all'
-      } else {
-        console.log('Empty search term, resetting filters')
-        await eventStore.resetFilters()
-      }
-    })
-  } catch (e) {
-    console.error('Error during search:', e)
-    isLoading.value = false // Ensure we stop showing the skeleton
-  }
-}
-
-// Add clear search function with safety
-const clearSearch = async () => {
-  ensureLoadingCompletes()
-
-  try {
-    await startLoading(async () => {
-      searchTerm.value = ''
-      await eventStore.resetFilters()
-      console.log('Search cleared, returning to normal view')
-    })
-  } catch (e) {
-    console.error('Error clearing search:', e)
-    isLoading.value = false // Ensure we stop showing the skeleton
-  }
+const resetSearch = async () => {
+  await eventStore.resetFilters()
+  searchTerm.value = ''
 }
 
 // Lifecycle hooks
 onMounted(async () => {
-  try {
-    console.log('Home page mounted - initializing data')
-    ensureLoadingCompletes()
-
-    // Start initial loading
-    const loadData = async () => {
-      // Load all events if not already loaded
-      if (events.value.length === 0) {
-        console.log('No events loaded yet, fetching from API')
-        try {
-          await eventStore.fetchAllEvents(true) // Force refresh from API
-          console.log('Events loaded successfully')
-        } catch (error) {
-          console.error('Failed to fetch events in HomePage:', error)
-        }
-      }
-
-      // Load featured events
-      try {
-        await startFeaturedLoading(async () => {
-          console.log('Fetching featured events')
-          await eventStore.fetchFeaturedEvents()
-          console.log('Featured events loaded')
-        })
-      } catch (err) {
-        console.error('Error loading featured events:', err)
-        loadingFeatured.value = false // Ensure we stop showing the skeleton
-      }
-    }
-
-    try {
-      await startInitialLoading(loadData)
-    } catch (e) {
-      console.error('Error during initial load:', e)
-      completeInitialLoad() // Ensure initial load completes
-    }
-  } catch (error) {
-    console.error('Failed to fetch events:', error)
-    completeInitialLoad()
+  if (!events.value || events.value.length === 0) {
+    await eventStore.fetchEvents()
   }
+
+  // Load featured events
+  await eventStore.fetchFeaturedEvents()
 })
 
 // Watch for changes in events store to update UI
@@ -183,7 +100,6 @@ watch(
   () => eventStore.events,
   () => {
     // This will update when the events array changes, like when a new event is created
-    console.log('Events updated in HomePage')
   },
   { deep: true },
 )
@@ -198,15 +114,12 @@ const ensureLoadingCompletes = () => {
   // Set a new safety timer to ensure loading states don't hang
   safetyTimer.value = setTimeout(() => {
     if (!initialLoadComplete.value) {
-      console.warn('Safety timeout: forcing initialLoad to complete')
       completeInitialLoad()
     }
     if (isLoading.value) {
-      console.warn('Safety timeout: forcing loading to complete')
       isLoading.value = false
     }
     if (loadingFeatured.value) {
-      console.warn('Safety timeout: forcing featuredLoading to complete')
       loadingFeatured.value = false
     }
   }, 5000) // 5 second safety
