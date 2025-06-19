@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /checkout/
+
+# Sitemap location
+Sitemap: https://kakaworld.com/sitemap.xml 
