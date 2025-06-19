@@ -631,12 +631,33 @@ function proceedToCheckout() {
   .cart-footer-row,
   .cart-footer-actions {
     width: 95%;
+    max-width: 100%;
+  }
+
+  .cart-footer-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: space-between;
   }
 
   .cart-clear-btn,
   .cart-checkout-btn {
-    height: 2.5rem;
-    font-size: 0.9rem;
+    height: 2.8rem;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    overflow: visible;
+    padding: 0 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .cart-clear-btn {
+    min-width: 90px;
+  }
+
+  .cart-checkout-btn {
+    min-width: 140px;
   }
 }
 
@@ -678,10 +699,19 @@ function proceedToCheckout() {
     font-size: 20px;
   }
 
+  .cart-footer-actions {
+    gap: 0.5rem;
+  }
+
+  .cart-clear-btn {
+    padding: 0 0.75rem;
+    min-width: 80px;
+  }
+
   .cart-checkout-btn {
-    padding: 0.75rem 1.5rem; /* gives space inside the button */
-    font-size: 1rem; /* keep text readable */
-    white-space: nowrap;
+    padding: 0 0.75rem;
+    min-width: 130px;
+    font-size: 0.85rem;
   }
 }
 </style>

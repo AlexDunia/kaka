@@ -249,10 +249,10 @@ const cartCount = computed(() => cartStore.itemCount)
         </div>
         <div class="footer-social-col">
           <a
-            href="https://t.me/yourtelegram"
+            href="https://instagram.com/kakaworld"
             target="_blank"
             rel="noopener"
-            aria-label="Telegram"
+            aria-label="Instagram"
             class="footer-social-link"
           >
             <svg
@@ -265,15 +265,29 @@ const cartCount = computed(() => cartStore.itemCount)
               stroke-linecap="round"
               stroke-linejoin="round"
             >
-              <path d="M22 2L11 13" />
-              <path d="M22 2L15 22L11 13L2 9L22 2Z" />
+              <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+              <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+              <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
             </svg>
           </a>
           <a
-            href="https://linkedin.com/in/yourprofile"
+            href="https://tiktok.com/@kakaworld"
             target="_blank"
             rel="noopener"
-            aria-label="LinkedIn"
+            aria-label="TikTok"
+            class="footer-social-link"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+              <path
+                d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64c.298 0 .593.044.876.13V9.4a6.33 6.33 0 00-1-.08A6.34 6.34 0 003 15.66a6.34 6.34 0 0010.86 4.48V14.8a8.81 8.81 0 005.73 2.15V13.5a5.85 5.85 0 01-3.82-1.43 4.3 4.3 0 002.89-1.2 4.3 4.3 0 001.93-3.62v-.56z"
+              />
+            </svg>
+          </a>
+          <a
+            href="https://facebook.com/kakaworld"
+            target="_blank"
+            rel="noopener"
+            aria-label="Facebook"
             class="footer-social-link"
           >
             <svg
@@ -286,10 +300,28 @@ const cartCount = computed(() => cartStore.itemCount)
               stroke-linecap="round"
               stroke-linejoin="round"
             >
-              <rect x="2" y="2" width="20" height="20" rx="5" />
-              <path d="M16 8a6 6 0 0 1 6 6v6" />
-              <line x1="8" y1="11" x2="8" y2="16" />
-              <line x1="8" y1="8" x2="8" y2="8" />
+              <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
+            </svg>
+          </a>
+          <a
+            href="https://x.com/kakaworld"
+            target="_blank"
+            rel="noopener"
+            aria-label="X (Twitter)"
+            class="footer-social-link"
+          >
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M4 4l11.733 16h4.267l-11.733-16z"></path>
+              <path d="M4 20l6.768-6.768M20 4l-6.768 6.768"></path>
             </svg>
           </a>
         </div>
@@ -521,7 +553,7 @@ const cartCount = computed(() => cartStore.itemCount)
 
 .app-footer {
   background-color: var(--secondary);
-  padding: 4rem 0 2rem;
+  padding: 3rem 1rem 2rem;
   width: 100%;
   margin-top: 2rem;
   border-top: 1px solid rgba(255, 255, 255, 0.03);
@@ -531,10 +563,11 @@ const cartCount = computed(() => cartStore.itemCount)
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 2.2rem 0 1.2rem 0;
+  padding: 0;
   max-width: 1200px;
   margin: 0 auto;
   width: 100%;
+  gap: 2rem;
 }
 
 .footer-logo-col {
@@ -547,7 +580,7 @@ const cartCount = computed(() => cartStore.itemCount)
   flex: 1 1 auto;
   text-align: center;
   color: #fff;
-  font-size: 1.08rem;
+  font-size: 1rem;
   font-weight: 500;
   opacity: 0.85;
 }
@@ -556,47 +589,130 @@ const cartCount = computed(() => cartStore.itemCount)
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 1.2rem;
+  gap: 1rem;
 }
 
 .footer-social-link {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.04);
   color: #fff;
-  font-size: 1.2rem;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
 }
 
-/* Remove hover effect */
 .footer-social-link:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.1);
   color: #fff;
-  transform: none;
+  transform: translateY(-2px);
 }
 
-/* Logo styles */
-.logo a,
-.logo-img {
-  opacity: 1;
-  transform: none;
+.footer-social-link svg {
+  width: 20px;
+  height: 20px;
+  transition: all 0.3s ease;
 }
 
-.header-logo-img {
-  height: 50px;
-  width: auto;
-  display: block;
-  margin-right: 0.5rem;
-  border-radius: 7px;
-  box-shadow: 0 2px 8px rgba(192, 72, 136, 0.08);
+.footer-social-link:hover svg {
+  transform: scale(1.1);
+}
+
+/* Platform-specific hover colors */
+.footer-social-link[aria-label='Instagram']:hover {
+  background: linear-gradient(
+    45deg,
+    #f09433 0%,
+    #e6683c 25%,
+    #dc2743 50%,
+    #cc2366 75%,
+    #bc1888 100%
+  );
+  box-shadow: 0 4px 12px rgba(220, 39, 67, 0.2);
+}
+
+.footer-social-link[aria-label='TikTok']:hover {
+  background: #000000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  color: #00f2ea;
+}
+
+.footer-social-link[aria-label='Facebook']:hover {
+  background: #1877f2;
+  box-shadow: 0 4px 12px rgba(24, 119, 242, 0.2);
+}
+
+.footer-social-link[aria-label='X (Twitter)']:hover {
+  background: #000000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .footer-logo-img {
-  height: 50px;
+  height: 45px;
   width: auto;
   display: block;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .app-footer {
+    padding: 2rem 1rem 1.5rem;
+  }
+
+  .footer-simple {
+    flex-direction: column;
+    gap: 1.5rem;
+    text-align: center;
+  }
+
+  .footer-logo-col {
+    justify-content: center;
+  }
+
+  .footer-center-col {
+    font-size: 0.9rem;
+    order: 2;
+  }
+
+  .footer-social-col {
+    order: 1;
+    gap: 1.2rem;
+  }
+
+  .footer-logo-img {
+    height: 40px;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-footer {
+    padding: 1.5rem 1rem 1rem;
+  }
+
+  .footer-simple {
+    gap: 1.2rem;
+  }
+
+  .footer-social-col {
+    gap: 1rem;
+  }
+
+  .footer-social-link {
+    width: 36px;
+    height: 36px;
+  }
+
+  .footer-social-link svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .footer-logo-img {
+    height: 35px;
+  }
 }
 </style>
