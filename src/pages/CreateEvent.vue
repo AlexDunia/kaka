@@ -1526,24 +1526,52 @@ onMounted(async () => {
   error.value = null // Start with no error message
 
   try {
+    // Use axios directly to ensure we're hitting the exact Laravel API endpoints
     const axios = (await import('axios')).default
     const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+    console.log('Configured API URL:', API_BASE_URL)
 
-    // Direct diagnostic check of the Laravel API root
+    // Direct diagnostic check of the Laravel API root to verify connectivity
     try {
-      await axios.get(`${API_BASE_URL}/api`, { timeout: 5000 })
+      console.log('Testing API connectivity with simple GET request...')
+      const pingResponse = await axios.get(`${API_BASE_URL}/api`, {
+        timeout: 5000, // 5 second timeout
+      })
+      console.log('API root response:', pingResponse.status, pingResponse.statusText)
     } catch (pingErr) {
+      console.error('API root connectivity test failed:', pingErr.message)
+      // Check for CORS error
       if (pingErr.message.includes('CORS') || pingErr.message.includes('Cross-Origin')) {
-        throw new Error('CORS configuration issue detected')
+        console.error('POSSIBLE CORS ISSUE DETECTED! Check your Laravel CORS configuration')
       }
     }
 
     // Try different combinations of headers and configurations
     const fetchOptions = [
-      { config: { timeout: 10000 } },
-      { config: { headers: { 'X-Requested-With': 'XMLHttpRequest' }, timeout: 10000 } },
-      { config: { headers: { Accept: 'application/json' }, timeout: 10000 } },
+      // Option 1: Simple GET without any special headers
       {
+        description: 'Simple GET',
+        config: { timeout: 10000 },
+      },
+      // Option 2: With AJAX header
+      {
+        description: 'With AJAX header',
+        config: {
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+          timeout: 10000,
+        },
+      },
+      // Option 3: With Accept JSON header
+      {
+        description: 'With Accept JSON header',
+        config: {
+          headers: { Accept: 'application/json' },
+          timeout: 10000,
+        },
+      },
+      // Option 4: Full headers with credentials
+      {
+        description: 'Full headers with credentials',
         config: {
           withCredentials: true,
           headers: {
@@ -1562,51 +1590,71 @@ onMounted(async () => {
       if (categoriesSucceeded) break
 
       try {
+        console.log(`Trying to fetch categories with: ${option.description}`)
         const response = await axios.get(`${API_BASE_URL}/api/categories`, option.config)
+        console.log(`✅ CATEGORIES SUCCESS with ${option.description}:`, response.status)
 
         if (response.data && response.data.data) {
           categories.value = response.data.data
-          categoriesSucceeded = true
+          console.log('Categories loaded, count:', categories.value.length)
         } else if (Array.isArray(response.data)) {
           categories.value = response.data
-          categoriesSucceeded = true
+          console.log('Categories loaded as array, count:', categories.value.length)
+        } else {
+          console.warn('Unexpected response format:', response.data)
+          continue // Try next option
         }
-      } catch {
-        continue
+
+        categoriesSucceeded = true
+      } catch (err) {
+        console.error(`❌ Failed with ${option.description}:`, err.message)
       }
     }
 
     if (!categoriesSucceeded) {
-      throw new Error('Failed to fetch categories')
+      throw new Error('All category fetch attempts failed')
     }
 
-    // Now try to fetch subcategories
+    // Now try to fetch subcategories with the same approach
     let subcategoriesSucceeded = false
     for (const option of fetchOptions) {
       if (subcategoriesSucceeded) break
 
       try {
+        console.log(`Trying to fetch subcategories with: ${option.description}`)
         const response = await axios.get(`${API_BASE_URL}/api/subcategories`, option.config)
+        console.log(`✅ SUBCATEGORIES SUCCESS with ${option.description}:`, response.status)
 
         if (response.data && response.data.data) {
           availableSubCategories.value = response.data.data
-          subcategoriesSucceeded = true
+          console.log('Subcategories loaded, count:', availableSubCategories.value.length)
         } else if (Array.isArray(response.data)) {
           availableSubCategories.value = response.data
-          subcategoriesSucceeded = true
+          console.log('Subcategories loaded as array, count:', availableSubCategories.value.length)
+        } else {
+          console.warn('Unexpected response format:', response.data)
+          continue // Try next option
         }
-      } catch {
-        continue
+
+        subcategoriesSucceeded = true
+      } catch (err) {
+        console.error(`❌ Failed with ${option.description}:`, err.message)
       }
     }
 
     if (!subcategoriesSucceeded) {
-      throw new Error('Failed to fetch subcategories')
+      throw new Error('All subcategory fetch attempts failed')
     }
   } catch (err) {
-    error.value = err.message || 'Failed to load data from API'
+    error.value = 'Failed to load categories from API'
+    console.error('API Error Details:', err)
 
+    // More detailed error information for troubleshooting
     if (err.response) {
+      console.error('API Response Status:', err.response.status)
+      console.error('API Response Data:', err.response.data)
+      console.error('API Response Headers:', err.response.headers)
+
       if (err.response.status === 404) {
         error.value = 'API endpoints not found. Check Laravel routes.'
       } else if (err.response.status === 401 || err.response.status === 403) {
@@ -1615,7 +1663,11 @@ onMounted(async () => {
         error.value = 'Server error. Check Laravel logs.'
       }
     } else if (err.request) {
+      console.error('No response received:', err.request)
       error.value = 'No response from API server. Is Laravel running?'
+    } else {
+      console.error('Error setting up request:', err.message)
+      error.value = `Request setup error: ${err.message}`
     }
   }
 })
@@ -2714,67 +2766,6 @@ const isSameDay = (date1, date2) => {
     date1.getMonth() === date2.getMonth() &&
     date1.getDate() === date2.getDate()
   )
-}
-
-// API connectivity test
-const testApiConnectivity = async () => {
-  try {
-    const response = await fetch(API_BASE_URL)
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-  } catch (error) {
-    throw new Error(`API connectivity test failed: ${error.message}`)
-  }
-}
-
-// Load categories
-const loadCategories = async () => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/categories`)
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-    const data = await response.json()
-    categories.value = Array.isArray(data) ? data : []
-  } catch (error) {
-    throw new Error(`Failed to load categories: ${error.message}`)
-  }
-}
-
-// Load subcategories
-const loadSubCategories = async () => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/subcategories`)
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-    const data = await response.json()
-    availableSubCategories.value = Array.isArray(data) ? data : []
-  } catch (error) {
-    throw new Error(`Failed to load subcategories: ${error.message}`)
-  }
-}
-
-// Submit event
-const submitEvent = async (eventData) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/events`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(eventData),
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-
-    return await response.json()
-  } catch (error) {
-    throw new Error(`Failed to save event: ${error.message}`)
-  }
 }
 </script>
 

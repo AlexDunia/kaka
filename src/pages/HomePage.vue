@@ -218,35 +218,6 @@ onUnmounted(() => {
     clearTimeout(safetyTimer.value)
   }
 })
-
-// Search functionality
-watch(searchTerm, async (newSearchTerm) => {
-  if (newSearchTerm && newSearchTerm.length > 0) {
-    await eventStore.searchEvents(newSearchTerm)
-  } else {
-    await eventStore.resetFilters()
-  }
-})
-
-onMounted(async () => {
-  if (!eventStore.events.length) {
-    await eventStore.fetchEvents()
-  }
-
-  try {
-    await eventStore.fetchFeaturedEvents()
-  } catch {
-    // Handle error silently or show user-friendly message if needed
-  }
-})
-
-watch(
-  () => eventStore.events,
-  () => {
-    // Handle events update if needed
-  },
-  { deep: true },
-)
 </script>
 
 <template>

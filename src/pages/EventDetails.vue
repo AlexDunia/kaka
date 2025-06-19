@@ -237,9 +237,16 @@ function formatPrice(price) {
 }
 
 // Open purchase modal with pre-selected ticket type
-const openPurchaseModal = (ticketTypeId) => {
+const openPurchaseModalWithTicket = (ticketTypeId) => {
+  console.log('Opening modal for ticket type:', ticketTypeId)
+
   selectedTicketType.value = ticketTypeId
-  showPurchaseModal.value = true
+
+  // Small delay to ensure Vue has updated the props
+  setTimeout(() => {
+    showPurchaseModal.value = true
+    console.log('Modal should be visible now')
+  }, 50)
 }
 
 // Load event on mount
@@ -309,6 +316,7 @@ const decrementQuantity = () => {
 
 // Close purchase modal - combined version
 const closePurchaseModal = () => {
+  console.log('Closing purchase modal')
   showPurchaseModal.value = false
   selectedTicketType.value = null
   ticketQuantity.value = 1
@@ -382,7 +390,7 @@ watch(
       const ticketId = query.ticket
       const ticket = ticketTypes.value.find((t) => t.id === ticketId)
       if (ticket) {
-        openPurchaseModal(ticketId)
+        openPurchaseModalWithTicket(ticketId)
       }
     }
   },
@@ -443,57 +451,48 @@ const closeShareModal = () => {
   showShareModal.value = false
 }
 
-const shareEvent = async (platform) => {
-  const shareData = {
-    title: event.value.title,
-    text: event.value.description,
-    url: window.location.href,
+const shareLink = (platform) => {
+  const url = encodeURIComponent(shareUrl.value || window.location.href)
+  const title = encodeURIComponent(shareTitle.value || document.title)
+  // Use a shorter, more generic text for WhatsApp to avoid issues with length or special chars
+  const whatsAppText = encodeURIComponent(`${shareTitle.value} - Check out this event!`)
+  const genericText = encodeURIComponent(shareDescription.value || '')
+
+  let shareWindowUrl = ''
+
+  switch (platform) {
+    case 'twitter':
+      shareWindowUrl = `https://twitter.com/intent/tweet?url=${url}&text=${title}`
+      break
+    case 'facebook':
+      shareWindowUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`
+      break
+    case 'whatsapp':
+      // WhatsApp Web: Use a more direct approach. Mobile typically handles `https://wa.me/` better.
+      shareWindowUrl = `https://api.whatsapp.com/send?text=${whatsAppText}%20${url}`
+      break
+    case 'linkedin':
+      shareWindowUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${url}&title=${title}&summary=${genericText}`
+      break
+    case 'copy':
+      navigator.clipboard
+        .writeText(shareUrl.value || window.location.href)
+        .then(() => {
+          showToaster('Link copied to clipboard!')
+          closeShareModal() // Close modal after copying
+        })
+        .catch((err) => {
+          console.error('Failed to copy link: ', err)
+          showToaster('Failed to copy link.', false)
+        })
+      return // Don't open a window for copy
+    default:
+      console.warn('Unknown share platform:', platform)
+      return
   }
 
-  try {
-    switch (platform) {
-      case 'clipboard':
-        await navigator.clipboard.writeText(window.location.href)
-        showShareSuccess.value = true
-        setTimeout(() => {
-          showShareSuccess.value = false
-        }, 2000)
-        break
-      case 'facebook':
-        window.open(
-          `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`,
-          '_blank',
-        )
-        break
-      case 'twitter':
-        window.open(
-          `https://twitter.com/intent/tweet?text=${encodeURIComponent(
-            event.value.title,
-          )}&url=${encodeURIComponent(window.location.href)}`,
-          '_blank',
-        )
-        break
-      case 'whatsapp':
-        window.open(
-          `https://wa.me/?text=${encodeURIComponent(
-            `${event.value.title} - ${window.location.href}`,
-          )}`,
-          '_blank',
-        )
-        break
-      case 'native':
-        if (navigator.share) {
-          await navigator.share(shareData)
-        } else {
-          throw new Error('Native sharing not supported')
-        }
-        break
-      default:
-        throw new Error('Unknown share platform')
-    }
-  } catch {
-    error.value = 'Failed to share event'
-  }
+  // Open the share window
+  window.open(shareWindowUrl, '_blank', 'noopener,noreferrer,width=600,height=450')
 }
 // --- End Share Modal Functions ---
 

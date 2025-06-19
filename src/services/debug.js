@@ -1,43 +1,35 @@
 import axios from 'axios'
 
-// This service is for development debugging only
-// It should be removed or disabled in production
-
-export function logDebugInfo() {
-  if (import.meta.env.DEV) {
-    // No-op in production
-  }
-}
-
-export function logError() {
-  if (import.meta.env.DEV) {
-    // No-op in production
-  }
-}
-
 // Simple debug helper with consistent formatting
 const debug = {
-  log: () => {
-    if (import.meta.env.DEV) {
-      // No-op in development
-    }
+  log: (label, data) => {
+    console.log(
+      `%c ${label} `,
+      'background: #0066cc; color: white; font-weight: bold; padding: 2px 6px; border-radius: 3px;',
+      data,
+    )
   },
 
-  error: () => {
-    if (import.meta.env.DEV) {
-      // No-op in development
-    }
+  error: (label, error) => {
+    console.error(
+      `%c ${label} `,
+      'background: #cc0000; color: white; font-weight: bold; padding: 2px 6px; border-radius: 3px;',
+      error,
+    )
   },
 
   // Test connection to API endpoints
   testAPI: async (url) => {
     try {
+      debug.log('Testing API connection to', url)
       const response = await axios.get(url)
+      debug.log('API Response', response.data)
       return {
         success: true,
         data: response.data,
       }
     } catch (err) {
+      debug.error('API Connection Failed', err)
       return {
         success: false,
         error: err.message,

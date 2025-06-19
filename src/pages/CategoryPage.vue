@@ -3,95 +3,155 @@ import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useEventStore } from '@/stores/events'
 import EventCard from '@/components/EventCard.vue'
 import SkeletonLoader from '@/components/SkeletonLoader.vue'
+import { useLoading } from '@/composables/useLoading'
 import { useSeo } from '@/composables/useSeo'
-import { useRoute } from 'vue-router'
 
 const props = defineProps({
   category: {
     type: String,
-    required: false,
+    required: true,
   },
 })
 
 const eventStore = useEventStore()
-const route = useRoute()
 
-// State
-const events = ref([])
-const currentCategory = ref(null)
+// Use our loading composable with safety timeouts
+const { isLoading: loading, startLoading } = useLoading()
+const { isLoading: initialLoad, startLoading: startInitialLoading } = useLoading()
+
+// Add loading state safety
+const safetyTimer = ref(null)
+const ensureLoadingCompletes = () => {
+  // Clear any existing safety timer
+  if (safetyTimer.value) {
+    clearTimeout(safetyTimer.value)
+  }
+
+  // Set a new safety timer to ensure loading states don't hang
+  safetyTimer.value = setTimeout(() => {
+    if (initialLoad.value) {
+      console.warn('Safety timeout: forcing initialLoad to complete')
+      initialLoad.value = false
+    }
+    if (loading.value) {
+      console.warn('Safety timeout: forcing loading to complete')
+      loading.value = false
+    }
+  }, 5000) // 5 second safety
+}
+
 const error = ref(null)
-const loading = ref(false)
 const currentPage = ref(1)
 const skeletonColor = ref('rgba(255, 255, 255, 0.08)') // Subtle gray skeleton color
 
-// SEO
+// Get the SEO utilities
 const { updatePageTitle, updateMetaDescription, updateSocialMeta } = useSeo()
 
-// Update SEO meta tags
-const updateSeo = () => {
-  const categoryName = currentCategory.value || 'All Events'
-  updatePageTitle(`${categoryName} Events in Nigeria`)
-  updateMetaDescription(
-    `Browse and book tickets for ${categoryName} events in Nigeria. Find the best ${categoryName.toLowerCase()} events near you.`,
-  )
-  updateSocialMeta({
-    title: `${categoryName} Events - KakaWorld`,
-    description: `Discover amazing ${categoryName.toLowerCase()} events in Nigeria`,
-    image: '/images/events-social.jpg',
-  })
-}
-
-const loadEvents = async () => {
-  loading.value = true
-  error.value = null
+// Load events on mount with safety
+onMounted(async () => {
+  ensureLoadingCompletes()
 
   try {
-    const categoryParam = props.category || route.params.category
-    const response = await eventStore.fetchEventsByCategory(categoryParam, true)
-    events.value = response
-    updateSeo()
-  } catch (err) {
-    error.value = err.message || 'Failed to load events'
-  } finally {
-    loading.value = false
+    await startInitialLoading(async () => {
+      try {
+        await loadEvents()
+      } catch (err) {
+        console.error('Failed to load events:', err)
+      }
+    })
+  } catch (e) {
+    console.error('Error in initialLoad:', e)
+    initialLoad.value = false // Ensure we stop showing the skeleton
   }
-}
+})
 
-const loadCategory = async () => {
-  try {
-    const categoryParam = props.category || route.params.category
-    currentCategory.value = categoryParam
-  } catch {
-    error.value = 'Failed to load category'
-  }
-}
-
-const loadPage = async () => {
-  try {
-    await loadCategory()
-    await loadEvents()
-  } catch {
-    error.value = 'Failed to load page'
-  }
-}
-
-// Watch for category changes
+// Watch for category changes from route
 watch(
-  () => props.category || route.params.category,
+  () => props.category,
   async () => {
-    await loadPage()
+    currentPage.value = 1 // Reset to page 1 when category changes
+    ensureLoadingCompletes()
+
+    try {
+      await startLoading(loadEvents)
+    } catch (e) {
+      console.error('Error loading category:', e)
+      loading.value = false // Ensure we stop showing the skeleton
+    }
   },
 )
 
-// Load data on mount
-onMounted(async () => {
-  await loadPage()
+// Watch for page changes
+watch(
+  () => currentPage.value,
+  async () => {
+    ensureLoadingCompletes()
+
+    try {
+      await startLoading(loadEvents)
+    } catch (e) {
+      console.error('Error loading page:', e)
+      loading.value = false // Ensure we stop showing the skeleton
+    }
+  },
+)
+
+// Cleanup safety timer on component unmount
+onUnmounted(() => {
+  if (safetyTimer.value) {
+    clearTimeout(safetyTimer.value)
+  }
 })
 
+// Load events by category
+const loadEvents = async () => {
+  try {
+    error.value = null
+
+    // Debug what category is being passed
+    console.log('Loading events for category:', props.category)
+
+    // Check if we have a 'comedy' category which might need mapping to 'theatre'
+    let categoryParam = props.category
+
+    // Some categories might need mapping to match what's in database
+    const categoryMapping = {
+      comedy: 'theatre', // Map comedy to theatre if needed - adjust based on your DB schema
+      // Add other mappings if needed
+    }
+
+    // Apply mapping if needed
+    if (categoryMapping[categoryParam]) {
+      console.log(
+        `Mapping category '${categoryParam}' to '${categoryMapping[categoryParam]}' to match database schema`,
+      )
+      categoryParam = categoryMapping[categoryParam]
+    }
+
+    await eventStore.fetchEventsByCategory(categoryParam, true, currentPage.value)
+
+    // Debug what was returned
+    console.log(`Found ${eventStore.events.length} events for category ${categoryParam}`)
+
+    // Inspect what we have in the returned events
+    if (eventStore.events.length > 0) {
+      console.log(
+        'Sample event categories:',
+        eventStore.events.map((e) => e.category),
+      )
+    }
+  } catch (err) {
+    error.value = err.message || `Failed to load ${props.category} events`
+    console.error('Error in loadEvents:', err)
+    throw err
+  }
+}
+
 // Handle page navigation
-const goToPage = async (page) => {
+const goToPage = (page) => {
   currentPage.value = page
-  await loadEvents()
+  // Scroll to top when changing pages
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 // Computed properties
@@ -191,7 +251,7 @@ watch(
 <template>
   <div class="category-page">
     <!-- Skeleton Hero Banner when loading -->
-    <div v-if="loading" class="skeleton-hero-container">
+    <div v-if="initialLoad" class="skeleton-hero-container">
       <SkeletonLoader type="banner" :color="skeletonColor" />
     </div>
 

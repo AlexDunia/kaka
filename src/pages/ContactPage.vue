@@ -4,7 +4,12 @@ import emailjs from '@emailjs/browser'
 
 // Initialize EmailJS
 onMounted(() => {
-  emailjs.init(import.meta.env.VITE_EMAILJS_PUBLIC_KEY)
+  try {
+    emailjs.init('h9a6YgYeeB2ELoJSM')
+    console.log('EmailJS initialized successfully')
+  } catch (error) {
+    console.error('Failed to initialize EmailJS:', error)
+  }
 })
 
 const formData = ref({
@@ -15,35 +20,73 @@ const formData = ref({
 })
 
 const loading = ref(false)
-const error = ref('')
+const error = ref(null)
 const success = ref(false)
-const isSubmitting = ref(false)
 
-const handleSubmit = async () => {
-  isSubmitting.value = true
-  success.value = false
-  error.value = ''
+const submitForm = async () => {
+  console.log('Starting form submission...')
+
+  // Validate form
+  if (!formData.value.name || !formData.value.email || !formData.value.message) {
+    console.warn('Form validation failed:', {
+      name: !!formData.value.name,
+      email: !!formData.value.email,
+      message: !!formData.value.message,
+    })
+    error.value = 'Please fill in all required fields'
+    return
+  }
+
+  // Reset status
+  error.value = null
+  loading.value = true
 
   try {
-    const emailParams = {
+    console.log('Preparing email parameters...')
+    const templateParams = {
       from_name: formData.value.name,
       from_email: formData.value.email,
       message: formData.value.message,
-      subject: formData.value.subject,
+      subject: formData.value.subject || 'Contact Form Submission',
     }
 
-    await emailjs.send(
-      import.meta.env.VITE_EMAILJS_SERVICE_ID,
-      import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
-      emailParams,
+    console.log('Sending email with parameters:', {
+      serviceId: 'service_3w6bbim',
+      templateId: 'template_ww1ge9r',
+      params: templateParams,
+    })
+
+    const response = await emailjs.send(
+      'service_3w6bbim',
+      'template_ww1ge9r',
+      templateParams,
+      'h9a6YgYeeB2ELoJSM',
     )
 
+    console.log('Email sent successfully:', response)
+
+    // Show success message
     success.value = true
-    formData.value = { name: '', email: '', subject: '', message: '' }
-  } catch (_) {
-    error.value = 'Failed to send message. Please try again later.'
+
+    // Reset form
+    formData.value = {
+      name: '',
+      email: '',
+      subject: '',
+      message: '',
+    }
+  } catch (err) {
+    console.error('Failed to send email. Full error:', err)
+    console.error('Error details:', {
+      message: err.message,
+      text: err.text,
+      name: err.name,
+      stack: err.stack,
+    })
+    error.value = `Failed to send your message: ${err.message || 'Unknown error'}`
   } finally {
-    isSubmitting.value = false
+    loading.value = false
+    console.log('Form submission completed. Success:', success.value)
   }
 }
 </script>
@@ -150,7 +193,7 @@ const handleSubmit = async () => {
             <button class="btn" @click="success = false">Send Another Message</button>
           </div>
 
-          <form v-else class="contact-form" @submit.prevent="handleSubmit">
+          <form v-else class="contact-form" @submit.prevent="submitForm">
             <h2 class="contact-form__title">Send Us a Message</h2>
 
             <div v-if="error" class="contact-form__error">
