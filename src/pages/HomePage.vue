@@ -127,6 +127,25 @@ const resetSearch = async () => {
   searchTerm.value = ''
 }
 
+// Add handleSearch method
+const handleSearch = async () => {
+  try {
+    if (searchTerm.value.trim() !== '') {
+      startLoading()
+      await eventStore.searchEvents(searchTerm.value)
+    }
+  } catch (err) {
+    console.error('Search failed:', err)
+  } finally {
+    stopLoading()
+  }
+}
+
+// Add clearSearch method
+const clearSearch = async () => {
+  await resetSearch()
+}
+
 // Lifecycle hooks
 onMounted(async () => {
   try {

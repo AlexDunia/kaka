@@ -1,70 +1,24 @@
-<script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useCartStore } from '@/stores/cart'
-
-defineOptions({ name: 'CartPage' })
-
-const cart = useCartStore()
-const router = useRouter()
-const notification = ref(null)
-const isMobile = ref(window.innerWidth <= 700)
-
-function handleResize() {
-  isMobile.value = window.innerWidth <= 700
-}
-onMounted(() => window.addEventListener('resize', handleResize))
-onUnmounted(() => window.removeEventListener('resize', handleResize))
-
-function showNotification(msg) {
-  notification.value = msg
-  setTimeout(() => (notification.value = null), 1800)
-}
-
-function removeItem(item) {
-  cart.removeItem(item.eventId, item.ticketId)
-  if (cart.items.length === 0) {
-    showNotification('Last item removed from cart')
-  }
-}
-
-function updateQuantity(item, qty) {
-  if (qty < 1) return
-  cart.updateQuantity(item.eventId, item.ticketId, qty)
-}
-
-function clearCart() {
-  cart.clearCart()
-  showNotification('Cart cleared')
-}
-
-function proceedToCheckout() {
-  if (cart.isEmpty) return
-  // Save cart to session for checkout page
-  sessionStorage.setItem('checkoutCart', JSON.stringify(cart.items))
-  router.push('/checkout')
-}
-</script>
-
 <template>
   <div class="cart-bg">
-    <button class="back-button" @click="router.back()">← Back</button>
+    <button class="back-button" @click="$emit('back')">← Back</button>
     <div class="cart-container">
       <h1 class="cart-title">Your Cart</h1>
-      <div v-if="cart.isEmpty" class="cart-empty">
+      <div v-if="isEmpty" class="cart-empty">
         <div class="empty-cart-icon">🛒</div>
         <p>Your cart is empty.</p>
-        <button class="continue-shopping" @click="router.push('/')">Continue Shopping</button>
+        <button class="continue-shopping" @click="$emit('continue-shopping')">
+          Continue Shopping
+        </button>
       </div>
       <div v-else class="cart-list">
-        <div v-for="item in cart.items" :key="item.eventId + '-' + item.ticketId" class="cart-item">
-          <div class="cart-item-top">
-            <div class="cart-item-image">
-              <img
-                :src="item.eventImage || '/placeholder.png'"
-                :alt="item.eventTitle || 'Event image'"
-              />
-            </div>
+        <div v-for="item in items" :key="item.eventId + '-' + item.ticketId" class="cart-item">
+          <div class="cart-item-image">
+            <img
+              :src="item.eventImage || '/placeholder.png'"
+              :alt="item.eventTitle || 'Event image'"
+            />
+          </div>
+          <div class="cart-item-content">
             <div class="cart-item-info">
               <div class="cart-event-title">{{ item.eventTitle }}</div>
               <div class="cart-ticket-type">{{ item.ticketType }}</div>
@@ -73,70 +27,91 @@ function proceedToCheckout() {
                 {{ item.eventAddress }}
               </div>
             </div>
-          </div>
-          <div class="cart-item-bottom">
-            <div class="cart-qty-group">
-              <button
-                @click="updateQuantity(item, item.quantity - 1)"
-                :disabled="item.quantity <= 1"
-                class="qty-btn"
-              >
-                -
-              </button>
-              <span class="cart-qty">{{ item.quantity }}</span>
-              <button @click="updateQuantity(item, item.quantity + 1)" class="qty-btn">+</button>
-            </div>
-            <div class="cart-actions">
+            <div class="cart-item-actions">
+              <div class="cart-qty-group">
+                <button
+                  @click="$emit('update-quantity', item, item.quantity - 1)"
+                  :disabled="item.quantity <= 1"
+                  class="qty-btn"
+                >
+                  -
+                </button>
+                <span class="cart-qty">{{ item.quantity }}</span>
+                <button @click="$emit('update-quantity', item, item.quantity + 1)" class="qty-btn">
+                  +
+                </button>
+                <button
+                  class="cart-remove cart-remove-inline"
+                  @click="$emit('remove-item', item)"
+                  title="Remove item"
+                  aria-label="Remove from cart"
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    class="remove-svg"
+                  >
+                    <rect x="3" y="6" width="18" height="15" rx="2" />
+                    <path d="M9 10v6M15 10v6" />
+                    <path d="M5 6V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2" />
+                    <line x1="1" y1="6" x2="23" y2="6" />
+                  </svg>
+                </button>
+              </div>
               <div class="cart-price">
                 {{ '₦' + (item.pricePerTicket * item.quantity).toLocaleString('en-NG') }}
               </div>
-              <button
-                class="cart-remove-inline"
-                @click="removeItem(item)"
-                title="Remove item"
-                aria-label="Remove from cart"
-              >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2.2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  class="remove-svg"
-                >
-                  <rect x="3" y="6" width="18" height="15" rx="2" />
-                  <path d="M9 10v6M15 10v6" />
-                  <path d="M5 6V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2" />
-                  <line x1="1" y1="6" x2="23" y2="6" />
-                </svg>
-              </button>
             </div>
           </div>
         </div>
       </div>
-      <transition name="fade">
-        <div v-if="notification" class="cart-notification">{{ notification }}</div>
-      </transition>
     </div>
-    <div class="cart-footer-summary" v-if="!cart.isEmpty">
+    <div class="cart-footer-summary" v-if="!isEmpty">
       <div class="cart-footer-row">
         <span>Subtotal</span>
-        <span>{{ '₦' + cart.total.toLocaleString('en-NG') }}</span>
+        <span>{{ '₦' + total.toLocaleString('en-NG') }}</span>
       </div>
       <div class="cart-footer-actions">
-        <button class="cart-clear-btn" @click="clearCart">Clear Cart</button>
-        <button class="cart-checkout-btn" @click="proceedToCheckout">Proceed to Checkout</button>
+        <button class="cart-clear-btn" @click="$emit('clear-cart')">Clear Cart</button>
+        <button class="cart-checkout-btn" @click="$emit('checkout')">Proceed to Checkout</button>
       </div>
     </div>
   </div>
 </template>
 
-<style scoped>
-@import '../styles/cart-mobile.css';
+<script setup>
+defineProps({
+  items: {
+    type: Array,
+    required: true,
+  },
+  isEmpty: {
+    type: Boolean,
+    required: true,
+  },
+  total: {
+    type: Number,
+    required: true,
+  },
+})
 
+defineEmits([
+  'back',
+  'continue-shopping',
+  'update-quantity',
+  'remove-item',
+  'clear-cart',
+  'checkout',
+])
+</script>
+
+<style scoped>
 .cart-bg {
   min-height: 100vh;
   width: 100vw;
@@ -159,11 +134,6 @@ function proceedToCheckout() {
   width: fit-content;
   opacity: 0.9;
   margin: 0;
-}
-
-.back-button:hover {
-  color: #c04888;
-  opacity: 1;
 }
 
 .cart-container {
@@ -240,13 +210,6 @@ function proceedToCheckout() {
   margin: 0 auto;
 }
 
-.cart-item-top {
-  display: flex;
-  gap: 1rem;
-  align-items: flex-start;
-  flex: 1;
-}
-
 .cart-item-image {
   width: 80px;
   height: 80px;
@@ -261,9 +224,15 @@ function proceedToCheckout() {
   object-fit: cover;
 }
 
-.cart-item-info {
+.cart-item-content {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.cart-item-info {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -289,10 +258,11 @@ function proceedToCheckout() {
   gap: 0.5rem;
 }
 
-.cart-item-bottom {
+.cart-item-actions {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  justify-content: space-between;
+  margin-top: 0.5rem;
 }
 
 .cart-qty-group {
@@ -328,12 +298,6 @@ function proceedToCheckout() {
   text-align: center;
 }
 
-.cart-actions {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
 .cart-price {
   font-size: 1.1rem;
   font-weight: 600;
@@ -344,9 +308,7 @@ function proceedToCheckout() {
   padding: 0.35rem;
   color: #e74c3c;
   opacity: 0.9;
-  background: none;
-  border: none;
-  cursor: pointer;
+  margin-left: 0.25rem;
 }
 
 .cart-footer-summary {
@@ -406,33 +368,6 @@ function proceedToCheckout() {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.cart-notification {
-  position: fixed;
-  top: 2.5rem;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #2d2a36;
-  color: #fff;
-  padding: 1rem 2rem;
-  border-radius: 8px;
-  font-weight: 500;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
-}
-
-.fade-enter-active,
-.fade-leave-active {
-  transition:
-    opacity 0.3s,
-    transform 0.3s;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-  transform: translate(-50%, -1rem);
 }
 
 @media (max-width: 480px) {
