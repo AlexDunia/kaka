@@ -199,6 +199,22 @@ const router = createRouter({
       },
     },
     {
+      path: '/blog',
+      name: 'blog',
+      component: () => import('@/pages/BlogList.vue'),
+      meta: {
+        title: 'Blog - Event Planning Tips & Insights',
+      },
+    },
+    {
+      path: '/blog/:slug',
+      name: 'blog-post',
+      component: () => import('@/pages/BlogPost.vue'),
+      meta: {
+        title: 'Blog Post',
+      },
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: () => import('../pages/NotFound.vue'),

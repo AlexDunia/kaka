@@ -6,10 +6,5 @@ header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Accept");
 
 // Simple response
-echo json_encode([
-    'status' => 'success',
-    'message' => 'API server is working correctly',
-    'time' => date('Y-m-d H:i:s'),
-    'php_version' => phpversion()
-]);
+echo json_encode(['status' => 'success', 'message' => 'PHP is working!']);
 ?> 
