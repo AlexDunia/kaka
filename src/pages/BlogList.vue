@@ -15,6 +15,10 @@ onMounted(async () => {
   try {
     posts.value = await blogService.getAllPosts()
 
+    // Get the first post's image for social sharing if available
+    const socialImage =
+      posts.value.length > 0 ? posts.value[0].bgimage : 'https://picsum.photos/1200/630'
+
     // Update SEO metadata
     updatePageTitle('Blog - Event Planning Tips & Insights')
     updateMetaDescription(
@@ -25,7 +29,7 @@ onMounted(async () => {
       description:
         'Discover valuable insights and tips about event planning, venue selection, and event marketing strategies.',
       url: window.location.href,
-      image: 'https://picsum.photos/1200/630',
+      image: socialImage,
     })
   } catch (e) {
     error.value = 'Failed to load blog posts'
@@ -42,7 +46,14 @@ const navigateToPost = (slug) => {
 
 <template>
   <div class="blog-list">
-    <h1 class="blog-title">Event Planning Blog</h1>
+    <div class="blog-header">
+      <img
+        src="https://res.cloudinary.com/dnuhjsckk/image/upload/v1751633898/tdlogo_lfg0lh-_2_hcydfz.png"
+        alt="Kaka Logo"
+        class="kaka-logo"
+      />
+      <span class="blog-text">Blog</span>
+    </div>
 
     <!-- Loading State -->
     <div v-if="loading" class="loading">
@@ -101,41 +112,29 @@ const navigateToPost = (slug) => {
   }
 }
 
-.blog-title {
-  font-size: 2.5rem;
+.blog-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
   margin-bottom: 2.5rem;
+  animation: slideUp 0.8s ease-out;
+}
+
+.kaka-logo {
+  height: 48px;
+  width: auto;
+  object-fit: contain;
+}
+
+.blog-text {
+  font-size: 2rem;
   color: #fff;
-  text-align: center;
   font-weight: 700;
   background: linear-gradient(120deg, #fff, #4fc3f7);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: slideUp 0.8s ease-out;
-  position: relative;
-}
-
-.blog-title::after {
-  content: '';
-  position: absolute;
-  bottom: -10px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 60px;
-  height: 3px;
-  background: linear-gradient(90deg, #4fc3f7, transparent);
-  border-radius: 2px;
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  line-height: 1;
 }
 
 .posts {
@@ -348,6 +347,17 @@ const navigateToPost = (slug) => {
   animation: fadeIn 0.6s ease-out;
 }
 
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (max-width: 768px) {
   .blog-list {
     width: 92%;
@@ -355,9 +365,16 @@ const navigateToPost = (slug) => {
     padding: 1.25rem;
   }
 
-  .blog-title {
-    font-size: 2rem;
+  .blog-header {
     margin-bottom: 2rem;
+  }
+
+  .kaka-logo {
+    height: 38px;
+  }
+
+  .blog-text {
+    font-size: 1.75rem;
   }
 
   .posts {

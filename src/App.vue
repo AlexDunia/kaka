@@ -79,7 +79,7 @@ const cartCount = computed(() => cartStore.itemCount)
         <div class="logo">
           <RouterLink to="/">
             <img
-              src="https://res.cloudinary.com/dnuhjsckk/image/upload/v1750341458/tdlogo_lfg0lh.png"
+              src="https://res.cloudinary.com/dnuhjsckk/image/upload/v1751633898/tdlogo_lfg0lh-_2_hcydfz.png"
               alt="TD Logo"
               class="logo-img"
             />
@@ -239,7 +239,7 @@ const cartCount = computed(() => cartStore.itemCount)
       <div class="footer-simple">
         <div class="footer-logo-col">
           <img
-            src="https://res.cloudinary.com/dnuhjsckk/image/upload/v1750341458/tdlogo_lfg0lh.png"
+            src="https://res.cloudinary.com/dnuhjsckk/image/upload/v1751633898/tdlogo_lfg0lh-_2_hcydfz.png"
             alt="TD Logo"
             class="footer-logo-img"
           />

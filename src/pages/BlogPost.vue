@@ -932,17 +932,14 @@ const estimatedReadingTime = computed(() => {
 
 @media (max-width: 768px) {
   .blog-share-bar {
-    top: 56px;
-    flex-direction: column;
-    gap: 0.7rem;
-    padding: 1rem;
+    display: none;
   }
 
   .blog-post {
     width: 92%;
     margin: 0 auto;
     padding: 1rem;
-    padding-top: 140px;
+    padding-top: 1rem;
   }
 
   .blog-title {
