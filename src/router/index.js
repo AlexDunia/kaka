@@ -215,6 +215,11 @@ const router = createRouter({
       },
     },
     {
+      path: '/transactions',
+      name: 'transactions',
+      component: () => import('../components/TransactionsTable.vue'),
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: () => import('../pages/NotFound.vue'),

@@ -1,7 +1,7 @@
 class BlogService {
   constructor() {
     // Point to your PHP server explicitly
-    this.apiUrl = 'http://localhost/api/blogs.php' // Adjust this URL to match your PHP server
+    this.apiUrl = '/api/blogs.php' // Adjust this URL to match your PHP server
   }
 
   // Get all blog posts

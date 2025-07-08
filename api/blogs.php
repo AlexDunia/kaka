@@ -1,6 +1,8 @@
 <?php
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+ini_set('error_log', '/path/to/your/error.log');  // Update this path to your actual error log path
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -15,11 +17,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 
 try {
     // Database connection
-    $host = 'localhost';
-    $port = 3307;
-    $db   = 'events';
-    $user = 'root';
-    $pass = '';
+    $host = '127.0.0.1';
+    $port = 3306;
+    $db = 'kakaliqn_kakaworld';
+    $user = 'kakaliqn_kakaliqn';
+    $pass = 'Oliviaestherdunia1@';
     $charset = 'utf8mb4';
 
     $dsn = "mysql:host=$host;port=$port;dbname=$db;charset=$charset";
@@ -203,16 +205,20 @@ try {
     
 } catch (PDOException $e) {
     error_log("Database Error: " . $e->getMessage());
+    error_log("Connection string: mysql:host=$host;port=$port;dbname=$db");
     http_response_code(500);
     echo json_encode([
         'status' => 'error',
-        'message' => 'Database error occurred'
+        'message' => 'Database connection error',
+        'details' => $e->getMessage()
     ], JSON_PRETTY_PRINT);
 } catch (Exception $e) {
     error_log("General Error: " . $e->getMessage());
+    error_log("Stack trace: " . $e->getTraceAsString());
     http_response_code(500);
     echo json_encode([
         'status' => 'error',
-        'message' => 'An unexpected error occurred'
+        'message' => 'An unexpected error occurred',
+        'details' => $e->getMessage()
     ], JSON_PRETTY_PRINT);
 } 

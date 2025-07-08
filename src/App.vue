@@ -4,6 +4,7 @@ import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useCartStore } from '@/stores/cart'
 import { useRoute } from 'vue-router'
 import { useSeo } from '@/composables/useSeo'
+import TransactionsTable from './components/TransactionsTable.vue'
 
 const isMobileMenuOpen = ref(false)
 const scrollPosition = ref(0)
@@ -19,6 +20,7 @@ const navigationLinks = [
   { path: '/sports', name: 'Sports' },
   { path: '/festivals', name: 'Festivals' },
   { path: '/others', name: 'Others' },
+  { path: '/blog', name: 'Blog' },
   { path: '/contact', name: 'Contact us' },
 ]
 
@@ -137,6 +139,13 @@ const cartCount = computed(() => cartStore.itemCount)
             >Others</RouterLink
           >
           <RouterLink
+            to="/blog"
+            @click="closeMenu"
+            class="nav-item"
+            :class="{ active: $route.path.startsWith('/blog') }"
+            >Blog</RouterLink
+          >
+          <RouterLink
             to="/contact"
             @click="closeMenu"
             class="nav-item"
@@ -217,7 +226,12 @@ const cartCount = computed(() => cartStore.itemCount)
               :to="link.path"
               class="mobile-nav-item nav-item"
               :style="{ '--index': index }"
-              :class="{ active: $route.path === link.path }"
+              :class="{
+                active:
+                  link.path === '/blog'
+                    ? $route.path.startsWith('/blog')
+                    : $route.path === link.path,
+              }"
               @click="closeMenu"
             >
               {{ link.name }}
@@ -233,6 +247,7 @@ const cartCount = computed(() => cartStore.itemCount)
           <component :is="Component" />
         </transition>
       </RouterView>
+      <TransactionsTable />
     </main>
 
     <footer class="app-footer">
@@ -387,10 +402,12 @@ const cartCount = computed(() => cartStore.itemCount)
   padding: 0.5rem 0;
   position: relative;
   z-index: 1;
+  transition: color 0.3s ease;
 }
 
 .nav-item:hover {
   cursor: pointer;
+  color: #ffffff;
 }
 
 .nav-item.active {
@@ -489,7 +506,7 @@ const cartCount = computed(() => cartStore.itemCount)
 }
 
 .mobile-nav-item {
-  font-size: 1.1rem;
+  font-size: 0.9rem;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.7);
   text-decoration: none;
@@ -500,12 +517,14 @@ const cartCount = computed(() => cartStore.itemCount)
   transform: translateY(20px);
   transition:
     opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    color 0.3s ease;
   transition-delay: calc(var(--index) * 0.1s);
 }
 
 .mobile-nav-item:hover {
   cursor: pointer;
+  color: #ffffff;
 }
 
 .mobile-nav-item:last-of-type {
