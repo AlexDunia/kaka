@@ -4,7 +4,6 @@ import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useCartStore } from '@/stores/cart'
 import { useRoute } from 'vue-router'
 import { useSeo } from '@/composables/useSeo'
-import TransactionsTable from './components/TransactionsTable.vue'
 
 const isMobileMenuOpen = ref(false)
 const scrollPosition = ref(0)
@@ -247,7 +246,6 @@ const cartCount = computed(() => cartStore.itemCount)
           <component :is="Component" />
         </transition>
       </RouterView>
-      <TransactionsTable />
     </main>
 
     <footer class="app-footer">

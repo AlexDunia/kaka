@@ -2,15 +2,50 @@
 import axios from 'axios'
 
 // Configuration
-const EVENTS_API_URL = '/api/events.php'
-// const EVENTS_API_URL = 'http://localhost/api/events.php'
+// const EVENTS_API_URL = '/api/events.php'
+const EVENTS_API_URL = 'http://localhost/api/events.php'
 const EVENTS_FALLBACK_API_URL = 'http://localhost/api/test-search.php'
-
-console.debug('EVENTS_API_URL configured as:', EVENTS_API_URL)
-console.debug('EVENTS_FALLBACK_API_URL configured as:', EVENTS_FALLBACK_API_URL)
 
 // Minimum loading time to ensure loaders are visible
 const MIN_LOADING_TIME = 800 // milliseconds
+
+// Add cache management
+const CACHE_KEY_PREFIX = 'event_cache_'
+const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes in milliseconds
+
+const cacheManager = {
+  set(key, data) {
+    const cacheData = {
+      timestamp: Date.now(),
+      data: data,
+    }
+    localStorage.setItem(CACHE_KEY_PREFIX + key, JSON.stringify(cacheData))
+  },
+
+  get(key) {
+    const cached = localStorage.getItem(CACHE_KEY_PREFIX + key)
+    if (!cached) return null
+
+    const cacheData = JSON.parse(cached)
+    if (Date.now() - cacheData.timestamp > CACHE_DURATION) {
+      localStorage.removeItem(CACHE_KEY_PREFIX + key)
+      return null
+    }
+
+    return cacheData.data
+  },
+
+  clear(key) {
+    if (key) {
+      localStorage.removeItem(CACHE_KEY_PREFIX + key)
+    } else {
+      // Clear all event caches
+      Object.keys(localStorage)
+        .filter((key) => key.startsWith(CACHE_KEY_PREFIX))
+        .forEach((key) => localStorage.removeItem(key))
+    }
+  },
+}
 
 /**
  * Ensures a minimum loading time for API calls
@@ -226,15 +261,33 @@ const dataService = {
   // EVENTS
   async getAllEvents(page = 1, limit = 12) {
     const mainApiCall = async () => {
-      // Add cache busting parameter for fresh results
-      const cacheBuster = Date.now()
+      const cacheKey = `events_${page}_${limit}`
+      const cachedData = cacheManager.get(cacheKey)
+
+      // Add cache busting parameter and ETag support
+      const headers = { 'X-Request-ID': Math.random().toString(36).substring(2, 15) }
+      if (cachedData) {
+        headers['If-None-Match'] = cachedData.etag
+      }
+
       const response = await axios.get(
-        `${EVENTS_API_URL}?page=${page}&limit=${limit}&_=${cacheBuster}`,
-        {
-          headers: { 'X-Request-ID': Math.random().toString(36).substring(2, 15) },
-        },
+        `${EVENTS_API_URL}?page=${page}&limit=${limit}&_=${Date.now()}`,
+        { headers },
       )
-      return response.data
+
+      // If we got a 304 Not Modified, use cached data
+      if (response.status === 304 && cachedData) {
+        return cachedData
+      }
+
+      // Store the new data in cache with ETag
+      const responseData = response.data
+      if (responseData) {
+        responseData.etag = response.headers.etag
+        cacheManager.set(cacheKey, responseData)
+      }
+
+      return responseData
     }
 
     const fallbackApiCall = async () => {
@@ -253,27 +306,46 @@ const dataService = {
   },
 
   async getEventById(id) {
-    try {
-      // Validate ID before sending to API
-      if (!id || isNaN(parseInt(id))) {
-        throw new Error('Invalid event ID')
-      }
-
-      const response = await axios.get(`${EVENTS_API_URL}?id=${parseInt(id)}`, {
-        headers: { 'X-Request-ID': Math.random().toString(36).substring(2, 15) },
-      })
-      return response.data // Single event doesn't use the data/pagination structure
-    } catch (error) {
-      console.error(`Error fetching event ID ${id}:`, error)
-      throw error
+    // Validate ID before sending to API
+    if (!id || isNaN(parseInt(id))) {
+      throw new Error('Invalid event ID')
     }
+
+    const cacheKey = `event_${id}`
+    const cachedEvent = cacheManager.get(cacheKey)
+
+    // If we have a cached event that's not expired, use it
+    if (cachedEvent && !cachedEvent.sales_status?.is_expired) {
+      return cachedEvent
+    }
+
+    // Add cache busting parameter and ETag support
+    const headers = { 'X-Request-ID': Math.random().toString(36).substring(2, 15) }
+    if (cachedEvent) {
+      headers['If-None-Match'] = cachedEvent.etag
+    }
+
+    const response = await axios.get(`${EVENTS_API_URL}?id=${parseInt(id)}&_=${Date.now()}`, {
+      headers,
+    })
+
+    // If we got a 304 Not Modified, use cached data
+    if (response.status === 304 && cachedEvent) {
+      return cachedEvent
+    }
+
+    // Store the new data in cache with ETag
+    const eventData = response.data
+    if (eventData) {
+      eventData.etag = response.headers.etag
+      cacheManager.set(cacheKey, eventData)
+    }
+
+    return eventData
   },
 
   async getEventsByCategory(category, page = 1, limit = 12) {
-    // Sanitize inputs and add debug information
-    console.log('getEventsByCategory called with raw category:', category)
-
-    // Ensure category is properly formatted
+    // Sanitize inputs
     category = sanitizeString(category)
 
     // Make sure category is lowercase for consistency
@@ -281,24 +353,16 @@ const dataService = {
       category = category.toLowerCase().trim()
     }
 
-    console.log('Sanitized and normalized category:', category)
-
     const mainApiCall = async () => {
-      console.log(`Calling API with category=${category}, page=${page}, limit=${limit}`)
-
       const url = `${EVENTS_API_URL}?category=${encodeURIComponent(category)}&page=${page}&limit=${limit}&_=${Date.now()}`
-      console.log('API URL:', url)
 
       const response = await axios.get(url, {
         headers: { 'X-Request-ID': Math.random().toString(36).substring(2, 15) },
       })
-      console.log('API response status:', response.status)
-      console.log('API response data structure:', Object.keys(response.data))
       return response.data
     }
 
     const fallbackApiCall = async () => {
-      console.log('Using fallback API for getEventsByCategory')
       const response = await axios.get(
         `${EVENTS_FALLBACK_API_URL}?category=${encodeURIComponent(category)}&page=${page}&limit=${limit}&_=${Date.now()}`,
         {
@@ -308,7 +372,6 @@ const dataService = {
       return response.data
     }
 
-    // Ensure consistent loading experience with skeleton visibility
     return ensureMinLoadTime(handleApiWithFallback(mainApiCall, fallbackApiCall))
   },
 
@@ -550,7 +613,25 @@ const dataService = {
 
     return await handleApiWithFallback(mainApiCall, fallbackApiCall)
   },
+
+  // Add a method to clear cache for expired events
+  clearExpiredEventCache() {
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith(CACHE_KEY_PREFIX))
+      .forEach((key) => {
+        const cached = localStorage.getItem(key)
+        if (cached) {
+          const cacheData = JSON.parse(cached)
+          if (cacheData.data?.sales_status?.is_expired) {
+            localStorage.removeItem(key)
+          }
+        }
+      })
+  },
 }
+
+// Run cache cleanup periodically
+setInterval(dataService.clearExpiredEventCache, CACHE_DURATION)
 
 // Fallback mechanism if the main API times out
 const handleApiWithFallback = async (apiCall, fallbackCall = null) => {

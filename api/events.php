@@ -8,6 +8,11 @@ header('X-Frame-Options: DENY'); // Prevent clickjacking
 header('X-XSS-Protection: 1; mode=block'); // Enable XSS protection
 header('Strict-Transport-Security: max-age=31536000; includeSubDomains'); // HSTS
 
+// Add cache control headers
+$cacheTime = 300; // 5 minutes cache
+header('Cache-Control: public, max-age=' . $cacheTime);
+header('Expires: ' . gmdate('D, d M Y H:i:s', time() + $cacheTime) . ' GMT');
+
 // Production security settings 
 if (!isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || $_SERVER['HTTP_X_FORWARDED_PROTO'] !== 'https') {
     // Disable for local dev, but enable in production
@@ -136,6 +141,40 @@ try {
     $testStmt = $pdo->query("SELECT 1");
     if (!$testStmt) {
         throw new Exception("Database connection test failed");
+    }
+
+    // Add this function after database connection setup
+    function isEventExpired($event) {
+        if (!isset($event['sales_end']) || $event['sales_end'] === null) {
+            return false;
+        }
+        $salesEnd = strtotime($event['sales_end']);
+        return $salesEnd !== false && $salesEnd < time();
+    }
+
+    // Add this check in your ticket purchase endpoint
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['action'] === 'purchase') {
+        $eventId = filter_input(INPUT_POST, 'event_id', FILTER_VALIDATE_INT);
+        
+        // Get event details
+        $stmt = $pdo->prepare('SELECT * FROM events WHERE id = ?');
+        $stmt->execute([$eventId]);
+        $event = $stmt->fetch();
+        
+        if (!$event) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Event not found']);
+            exit;
+        }
+        
+        // Check if event is expired
+        if (isEventExpired($event)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Event sales have ended']);
+            exit;
+        }
+        
+        // Continue with ticket purchase logic...
     }
 
     // --- Fetch single event by ID if ?id=... is provided ---
@@ -291,6 +330,11 @@ try {
         }
     }
     
+    // In your main query building section where $where array is built
+    if (isset($_GET['exclude_expired']) && $_GET['exclude_expired'] === '1') {
+        $where[] = '(sales_end IS NULL OR sales_end > NOW())';
+    }
+    
     // Construct WHERE clause if conditions exist
     if (!empty($where)) {
         $query .= ' WHERE ' . implode(' AND ', $where);
@@ -354,6 +398,38 @@ try {
     
     error_log("Sending response with " . count($events) . " events and pagination data");
     error_log("Response payload size: " . strlen(json_encode($response)) . " bytes");
+
+    // Generate ETag for responses
+    function generateETag($data) {
+        return '"' . md5(json_encode($data)) . '"';
+    }
+
+    // Handle ETag validation
+    if (isset($_SERVER['HTTP_IF_NONE_MATCH'])) {
+        $clientETag = $_SERVER['HTTP_IF_NONE_MATCH'];
+        
+        // For single event request
+        if (isset($id) && $id > 0) {
+            $stmt = $pdo->prepare('SELECT * FROM events WHERE id = ?');
+            $stmt->execute([$id]);
+            $event = $stmt->fetch();
+            
+            if ($event) {
+                $serverETag = generateETag($event);
+                if ($clientETag === $serverETag) {
+                    http_response_code(304);
+                    exit;
+                }
+                header('ETag: ' . $serverETag);
+            }
+        }
+    }
+
+    // Before sending response, add ETag
+    if (isset($response)) {
+        header('ETag: ' . generateETag($response));
+    }
+
     echo json_encode($response);
 } catch (Exception $e) {
     $errorMessage = 'An error occurred while processing your request.';

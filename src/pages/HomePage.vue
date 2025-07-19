@@ -91,25 +91,37 @@ const setActiveTab = (tab) => {
 }
 
 // Computed
-const filteredEvents = computed(() => {
-  // If we're in a search context, display the raw events from the store (already filtered by API)
+const sortedEvents = computed(() => {
+  // If we're in a search context, sort the search results
   if (storeSearchQuery.value && storeSearchQuery.value.trim() !== '') {
-    return eventStore.events
+    return [...eventStore.events].sort((a, b) => b.id - a.id)
   }
 
-  // Otherwise filter by active tab and local search term
+  // Otherwise filter by active tab and local search term, then sort
+  let events = []
   if (activeTab.value === 'all') {
-    return eventStore.events.filter((event) => {
+    events = eventStore.events.filter((event) => {
       return event.title.toLowerCase().includes(searchTerm.value.toLowerCase())
     })
   } else {
-    return eventStore.events.filter((event) => {
+    events = eventStore.events.filter((event) => {
       return (
         event.category === activeTab.value &&
         event.title.toLowerCase().includes(searchTerm.value.toLowerCase())
       )
     })
   }
+
+  // Sort filtered events by ID (newest/highest ID first)
+  return events.sort((a, b) => b.id - a.id)
+})
+
+// Replace filteredEvents computed property with sortedEvents
+const filteredEvents = sortedEvents
+
+// Sort featured events by ID as well
+const sortedFeaturedEvents = computed(() => {
+  return [...featuredEvents.value].sort((a, b) => b.id - a.id)
 })
 
 // When search term is updated in store, sync with local searchTerm
@@ -127,15 +139,16 @@ const resetSearch = async () => {
   searchTerm.value = ''
 }
 
-// Add handleSearch method
+// Update handleSearch method
 const handleSearch = async () => {
   try {
     if (searchTerm.value.trim() !== '') {
       startLoading()
       await eventStore.searchEvents(searchTerm.value)
     }
-  } catch (err) {
-    console.error('Search failed:', err)
+  } catch {
+    // Handle error silently in production
+    stopLoading()
   } finally {
     stopLoading()
   }
@@ -146,7 +159,7 @@ const clearSearch = async () => {
   await resetSearch()
 }
 
-// Lifecycle hooks
+// Update onMounted hook
 onMounted(async () => {
   try {
     if (!events.value || events.value.length === 0) {
@@ -157,10 +170,11 @@ onMounted(async () => {
     // Load featured events
     startLoadingFeatured()
     await eventStore.fetchFeaturedEvents()
-  } catch (err) {
-    console.error('Error loading events:', err)
+  } catch {
+    // Handle error silently in production
+    ensureLoadingCompletes()
   } finally {
-    ensureLoadingCompletes() // Call the safety function
+    ensureLoadingCompletes()
   }
 })
 
@@ -280,19 +294,19 @@ onUnmounted(() => {
     </section>
 
     <!-- Featured Events Section -->
-    <section v-if="!isLoading || featuredEvents.length > 0" class="featured-events">
+    <section v-if="!isLoading || sortedFeaturedEvents.length > 0" class="featured-events">
       <div class="section-header">
         <h2>Featured Events</h2>
       </div>
 
-      <div v-if="loadingFeatured && !featuredEvents.length" class="featured-skeleton">
+      <div v-if="loadingFeatured && !sortedFeaturedEvents.length" class="featured-skeleton">
         <SkeletonLoader type="grid" :count="3" :color="skeletonColor" />
       </div>
-      <div v-else-if="featuredEvents.length === 0" class="empty-state">
+      <div v-else-if="sortedFeaturedEvents.length === 0" class="empty-state">
         <p>No featured events available. Check back soon!</p>
       </div>
       <div v-else class="event-grid">
-        <EventCard v-for="event in featuredEvents" :key="event.id" :event="event" />
+        <EventCard v-for="event in sortedFeaturedEvents" :key="event.id" :event="event" />
       </div>
     </section>
 

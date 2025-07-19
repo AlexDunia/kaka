@@ -162,10 +162,13 @@ const router = createRouter({
       },
     },
     {
-      path: '/events/:slug',
+      path: '/events/:id-:slug',
       name: 'event-details',
       component: EventDetails,
-      props: true,
+      props: (route) => ({
+        id: route.params.id,
+        slug: route.params.slug,
+      }),
       meta: {
         title: 'Event Details',
         description: 'View details and book tickets for this event.',
@@ -217,7 +220,12 @@ const router = createRouter({
     {
       path: '/transactions',
       name: 'transactions',
-      component: () => import('../components/TransactionsTable.vue'),
+      component: () => import('../pages/TransactionHistory.vue'),
+      meta: {
+        title: 'Transaction History',
+        description: 'View your transaction history and past purchases.',
+        requiresAuth: true,
+      },
     },
     {
       path: '/:pathMatch(.*)*',

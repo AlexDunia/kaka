@@ -25,20 +25,11 @@ export function useSlug() {
    * @returns {string} - URL for the event
    */
   const getEventUrl = (event) => {
-    if (!event) return ''
+    if (!event || !event.id) return ''
 
-    // If event has a slug, use it
-    if (event.slug) {
-      return `/events/${event.slug}`
-    }
-
-    // Otherwise generate from title
-    if (event.title) {
-      return `/events/${generateSlug(event.title)}`
-    }
-
-    // Fallback to ID-based URL
-    return event.id ? `/event/${event.id}` : ''
+    // Always include the ID in the URL
+    const slug = event.slug || (event.title ? generateSlug(event.title) : event.id)
+    return `/events/${event.id}-${slug}`
   }
 
   return {

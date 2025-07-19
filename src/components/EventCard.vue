@@ -28,6 +28,26 @@ const props = defineProps({
 const router = useRouter()
 const { getEventUrl } = useSlug()
 
+// Check if event is expired using backend sales_status
+const isExpired = computed(() => {
+  if (!props.event?.sales_status) return false
+  return props.event.sales_status.is_expired
+})
+
+// Format sales end date if needed
+const formattedSalesEnd = computed(() => {
+  if (!props.event?.sales_status?.sales_end) return ''
+  const salesEnd = new Date(props.event.sales_status.sales_end)
+  return salesEnd.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+})
+
 // Create computed properties from event if available
 const eventTitle = computed(() => props.event?.title || '')
 const eventImage = computed(() => props.event?.main_image || '')
@@ -108,12 +128,22 @@ const viewDetails = () => {
       />
       <div class="event-card__category">{{ categoryDisplayName }}</div>
 
+      <!-- Add expired stamp -->
+      <div v-if="isExpired" class="event-card__expired-stamp">
+        <svg width="16" height="16" viewBox="0 0 24 24" class="stamp-icon">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" />
+          <path d="M12 6v8l4 2" stroke="currentColor" stroke-width="2" fill="none" />
+        </svg>
+        <span>EXPIRED</span>
+      </div>
+
       <div class="event-card__date" v-if="displayDate">
         <span class="event-card__date-day">{{ displayDate }}</span>
         <span class="event-card__date-month">{{ displayMonth }}</span>
         <span class="event-card__date-year">{{ displayYear }}</span>
       </div>
     </div>
+
     <div class="event-card__content">
       <div class="event-card__header">
         <h3 class="event-card__title">{{ eventTitle }}</h3>
@@ -524,5 +554,54 @@ const viewDetails = () => {
   display: flex;
   align-items: center;
   font-weight: 700;
+}
+
+.event-card__expired-stamp {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: rgba(255, 59, 48, 0.95);
+  color: white;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  border-radius: 4px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  text-transform: uppercase;
+  border: 1px dashed rgba(255, 255, 255, 0.5);
+}
+
+.event-card__expired-stamp .stamp-icon {
+  opacity: 0.9;
+}
+
+.event-card__image::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.event-card:hover .event-card__image::after {
+  opacity: 1;
+}
+
+/* Remove previous expired styles */
+.event-card--expired,
+.event-card--expired:hover,
+.event-card--expired .event-card__image img,
+.text-muted {
+  /* Remove these styles */
 }
 </style>

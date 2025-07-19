@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useEventStore } from '@/stores/events'
 import QRCode from 'qrcode.vue'
@@ -59,29 +59,120 @@ const formattedDate = computed(() => {
       })
 })
 
-// Update SEO data when event changes
+// Update isExpired computed property to use backend sales_status
+const isExpired = computed(() => {
+  if (!event.value?.sales_status) return false
+  return event.value.sales_status.is_expired
+})
+
+// Update formattedSalesEndDate to exclude time
+const formattedSalesEndDate = computed(() => {
+  if (!event.value?.sales_status?.sales_end) return ''
+  const salesEnd = new Date(event.value.sales_status.sales_end)
+  return salesEnd.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  })
+})
+
+// Add debounce utility
+const debounce = (fn, delay) => {
+  let timeoutId
+  return (...args) => {
+    clearTimeout(timeoutId)
+    timeoutId = setTimeout(() => fn(...args), delay)
+  }
+}
+
+// Optimize event fetching
+const fetchEventData = async () => {
+  loading.value = true
+  error.value = null
+
+  try {
+    const eventId = route.params.id
+    if (!eventId) {
+      throw new Error('No event ID provided')
+    }
+
+    // Check if we already have this event in the store
+    if (eventStore.currentEvent?.id === parseInt(eventId)) {
+      // If the event is expired, force a refresh
+      if (eventStore.currentEvent.sales_status?.is_expired) {
+        await eventStore.fetchEventById(eventId, true) // Force refresh
+      }
+      return
+    }
+
+    await eventStore.fetchEventById(eventId)
+
+    if (!event.value) {
+      throw new Error('Event not found')
+    }
+  } catch (err) {
+    error.value = err.message || 'Failed to load event details'
+    console.error('Error loading event:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Add polling for expired events
+const pollInterval = ref(null)
+
+const startPollingIfNearExpiry = () => {
+  if (!event.value?.sales_status?.sales_end) return
+
+  const salesEnd = new Date(event.value.sales_status.sales_end)
+  const now = new Date()
+  const timeUntilExpiry = salesEnd - now
+
+  // If within 5 minutes of expiry, poll every 30 seconds
+  if (timeUntilExpiry > 0 && timeUntilExpiry <= 5 * 60 * 1000) {
+    pollInterval.value = setInterval(() => {
+      fetchEventData()
+    }, 30000)
+  }
+}
+
+// Cleanup polling on component unmount
+onUnmounted(() => {
+  if (pollInterval.value) {
+    clearInterval(pollInterval.value)
+  }
+})
+
+// Update watch to handle polling
 watch(
   event,
   (newEvent) => {
     if (newEvent) {
-      // Update page title with event name
+      // Clear existing poll interval
+      if (pollInterval.value) {
+        clearInterval(pollInterval.value)
+      }
+
+      // Start polling if near expiry
+      startPollingIfNearExpiry()
+
+      // Update SEO data
       updatePageTitle(newEvent.title)
 
-      // Update meta description with event description (truncated if needed)
       const description = newEvent.description
         ? newEvent.description.substring(0, 155) + (newEvent.description.length > 155 ? '...' : '')
         : `${newEvent.title} - Get tickets for this event on ${formattedDate.value}`
 
       updateMetaDescription(description)
 
-      // Update URL if needed (we came from an ID-based URL but have title available)
+      // Update URL if needed
       if (route.params.id && !route.params.slug && newEvent.title) {
         const slug = newEvent.slug || generateSlug(newEvent.title)
-        // Replace URL without reloading the page
         router.replace(`/events/${slug}`)
       }
 
-      // Update social sharing tags with canonical URL
+      // Update social sharing tags
       const canonical =
         window.location.origin +
         (newEvent.slug
@@ -90,12 +181,10 @@ watch(
             ? `/events/${generateSlug(newEvent.title)}`
             : `/event/${newEvent.id}`)
 
-      // --- Store share details when event loads/changes ---
       shareUrl.value = canonical
       shareTitle.value = newEvent.title
       shareDescription.value = description
-      shareImage.value = eventImage.value // Already a computed property
-      // --- End store share details ---
+      shareImage.value = eventImage.value
 
       updateSocialMeta({
         title: newEvent.title,
@@ -104,7 +193,6 @@ watch(
         url: canonical,
       })
 
-      // Add structured data for rich snippets in search results
       addEventStructuredData({
         ...newEvent,
         url: canonical,
@@ -114,164 +202,35 @@ watch(
   { immediate: true },
 )
 
-// Calculate available tickets based on total tickets if not explicitly set
-const availableTickets = computed(() => {
-  if (!event.value) return 0
-
-  // If availableTickets is explicitly set, use it
-  if (event.value.availableTickets !== undefined) {
-    return event.value.availableTickets
+// Optimize ticket selection
+const openPurchaseModalWithTicket = debounce((ticketTypeId) => {
+  if (isExpired.value) {
+    showToaster('This event has expired and tickets are no longer available', false)
+    return
   }
-
-  // Otherwise, use totalTickets (all tickets are initially available)
-  return event.value.totalTickets || 0
-})
-
-// Update percentageSold to use the availableTickets computed property
-const percentageSold = computed(() => {
-  if (!event.value || !event.value.totalTickets) return 0
-
-  const totalTickets = event.value.totalTickets
-  const available = availableTickets.value
-  const sold = totalTickets - available
-
-  return Math.round((sold / totalTickets) * 100)
-})
-
-// Update ticketTypes to use the actual ticket types from the event data
-const ticketTypes = computed(() => {
-  if (!event.value) return []
-
-  // If event has ticketTypes defined from the database, use those
-  if (event.value.ticketTypes && Array.isArray(event.value.ticketTypes)) {
-    // Find the max price among all ticket types
-    const maxPrice = Math.max(...event.value.ticketTypes.map((t) => parseFloat(t.price) || 0))
-    // Map event ticket types to display format
-    return event.value.ticketTypes.map((ticket, index) => {
-      // Generate different styles based on index
-      const styles = [
-        { icon: 'ticket', isTable: false },
-        { icon: 'award', isTable: false },
-        { icon: 'grid', isTable: ticket.name?.toLowerCase().includes('table') },
-        { icon: 'ticket', isTable: ticket.name?.toLowerCase().includes('table') },
-      ]
-      const style = styles[index % styles.length]
-      const isTableTicket = ticket.name?.toLowerCase().includes('table') || false
-      const tableMatch = ticket.name?.match(/table for (\d+)/i)
-      const seatsCount = tableMatch ? parseInt(tableMatch[1]) : isTableTicket ? 4 : 0
-      const available = ticket.quantity || 0
-      // Only highlight if this ticket is the most expensive
-      const highlight = (parseFloat(ticket.price) || 0) === maxPrice
-      return {
-        id: ticket.name?.toLowerCase().replace(/\s+/g, '-') || `ticket-${index}`,
-        name: ticket.name || `Ticket ${index + 1}`,
-        description: ticket.description || `${ticket.name || 'Regular'} admission ticket`,
-        price: parseFloat(ticket.price) || 0,
-        available: available > 0,
-        availableQuantity: available,
-        maxPerPurchase: isTableTicket ? 2 : 10,
-        highlight,
-        icon: style.icon,
-        isTable: isTableTicket,
-        seatsCount: seatsCount,
-      }
-    })
-  }
-  // Fallback to generated ticket types based on base price
-  const basePrice = event.value.price || 0
-  const fallbackTypes = [
-    {
-      id: 'standard',
-      name: 'Standard',
-      description: 'Regular admission ticket',
-      price: basePrice,
-      available: true,
-      maxPerPurchase: 10,
-      icon: 'ticket',
-    },
-    {
-      id: 'vip',
-      name: 'VIP',
-      description: 'Premium seating + complimentary drink',
-      price: basePrice * 1.5,
-      available: true,
-      maxPerPurchase: 6,
-      icon: 'award',
-    },
-    {
-      id: 'group',
-      name: 'Table for 4',
-      description: 'Reserved seating for 4 people',
-      price: basePrice * 3.6,
-      available: true,
-      maxPerPurchase: 3,
-      isTable: true,
-      seatsCount: 4,
-      icon: 'grid',
-    },
-    {
-      id: 'group8',
-      name: 'Table for 8',
-      description: 'Reserved seating for 8 people',
-      price: basePrice * 7,
-      available: true,
-      maxPerPurchase: 2,
-      isTable: true,
-      seatsCount: 8,
-      icon: 'grid',
-    },
-  ].filter((type) => type.available)
-  // Find max price in fallback
-  const maxFallbackPrice = Math.max(...fallbackTypes.map((t) => t.price))
-  return fallbackTypes.map((t) => ({ ...t, highlight: t.price === maxFallbackPrice }))
-})
-
-const selectedTicketType = ref(null)
-
-// Format price with currency and make the function a named helper
-function formatPrice(price) {
-  return new Intl.NumberFormat('en-NG', {
-    style: 'currency',
-    currency: 'NGN',
-  }).format(price)
-}
-
-// Open purchase modal with pre-selected ticket type
-const openPurchaseModalWithTicket = (ticketTypeId) => {
-  console.log('Opening modal for ticket type:', ticketTypeId)
 
   selectedTicketType.value = ticketTypeId
 
   // Small delay to ensure Vue has updated the props
   setTimeout(() => {
     showPurchaseModal.value = true
-    console.log('Modal should be visible now')
   }, 50)
-}
+}, 300) // Debounce for 300ms to prevent double-clicks
 
-// Load event on mount
-onMounted(async () => {
-  const eventId = route.params.id
-  const eventSlug = route.params.slug
-
-  try {
-    if (eventSlug) {
-      // If we have a slug, fetch by slug
-      await eventStore.fetchEventBySlug(eventSlug)
-    } else if (eventId) {
-      // Otherwise, fetch by ID (legacy)
-      await eventStore.fetchEventById(eventId)
-    }
-
-    if (!event.value) {
-      error.value = 'Event not found'
-    }
-  } catch (err) {
-    error.value = err.message || 'Failed to load event details'
-  } finally {
-    loading.value = false
-  }
+// Fetch event data when component mounts
+onMounted(() => {
+  fetchEventData()
 })
+
+// Watch for route changes to refetch data when navigating between events
+watch(
+  () => route.params.id,
+  (newId) => {
+    if (newId) {
+      fetchEventData()
+    }
+  },
+)
 
 // Go back to events
 const goBack = () => {
@@ -316,7 +275,6 @@ const decrementQuantity = () => {
 
 // Close purchase modal - combined version
 const closePurchaseModal = () => {
-  console.log('Closing purchase modal')
   showPurchaseModal.value = false
   selectedTicketType.value = null
   ticketQuantity.value = 1
@@ -454,7 +412,6 @@ const closeShareModal = () => {
 const shareLink = (platform) => {
   const url = encodeURIComponent(shareUrl.value || window.location.href)
   const title = encodeURIComponent(shareTitle.value || document.title)
-  // Use a shorter, more generic text for WhatsApp to avoid issues with length or special chars
   const whatsAppText = encodeURIComponent(`${shareTitle.value} - Check out this event!`)
   const genericText = encodeURIComponent(shareDescription.value || '')
 
@@ -468,7 +425,6 @@ const shareLink = (platform) => {
       shareWindowUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`
       break
     case 'whatsapp':
-      // WhatsApp Web: Use a more direct approach. Mobile typically handles `https://wa.me/` better.
       shareWindowUrl = `https://api.whatsapp.com/send?text=${whatsAppText}%20${url}`
       break
     case 'linkedin':
@@ -479,19 +435,16 @@ const shareLink = (platform) => {
         .writeText(shareUrl.value || window.location.href)
         .then(() => {
           showToaster('Link copied to clipboard!')
-          closeShareModal() // Close modal after copying
+          closeShareModal()
         })
-        .catch((err) => {
-          console.error('Failed to copy link: ', err)
+        .catch(() => {
           showToaster('Failed to copy link.', false)
         })
-      return // Don't open a window for copy
+      return
     default:
-      console.warn('Unknown share platform:', platform)
       return
   }
 
-  // Open the share window
   window.open(shareWindowUrl, '_blank', 'noopener,noreferrer,width=600,height=450')
 }
 // --- End Share Modal Functions ---
@@ -511,6 +464,129 @@ const scrollToTickets = () => {
       behavior: 'smooth',
     })
   }
+}
+
+// Add back the necessary computed properties and refs
+const selectedTicketType = ref(null)
+
+// Calculate available tickets based on total tickets if not explicitly set
+const availableTickets = computed(() => {
+  if (!event.value) return 0
+
+  // If availableTickets is explicitly set, use it
+  if (event.value.availableTickets !== undefined) {
+    return event.value.availableTickets
+  }
+
+  // Otherwise, use totalTickets (all tickets are initially available)
+  return event.value.totalTickets || 0
+})
+
+// Update percentageSold to use the availableTickets computed property
+const percentageSold = computed(() => {
+  if (!event.value || !event.value.totalTickets) return 0
+
+  const totalTickets = event.value.totalTickets
+  const available = availableTickets.value
+  const sold = totalTickets - available
+
+  return Math.round((sold / totalTickets) * 100)
+})
+
+// Update ticketTypes to use the actual ticket types from the event data
+const ticketTypes = computed(() => {
+  if (!event.value) return []
+
+  // If event has ticketTypes defined from the database, use those
+  if (event.value.ticketTypes && Array.isArray(event.value.ticketTypes)) {
+    // Find the max price among all ticket types
+    const maxPrice = Math.max(...event.value.ticketTypes.map((t) => parseFloat(t.price) || 0))
+    // Map event ticket types to display format
+    return event.value.ticketTypes.map((ticket, index) => {
+      // Generate different styles based on index
+      const styles = [
+        { icon: 'ticket', isTable: false },
+        { icon: 'award', isTable: false },
+        { icon: 'grid', isTable: ticket.name?.toLowerCase().includes('table') },
+        { icon: 'ticket', isTable: ticket.name?.toLowerCase().includes('table') },
+      ]
+      const style = styles[index % styles.length]
+      const isTableTicket = ticket.name?.toLowerCase().includes('table') || false
+      const tableMatch = ticket.name?.match(/table for (\d+)/i)
+      const seatsCount = tableMatch ? parseInt(tableMatch[1]) : isTableTicket ? 4 : 0
+      const available = ticket.quantity || 0
+      // Only highlight if this ticket is the most expensive
+      const highlight = (parseFloat(ticket.price) || 0) === maxPrice
+      return {
+        id: ticket.name?.toLowerCase().replace(/\s+/g, '-') || `ticket-${index}`,
+        name: ticket.name || `Ticket ${index + 1}`,
+        description: ticket.description || `${ticket.name || 'Regular'} admission ticket`,
+        price: parseFloat(ticket.price) || 0,
+        available: available > 0,
+        availableQuantity: available,
+        maxPerPurchase: isTableTicket ? 2 : 10,
+        highlight,
+        icon: style.icon,
+        isTable: isTableTicket,
+        seatsCount: seatsCount,
+      }
+    })
+  }
+  // Fallback to generated ticket types based on base price
+  const basePrice = event.value.price || 0
+  const fallbackTypes = [
+    {
+      id: 'standard',
+      name: 'Standard',
+      description: 'Regular admission ticket',
+      price: basePrice,
+      available: true,
+      maxPerPurchase: 10,
+      icon: 'ticket',
+    },
+    {
+      id: 'vip',
+      name: 'VIP',
+      description: 'Premium seating + complimentary drink',
+      price: basePrice * 1.5,
+      available: true,
+      maxPerPurchase: 6,
+      icon: 'award',
+    },
+    {
+      id: 'group',
+      name: 'Table for 4',
+      description: 'Reserved seating for 4 people',
+      price: basePrice * 3.6,
+      available: true,
+      maxPerPurchase: 3,
+      isTable: true,
+      seatsCount: 4,
+      icon: 'grid',
+    },
+    {
+      id: 'group8',
+      name: 'Table for 8',
+      description: 'Reserved seating for 8 people',
+      price: basePrice * 7,
+      available: true,
+      maxPerPurchase: 2,
+      isTable: true,
+      seatsCount: 8,
+      icon: 'grid',
+    },
+  ].filter((type) => type.available)
+  // Find max price in fallback
+  const maxFallbackPrice = Math.max(...fallbackTypes.map((t) => t.price))
+  return fallbackTypes.map((t) => ({ ...t, highlight: t.price === maxFallbackPrice }))
+})
+
+// Format price with currency and make the function a named helper
+function formatPrice(price) {
+  return new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+  }).format(price)
 }
 </script>
 
@@ -559,6 +635,9 @@ const scrollToTickets = () => {
               />
               <div class="event-info__category">{{ formattedCategory }}</div>
               <div v-if="percentageSold > 75" class="event-info__badge">Hot!</div>
+              <div v-if="isExpired" class="event-info__badge event-info__badge--expired">
+                Expired
+              </div>
             </div>
 
             <div class="event-info__content">
@@ -724,10 +803,40 @@ const scrollToTickets = () => {
           </div>
         </div>
 
-        <!-- Ticket Selection Grid - Now below event details -->
-        <div class="ticket-grid" ref="ticketSectionRef">
-          <h2 class="ticket-grid__title">Select Ticket Type</h2>
-          <div class="ticket-grid__container">
+        <!-- Ticket Selection Grid -->
+        <div
+          class="ticket-grid"
+          ref="ticketSectionRef"
+          :class="{ 'ticket-grid--expired': isExpired }"
+        >
+          <h2 class="ticket-grid__title">
+            <template v-if="isExpired">
+              Event Sales Ended
+              <div class="ticket-grid__subtitle">Sales ended on {{ formattedSalesEndDate }}</div>
+            </template>
+            <template v-else> Select Ticket Type </template>
+          </h2>
+
+          <div v-if="isExpired" class="ticket-grid__expired-message">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="48"
+              height="48"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 6v8l4 2"></path>
+            </svg>
+            <p>This event has expired and tickets are no longer available for purchase.</p>
+            <div class="ticket-grid__expired-date">Sales ended on {{ formattedSalesEndDate }}</div>
+          </div>
+
+          <div v-else class="ticket-grid__container">
             <div
               v-for="ticket in ticketTypes"
               :key="ticket.id"
@@ -830,7 +939,7 @@ const scrollToTickets = () => {
     </div>
 
     <!-- Fixed Footer - Mobile Only -->
-    <div class="fixed-footer">
+    <div class="fixed-footer" v-if="!isExpired">
       <button class="fixed-footer__button" @click="scrollToTickets">
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -2804,5 +2913,63 @@ const scrollToTickets = () => {
   .event-details {
     padding-bottom: 2rem;
   }
+}
+
+.event-info__badge--expired {
+  background-color: rgba(255, 59, 48, 0.9);
+  color: white;
+}
+
+.ticket-grid__subtitle {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 0.5rem;
+  font-weight: normal;
+}
+
+.ticket-grid__expired-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3rem;
+  background: rgba(75, 75, 75, 0.1);
+  border-radius: 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.8);
+  gap: 1.5rem;
+}
+
+.ticket-grid__expired-message svg {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.ticket-grid__expired-message p {
+  font-size: 1.1rem;
+  margin: 0;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.ticket-grid__expired-date {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+}
+
+.ticket-grid__subtitle {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 0.5rem;
+  font-weight: normal;
+}
+
+.ticket-grid--expired {
+  opacity: 0.8;
+  background: rgba(18, 18, 24, 0.2);
+  border-color: rgba(255, 255, 255, 0.03);
+  padding: 2rem;
+  border-radius: 12px;
 }
 </style>
