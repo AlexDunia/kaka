@@ -8,16 +8,15 @@ defineOptions({ name: 'EventCheckout' })
 
 const router = useRouter()
 const cartStore = useCartStore()
-const loading = ref(true)
+const loading = ref(false)
 const error = ref(null)
 const verifyingPayment = ref(false)
 const verificationError = ref(null)
-
-// Paystack Public Key
-const paystackPublicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY
-
-// Payment backend URL - using the simplified version with no DB operations
-const paymentVerificationUrl = '/api/proxy.php'
+const isSuccess = ref(false)
+const successMessage = ref(null)
+// API configuration
+const API_URL = import.meta.env.VITE_API_URL
+const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY
 
 // Form data
 const formData = ref({
@@ -30,14 +29,63 @@ const formData = ref({
 // Form validation
 const errors = ref({})
 const isSubmitting = ref(false)
-const showSuccess = ref(false)
-const transactionData = ref(null)
 
 // Try to get last event page from sessionStorage
 const lastEventPage = ref(sessionStorage.getItem('lastEventPage') || null)
 
-// Load Paystack script when component mounts
+// Error handling utilities
+const showError = (message) => {
+  error.value = message
+  loading.value = false
+}
+
+const showSuccess = (message) => {
+  isSuccess.value = true
+  successMessage.value = message
+}
+
+// Payment verification
+const verifyPayment = async (reference) => {
+  loading.value = true
+  try {
+    const response = await fetch(`${API_URL}/verify-payment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ reference }),
+    })
+
+    if (!response.ok) {
+      throw new Error('Payment verification failed')
+    }
+
+    const result = await response.json()
+
+    if (result.status === 'success') {
+      cartStore.clearCart()
+      return true
+    } else {
+      throw new Error(result.message || 'Payment verification failed')
+    }
+  } catch {
+    throw new Error('Payment verification failed. Please contact support.')
+  } finally {
+    loading.value = false
+  }
+}
+
+// Initialize Paystack
 onMounted(async () => {
+  try {
+    await loadPaystackScript()
+  } catch {
+    showError('Failed to initialize payment system. Please try again later.')
+  }
+})
+
+// Load Paystack script when component mounts
+const loadPaystackScript = async () => {
   try {
     if (cartStore.isEmpty) {
       error.value = 'Your cart is empty'
@@ -49,21 +97,18 @@ onMounted(async () => {
     script.src = 'https://js.paystack.co/v1/inline.js'
     script.async = true
     script.onload = () => {
-      console.log('Paystack script loaded successfully')
       loading.value = false
     }
     script.onerror = () => {
-      console.error('Failed to load Paystack script')
       error.value = 'Failed to load payment gateway. Please try again later.'
       loading.value = false
     }
     document.head.appendChild(script)
-  } catch (err) {
-    console.error('Error during initialization:', err)
+  } catch {
     error.value = 'Error loading checkout data'
     loading.value = false
   }
-})
+}
 
 // Validate form
 const validateForm = () => {
@@ -143,7 +188,7 @@ const payWithPaystack = () => {
     })
 
     const handler = window.PaystackPop.setup({
-      key: paystackPublicKey,
+      key: PAYSTACK_PUBLIC_KEY,
       email: formData.value.email,
       amount: cartStore.total * 100, // Amount in kobo
       currency: 'NGN',
@@ -160,21 +205,18 @@ const payWithPaystack = () => {
         },
       },
       callback: function (response) {
-        console.log('Payment successful. Reference: ' + response.reference)
-        // Verify the payment with our backend
-        handlePaymentSuccess(response.reference)
+        handlePaymentSuccess(response)
       },
       onClose: function () {
-        if (!showSuccess.value) {
-          console.log('Payment window closed')
+        if (!isSuccess.value) {
           isSubmitting.value = false
+          showError('Payment cancelled. Please try again.')
         }
       },
     })
 
     handler.openIframe()
-  } catch (err) {
-    console.error('Paystack error:', err)
+  } catch {
     error.value = 'Error initiating payment. Please try again.'
     isSubmitting.value = false
   }
@@ -193,94 +235,14 @@ const handleSubmit = async (e) => {
 }
 
 // Handle successful payment by verifying with backend
-const handlePaymentSuccess = async (reference) => {
+const handlePaymentSuccess = async (response) => {
   try {
-    verifyingPayment.value = true
-    verificationError.value = null
-
-    console.log('Payment successful! Reference:', reference)
-    console.log('Verifying payment with backend...')
-
-    // Prepare data to send to our backend
-    const data = {
-      reference: reference,
-      customerName: `${formData.value.firstName} ${formData.value.lastName}`,
-      customerEmail: formData.value.email,
-      customerPhone: formData.value.phone,
-      cartItems: cartStore.items.map((item) => ({
-        eventId: item.eventId,
-        eventTitle: item.eventTitle,
-        ticketType: item.ticketType,
-        quantity: item.quantity,
-        pricePerTicket: item.pricePerTicket,
-      })),
-    }
-
-    console.log('Sending data to:', paymentVerificationUrl)
-
-    // Make API request to our payment.php endpoint
-    const response = await fetch(paymentVerificationUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify(data),
-    })
-
-    console.log('Response status:', response.status)
-
-    if (!response.ok) {
-      throw new Error(`Server returned ${response.status}: ${response.statusText}`)
-    }
-
-    // Parse the JSON response
-    const responseText = await response.text()
-    console.log('Response body:', responseText)
-
-    let result
-    try {
-      result = JSON.parse(responseText)
-    } catch (e) {
-      console.error('Failed to parse response as JSON:', e)
-      throw new Error('Invalid response from server')
-    }
-
-    // Check if verification was successful
-    if (result.status !== 'success') {
-      throw new Error(result.message || 'Payment verification failed')
-    }
-
-    console.log('Payment verification successful:', result)
-
-    // Store transaction data
-    transactionData.value = result
-
-    // Store transaction data in localStorage
-    localStorage.setItem(
-      'lastTransaction',
-      JSON.stringify({
-        reference: reference,
-        tickets: result.tickets || [],
-        amount: cartStore.total,
-        date: new Date().toISOString(),
-        verified: true,
-        transactionId: result.transaction_id,
-      }),
-    )
-
-    // Clear cart and show success
-    cartStore.clearCart()
-    showSuccess.value = true
-    verifyingPayment.value = false
-
-    // Redirect after a delay
-    setTimeout(() => router.push('/'), 2500)
-  } catch (err) {
-    console.error('Payment verification error:', err)
-    verifyingPayment.value = false
-    verificationError.value = err.message || 'Failed to verify payment. Please contact support.'
-    isSubmitting.value = false
+    const reference = response.reference
+    await verifyPayment(reference)
+    showSuccess('Payment successful!')
+    router.push('/payment-success')
+  } catch {
+    showError('Payment verification failed. Please contact support.')
   }
 }
 
@@ -427,7 +389,7 @@ const continueShopping = () => {
         <p>{{ error }}</p>
         <button @click="router.push('/')" class="checkout__back-button">Return Home</button>
       </div>
-      <div v-else-if="showSuccess" class="checkout__success">
+      <div v-else-if="isSuccess" class="checkout__success">
         <div class="success-icon">✓</div>
         <div class="success-title">Thank you for your purchase</div>
         <div class="success-desc">Your payment has been verified and your tickets are ready.</div>

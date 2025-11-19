@@ -47,39 +47,71 @@ const skeletonColor = ref('rgba(255, 255, 255, 0.08)') // Subtle gray skeleton c
 // Get the SEO utilities
 const { updatePageTitle, updateMetaDescription, updateSocialMeta } = useSeo()
 
-// Load events on mount with safety
-onMounted(async () => {
-  ensureLoadingCompletes()
+// Add error handling utilities
+const showError = (message) => {
+  error.value = message
+}
+
+// Safety timeouts
+const setupSafetyTimeouts = () => {
+  // Force loading states to complete after timeout
+  setTimeout(() => {
+    if (!initialLoad.value) {
+      initialLoad.value = true
+    }
+    if (loading.value) {
+      loading.value = false
+    }
+  }, 5000) // 5 second safety
+}
+
+// Load events for category
+const loadEvents = async (categoryParam) => {
+  loading.value = true
+  error.value = null
 
   try {
-    await startInitialLoading(async () => {
-      try {
-        await loadEvents()
-      } catch (err) {
-        console.error('Failed to load events:', err)
-      }
-    })
-  } catch (e) {
-    console.error('Error in initialLoad:', e)
-    initialLoad.value = false // Ensure we stop showing the skeleton
-  }
-})
+    await eventStore.fetchEventsByCategory(categoryParam)
 
-// Watch for category changes from route
+    if (eventStore.events.length === 0) {
+      error.value = `No events found for category: ${categoryParam}`
+    }
+  } catch (err) {
+    error.value = err.message || 'Failed to load events'
+  } finally {
+    loading.value = false
+  }
+}
+
+// Initial load
+const loadInitialData = async () => {
+  try {
+    await loadEvents(props.category)
+    initialLoad.value = true
+  } catch (e) {
+    error.value = e.message || 'Failed to load initial data'
+  }
+}
+
+// Watch for category changes
 watch(
   () => props.category,
-  async () => {
-    currentPage.value = 1 // Reset to page 1 when category changes
-    ensureLoadingCompletes()
-
+  async (newCategory) => {
     try {
-      await startLoading(loadEvents)
+      if (newCategory) {
+        await loadEvents(newCategory)
+      }
     } catch (e) {
-      console.error('Error loading category:', e)
-      loading.value = false // Ensure we stop showing the skeleton
+      error.value = e.message || 'Failed to load category'
     }
   },
 )
+
+// Load data on mount
+onMounted(async () => {
+  setupSafetyTimeouts()
+  await loadInitialData()
+})
 
 // Watch for page changes
 watch(
@@ -102,50 +134,6 @@ onUnmounted(() => {
     clearTimeout(safetyTimer.value)
   }
 })
-
-// Load events by category
-const loadEvents = async () => {
-  try {
-    error.value = null
-
-    // Debug what category is being passed
-    console.log('Loading events for category:', props.category)
-
-    // Check if we have a 'comedy' category which might need mapping to 'theatre'
-    let categoryParam = props.category
-
-    // Some categories might need mapping to match what's in database
-    const categoryMapping = {
-      comedy: 'theatre', // Map comedy to theatre if needed - adjust based on your DB schema
-      // Add other mappings if needed
-    }
-
-    // Apply mapping if needed
-    if (categoryMapping[categoryParam]) {
-      console.log(
-        `Mapping category '${categoryParam}' to '${categoryMapping[categoryParam]}' to match database schema`,
-      )
-      categoryParam = categoryMapping[categoryParam]
-    }
-
-    await eventStore.fetchEventsByCategory(categoryParam, true, currentPage.value)
-
-    // Debug what was returned
-    console.log(`Found ${eventStore.events.length} events for category ${categoryParam}`)
-
-    // Inspect what we have in the returned events
-    if (eventStore.events.length > 0) {
-      console.log(
-        'Sample event categories:',
-        eventStore.events.map((e) => e.category),
-      )
-    }
-  } catch (err) {
-    error.value = err.message || `Failed to load ${props.category} events`
-    console.error('Error in loadEvents:', err)
-    throw err
-  }
-}
 
 // Handle page navigation
 const goToPage = (page) => {

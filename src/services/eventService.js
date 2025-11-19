@@ -3,8 +3,12 @@ import axios from 'axios'
 
 // Configuration
 // const EVENTS_API_URL = '/api/events.php'
-const EVENTS_API_URL = 'http://localhost/api/events.php'
+// const EVENTS_API_URL = '/api/events.php'
+const EVENTS_API_URL = 'http://127.0.0.1:8000/api/events'
 const EVENTS_FALLBACK_API_URL = 'http://localhost/api/test-search.php'
+
+console.debug('EVENTS_API_URL configured as:', EVENTS_API_URL)
+console.debug('EVENTS_FALLBACK_API_URL configured as:', EVENTS_FALLBACK_API_URL)
 
 // Minimum loading time to ensure loaders are visible
 const MIN_LOADING_TIME = 800 // milliseconds
@@ -260,92 +264,86 @@ const dataService = {
 
   // EVENTS
   async getAllEvents(page = 1, limit = 12) {
-    const mainApiCall = async () => {
-      const cacheKey = `events_${page}_${limit}`
-      const cachedData = cacheManager.get(cacheKey)
+    try {
+      const url = `${EVENTS_API_URL}?page=${page}&_=${Date.now()}`
+      console.log('🔵 Fetching from:', url)
+
+      const response = await axios.get(url, {
+        headers: { 'X-Request-ID': Math.random().toString(36).substring(2, 15) },
+      })
+
+      console.log('🔵 Response received:', response.data)
+
+      // Transform Laravel response
+      const transformedData = {
+        data: response.data.data || [],
+        pagination: response.data.meta
+          ? {
+              total: response.data.meta.total,
+              pages: response.data.meta.last_page,
+              current: response.data.meta.current_page,
+              per_page: response.data.meta.per_page,
+            }
+          : null,
+      }
+
+      console.log('🟢 Returning transformed data:', transformedData)
+      return transformedData
+    } catch (error) {
+      console.error('❌ Error fetching events:', error)
+      throw error
+    }
+  },
+  async getEventById(id) {
+    try {
+      // Validate ID before sending to API
+      if (!id || isNaN(parseInt(id))) {
+        throw new Error('Invalid event ID')
+      }
+
+      const cacheKey = `event_${id}`
+      const cachedEvent = cacheManager.get(cacheKey)
+
+      // If we have a cached event that's not expired, use it
+      if (cachedEvent && !cachedEvent.sales_status?.is_expired) {
+        console.debug('Using cached event data:', cacheKey)
+        return cachedEvent
+      }
 
       // Add cache busting parameter and ETag support
       const headers = { 'X-Request-ID': Math.random().toString(36).substring(2, 15) }
-      if (cachedData) {
-        headers['If-None-Match'] = cachedData.etag
+      if (cachedEvent) {
+        headers['If-None-Match'] = cachedEvent.etag
       }
 
-      const response = await axios.get(
-        `${EVENTS_API_URL}?page=${page}&limit=${limit}&_=${Date.now()}`,
-        { headers },
-      )
+      const response = await axios.get(`${EVENTS_API_URL}?id=${parseInt(id)}&_=${Date.now()}`, {
+        headers,
+      })
 
       // If we got a 304 Not Modified, use cached data
-      if (response.status === 304 && cachedData) {
-        return cachedData
+      if (response.status === 304 && cachedEvent) {
+        return cachedEvent
       }
 
       // Store the new data in cache with ETag
-      const responseData = response.data
-      if (responseData) {
-        responseData.etag = response.headers.etag
-        cacheManager.set(cacheKey, responseData)
+      const eventData = response.data
+      if (eventData) {
+        eventData.etag = response.headers.etag
+        cacheManager.set(cacheKey, eventData)
       }
 
-      return responseData
+      return eventData
+    } catch (error) {
+      console.error(`Error fetching event ID ${id}:`, error)
+      throw error
     }
-
-    const fallbackApiCall = async () => {
-      console.log('Using fallback API for getAllEvents')
-      const response = await axios.get(
-        `${EVENTS_FALLBACK_API_URL}?page=${page}&limit=${limit}&_=${Date.now()}`,
-        {
-          headers: { 'X-Request-ID': Math.random().toString(36).substring(2, 15) },
-        },
-      )
-      return response.data
-    }
-
-    // Ensure minimum loading time for skeleton visibility
-    return ensureMinLoadTime(handleApiWithFallback(mainApiCall, fallbackApiCall))
-  },
-
-  async getEventById(id) {
-    // Validate ID before sending to API
-    if (!id || isNaN(parseInt(id))) {
-      throw new Error('Invalid event ID')
-    }
-
-    const cacheKey = `event_${id}`
-    const cachedEvent = cacheManager.get(cacheKey)
-
-    // If we have a cached event that's not expired, use it
-    if (cachedEvent && !cachedEvent.sales_status?.is_expired) {
-      return cachedEvent
-    }
-
-    // Add cache busting parameter and ETag support
-    const headers = { 'X-Request-ID': Math.random().toString(36).substring(2, 15) }
-    if (cachedEvent) {
-      headers['If-None-Match'] = cachedEvent.etag
-    }
-
-    const response = await axios.get(`${EVENTS_API_URL}?id=${parseInt(id)}&_=${Date.now()}`, {
-      headers,
-    })
-
-    // If we got a 304 Not Modified, use cached data
-    if (response.status === 304 && cachedEvent) {
-      return cachedEvent
-    }
-
-    // Store the new data in cache with ETag
-    const eventData = response.data
-    if (eventData) {
-      eventData.etag = response.headers.etag
-      cacheManager.set(cacheKey, eventData)
-    }
-
-    return eventData
   },
 
   async getEventsByCategory(category, page = 1, limit = 12) {
-    // Sanitize inputs
+    // Sanitize inputs and add debug information
+    console.log('getEventsByCategory called with raw category:', category)
+
+    // Ensure category is properly formatted
     category = sanitizeString(category)
 
     // Make sure category is lowercase for consistency
@@ -353,16 +351,24 @@ const dataService = {
       category = category.toLowerCase().trim()
     }
 
+    console.log('Sanitized and normalized category:', category)
+
     const mainApiCall = async () => {
+      console.log(`Calling API with category=${category}, page=${page}, limit=${limit}`)
+
       const url = `${EVENTS_API_URL}?category=${encodeURIComponent(category)}&page=${page}&limit=${limit}&_=${Date.now()}`
+      console.log('API URL:', url)
 
       const response = await axios.get(url, {
         headers: { 'X-Request-ID': Math.random().toString(36).substring(2, 15) },
       })
+      console.log('API response status:', response.status)
+      console.log('API response data structure:', Object.keys(response.data))
       return response.data
     }
 
     const fallbackApiCall = async () => {
+      console.log('Using fallback API for getEventsByCategory')
       const response = await axios.get(
         `${EVENTS_FALLBACK_API_URL}?category=${encodeURIComponent(category)}&page=${page}&limit=${limit}&_=${Date.now()}`,
         {
@@ -372,42 +378,41 @@ const dataService = {
       return response.data
     }
 
+    // Ensure consistent loading experience with skeleton visibility
     return ensureMinLoadTime(handleApiWithFallback(mainApiCall, fallbackApiCall))
   },
 
   async getFeaturedEvents(limit = 6) {
-    const mainApiCall = async () => {
-      // Add cache busting parameter for fresh results
+    try {
       const cacheBuster = Date.now()
+      console.log('🔵 Fetching featured from:', `${EVENTS_API_URL}?featured=1&limit=${limit}`)
+
       const response = await axios.get(
         `${EVENTS_API_URL}?featured=1&limit=${limit}&_=${cacheBuster}`,
         {
           headers: { 'X-Request-ID': Math.random().toString(36).substring(2, 15) },
         },
       )
-      return response.data
-    }
 
-    const fallbackApiCall = async () => {
-      console.log('Using fallback API for getFeaturedEvents')
-      // Fallback for featured events - just use regular events and mark them as featured
-      const response = await axios.get(
-        `${EVENTS_FALLBACK_API_URL}?limit=${limit}&_=${Date.now()}`,
-        {
-          headers: { 'X-Request-ID': Math.random().toString(36).substring(2, 15) },
-        },
-      )
+      console.log('🔵 Featured raw response:', response.data)
 
-      // Add featured flag to response data
-      if (response.data && response.data.data) {
-        response.data.data = response.data.data.map((event) => ({ ...event, featured: true }))
+      // ✅ Transform Laravel response (same as getAllEvents)
+      const transformedData = {
+        data: response.data.data || [],
+        pagination: response.data.meta
+          ? {
+              total: response.data.meta.total,
+              pages: response.data.meta.last_page,
+            }
+          : null,
       }
 
-      return response.data
+      console.log('🟢 Featured transformed data:', transformedData)
+      return transformedData
+    } catch (error) {
+      console.error('❌ Error fetching featured events:', error)
+      throw error
     }
-
-    // Wrap the API call with ensureMinLoadTime to guarantee skeleton display
-    return ensureMinLoadTime(handleApiWithFallback(mainApiCall, fallbackApiCall))
   },
 
   async searchEvents(query, category = null, page = 1, limit = 12) {

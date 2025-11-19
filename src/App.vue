@@ -4,9 +4,10 @@ import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useCartStore } from '@/stores/cart'
 import { useRoute } from 'vue-router'
 import { useSeo } from '@/composables/useSeo'
+import HeroSection from '@/components/HeroSection.vue'
+import throttle from 'lodash.throttle' // ✅ use throttling to reduce scroll event calls
 
 const isMobileMenuOpen = ref(false)
-const scrollPosition = ref(0)
 const currentYear = ref(new Date().getFullYear())
 const route = useRoute()
 const { updateMetaDescription, updateSocialMeta } = useSeo()
@@ -23,13 +24,10 @@ const navigationLinks = [
   { path: '/contact', name: 'Contact us' },
 ]
 
+// ✅ Menu toggle logic
 const toggleMobileMenu = () => {
   isMobileMenuOpen.value = !isMobileMenuOpen.value
-  if (isMobileMenuOpen.value) {
-    document.body.style.overflow = 'hidden'
-  } else {
-    document.body.style.overflow = ''
-  }
+  document.body.style.overflow = isMobileMenuOpen.value ? 'hidden' : ''
 }
 
 const closeMenu = () => {
@@ -37,11 +35,23 @@ const closeMenu = () => {
   document.body.style.overflow = ''
 }
 
-const updateScroll = () => {
-  scrollPosition.value = window.scrollY
-}
+// ✅ Optimized scroll handler (non-reactive, throttled)
+const handleScroll = throttle(() => {
+  const scrolled = window.scrollY > 20
+  document.body.classList.toggle('scrolled', scrolled)
+}, 100)
 
-// Update meta tags when route changes
+onMounted(() => {
+  window.addEventListener('scroll', handleScroll)
+  handleScroll() // initialize immediately
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
+  document.body.style.overflow = ''
+})
+
+// ✅ Update meta tags when route changes
 watch(
   () => route.meta,
   (meta) => {
@@ -49,7 +59,6 @@ watch(
       updateMetaDescription(meta.description)
     }
 
-    // Update social sharing meta tags
     updateSocialMeta({
       title: meta.title ? `${meta.title} | Kaka` : 'Kaka - Find and Book Amazing Events',
       description: meta.description || 'Discover and book tickets for events near you',
@@ -59,22 +68,13 @@ watch(
   { immediate: true },
 )
 
-onMounted(() => {
-  window.addEventListener('scroll', updateScroll)
-  updateScroll()
-})
-
-onUnmounted(() => {
-  window.removeEventListener('scroll', updateScroll)
-  document.body.style.overflow = ''
-})
-
 const cartStore = useCartStore()
 const cartCount = computed(() => cartStore.itemCount)
 </script>
 
 <template>
   <div class="app-container">
+    <HeroSection />
     <header class="app-header" :class="{ 'nav-shadow': scrollPosition > 20 }">
       <div class="container">
         <div class="logo">

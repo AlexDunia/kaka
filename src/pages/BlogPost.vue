@@ -12,49 +12,38 @@ const post = ref(null)
 const loading = ref(true)
 const error = ref(null)
 
-onMounted(async () => {
+// Load blog post
+const loadBlogPost = async () => {
+  loading.value = true
+  error.value = null
+
   try {
-    const slug = route.params.slug
-    const data = await blogService.getPostBySlug(slug)
-
-    if (!data) {
-      error.value = 'Blog post not found'
-      return
+    const response = await fetch(`/api/blog-posts/${route.params.id}`)
+    if (!response.ok) {
+      throw new Error('Failed to load blog post')
     }
 
-    // Ensure content is an array
-    if (!Array.isArray(data.content)) {
-      data.content = []
-      error.value = 'Invalid blog post format'
-      return
-    }
-
+    const data = await response.json()
     post.value = data
 
-    // Find first paragraph for description
-    const firstParagraph = data.content.find((block) => block?.type === 'paragraph')
-    const firstImage = data.content.find((block) => block?.type === 'image')
-
-    // Update SEO metadata with fallbacks
-    updatePageTitle(data.seo_title || data.title || 'Blog Post')
-    updateMetaDescription(data.seo_description || firstParagraph?.content || data.title)
+    // Update SEO metadata
+    updatePageTitle(post.value.title)
+    updateMetaDescription(post.value.excerpt || post.value.content.substring(0, 155))
     updateSocialMeta({
-      title: data.seo_title || `${data.title} | KakaWorld Blog`,
-      description: data.seo_description || firstParagraph?.content || data.title,
+      title: post.value.title,
+      description: post.value.excerpt || post.value.content.substring(0, 155),
+      image: post.value.image,
       url: window.location.href,
-      image: firstImage?.url || data.bgimage,
-      author: data.author?.display_name || data.author?.name,
-      publishedTime: data.date,
-      modifiedTime: data.last_modified || data.date,
-      section: 'Blog',
-      tags: data.seo_keywords?.split(',') || [],
     })
   } catch (e) {
-    error.value = 'Failed to load blog post'
-    console.error('Error loading blog post:', e)
+    error.value = 'Failed to load blog post. Please try again later.'
   } finally {
     loading.value = false
   }
+}
+
+onMounted(() => {
+  loadBlogPost()
 })
 
 const formatDate = (dateString) => {

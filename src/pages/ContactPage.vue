@@ -2,91 +2,79 @@
 import { ref, onMounted } from 'vue'
 import emailjs from '@emailjs/browser'
 
-// Initialize EmailJS
-onMounted(() => {
-  try {
-    emailjs.init('h9a6YgYeeB2ELoJSM')
-    console.log('EmailJS initialized successfully')
-  } catch (error) {
-    console.error('Failed to initialize EmailJS:', error)
-  }
-})
+const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID
+const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID
 
-const formData = ref({
-  name: '',
-  email: '',
-  subject: '',
-  message: '',
-})
-
+// Form state
+const form = ref({ name: '', email: '', subject: '', message: '' })
 const loading = ref(false)
 const error = ref(null)
 const success = ref(false)
 
-const submitForm = async () => {
-  console.log('Starting form submission...')
+// Helper functions
+const showError = (message) => {
+  error.value = message
+}
 
-  // Validate form
-  if (!formData.value.name || !formData.value.email || !formData.value.message) {
-    console.warn('Form validation failed:', {
-      name: !!formData.value.name,
-      email: !!formData.value.email,
-      message: !!formData.value.message,
-    })
-    error.value = 'Please fill in all required fields'
-    return
+const showSuccess = (message) => {
+  success.value = true
+  // You might want to add a success message display in your UI
+}
+
+const isValidEmail = (email) => {
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return re.test(email)
+}
+
+// Initialize EmailJS
+onMounted(async () => {
+  try {
+    await emailjs.init(EMAILJS_PUBLIC_KEY)
+  } catch (error) {
+    showError('Failed to initialize contact form. Please try again later.')
   }
+})
 
-  // Reset status
-  error.value = null
+// Form submission handler
+const handleSubmit = async () => {
   loading.value = true
+  error.value = null
+  success.value = false
 
   try {
-    console.log('Preparing email parameters...')
-    const templateParams = {
-      from_name: formData.value.name,
-      from_email: formData.value.email,
-      message: formData.value.message,
-      subject: formData.value.subject || 'Contact Form Submission',
+    // Form validation
+    if (!form.value.name || !form.value.email || !form.value.message) {
+      throw new Error('Please fill in all required fields')
     }
 
-    console.log('Sending email with parameters:', {
-      serviceId: 'service_3w6bbim',
-      templateId: 'template_ww1ge9r',
-      params: templateParams,
-    })
+    if (!isValidEmail(form.value.email)) {
+      throw new Error('Please enter a valid email address')
+    }
 
-    const response = await emailjs.send(
-      'service_3w6bbim',
-      'template_ww1ge9r',
-      templateParams,
-      'h9a6YgYeeB2ELoJSM',
-    )
+    // Prepare email parameters
+    const emailParams = {
+      from_name: form.value.name,
+      from_email: form.value.email,
+      message: form.value.message,
+      subject: form.value.subject || 'Contact Form Submission',
+    }
 
-    console.log('Email sent successfully:', response)
+    // Send email
+    const response = await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, emailParams)
 
-    // Show success message
-    success.value = true
-
-    // Reset form
-    formData.value = {
-      name: '',
-      email: '',
-      subject: '',
-      message: '',
+    if (response.status === 200) {
+      success.value = true
+      form.value = { name: '', email: '', subject: '', message: '' }
+      showSuccess('Message sent successfully! We will get back to you soon.')
+    } else {
+      throw new Error('Failed to send message')
     }
   } catch (err) {
-    console.error('Failed to send email. Full error:', err)
-    console.error('Error details:', {
-      message: err.message,
-      text: err.text,
-      name: err.name,
-      stack: err.stack,
-    })
-    error.value = `Failed to send your message: ${err.message || 'Unknown error'}`
+    error.value = err.message || 'Failed to send message. Please try again later.'
+    showError(error.value)
   } finally {
     loading.value = false
-    console.log('Form submission completed. Success:', success.value)
   }
 }
 </script>
@@ -193,7 +181,7 @@ const submitForm = async () => {
             <button class="btn" @click="success = false">Send Another Message</button>
           </div>
 
-          <form v-else class="contact-form" @submit.prevent="submitForm">
+          <form v-else class="contact-form" @submit.prevent="handleSubmit">
             <h2 class="contact-form__title">Send Us a Message</h2>
 
             <div v-if="error" class="contact-form__error">
@@ -204,7 +192,7 @@ const submitForm = async () => {
               <label for="name" class="contact-form__label">Name*</label>
               <input
                 id="name"
-                v-model="formData.name"
+                v-model="form.name"
                 type="text"
                 class="contact-form__input"
                 placeholder="Your name"
@@ -216,7 +204,7 @@ const submitForm = async () => {
               <label for="email" class="contact-form__label">Email*</label>
               <input
                 id="email"
-                v-model="formData.email"
+                v-model="form.email"
                 type="email"
                 class="contact-form__input"
                 placeholder="Your email address"
@@ -228,7 +216,7 @@ const submitForm = async () => {
               <label for="subject" class="contact-form__label">Subject</label>
               <input
                 id="subject"
-                v-model="formData.subject"
+                v-model="form.subject"
                 type="text"
                 class="contact-form__input"
                 placeholder="What is this about?"
@@ -239,7 +227,7 @@ const submitForm = async () => {
               <label for="message" class="contact-form__label">Message*</label>
               <textarea
                 id="message"
-                v-model="formData.message"
+                v-model="form.message"
                 class="contact-form__textarea"
                 placeholder="Your message"
                 rows="5"

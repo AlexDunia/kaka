@@ -155,6 +155,23 @@ function updateDateTime(dateTime) {
   emit('update:modelValue', dateTime)
   closePicker()
 }
+
+// Format date for display
+const formatDate = (date) => {
+  try {
+    if (!date) return ''
+    return new Date(date).toLocaleString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch {
+    return 'Invalid date'
+  }
+}
 </script>
 
 <style scoped>

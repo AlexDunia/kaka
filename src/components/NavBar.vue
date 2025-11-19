@@ -34,14 +34,14 @@ const cartCount = computed(() => cartStore.itemCount)
           class="navbar__menu-item"
           active-class="navbar__menu-item--active"
         >
-          Comedy
+          COMEDY
         </router-link>
         <router-link
           to="/festivals"
           class="navbar__menu-item"
           active-class="navbar__menu-item--active"
         >
-          Festivals
+          FESTIVALS
         </router-link>
       </div>
 

@@ -161,17 +161,24 @@ const clearSearch = async () => {
 
 // Update onMounted hook
 onMounted(async () => {
+  console.log('🚀 HomePage mounted, starting data fetch...')
+
   try {
     if (!events.value || events.value.length === 0) {
+      console.log('📡 Fetching all events...')
       startLoading()
       await eventStore.fetchAllEvents()
+      console.log('✅ All events fetched:', events.value)
     }
 
     // Load featured events
+    console.log('⭐ Fetching featured events...')
     startLoadingFeatured()
     await eventStore.fetchFeaturedEvents()
-  } catch {
-    // Handle error silently in production
+    console.log('✅ Featured events fetched:', featuredEvents.value)
+    console.log('✅ Sorted featured events:', sortedFeaturedEvents.value)
+  } catch (err) {
+    console.error('❌ Error in onMounted:', err)
     ensureLoadingCompletes()
   } finally {
     ensureLoadingCompletes()
@@ -294,9 +301,11 @@ onUnmounted(() => {
     </section>
 
     <!-- Featured Events Section -->
+    <!-- Featured Events Section -->
     <section v-if="!isLoading || sortedFeaturedEvents.length > 0" class="featured-events">
       <div class="section-header">
         <h2>Featured Events</h2>
+        <p>Debug: {{ sortedFeaturedEvents.length }} events</p>
       </div>
 
       <div v-if="loadingFeatured && !sortedFeaturedEvents.length" class="featured-skeleton">
@@ -306,6 +315,7 @@ onUnmounted(() => {
         <p>No featured events available. Check back soon!</p>
       </div>
       <div v-else class="event-grid">
+        <p>About to render {{ sortedFeaturedEvents.length }} EventCards</p>
         <EventCard v-for="event in sortedFeaturedEvents" :key="event.id" :event="event" />
       </div>
     </section>

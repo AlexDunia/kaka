@@ -46,7 +46,7 @@ const eventImage = computed(() => {
 // Format date
 const formattedDate = computed(() => {
   if (!event.value) return ''
-  const eventDate = new Date(event.value.event_date)
+  const eventDate = new Date(event.value.date) // ✅ Changed from event_date
   return isNaN(eventDate)
     ? ''
     : eventDate.toLocaleDateString('en-US', {
@@ -113,7 +113,6 @@ const fetchEventData = async () => {
     }
   } catch (err) {
     error.value = err.message || 'Failed to load event details'
-    console.error('Error loading event:', err)
   } finally {
     loading.value = false
   }
@@ -282,12 +281,22 @@ const closePurchaseModal = () => {
 
 // First, add a formattedCategory computed property for category name display
 const formattedCategory = computed(() => {
-  if (!event.value || !event.value.category) return ''
+  if (!event.value) return ''
 
-  // Convert category ID to readable name (capitalize and replace hyphens with spaces)
-  return (
-    event.value.category.charAt(0).toUpperCase() + event.value.category.slice(1).replace(/-/g, ' ')
-  )
+  // If category is an object with name property
+  if (event.value.category?.name) {
+    return event.value.category.name
+  }
+
+  // If category is a string
+  if (typeof event.value.category === 'string') {
+    return (
+      event.value.category.charAt(0).toUpperCase() +
+      event.value.category.slice(1).replace(/-/g, ' ')
+    )
+  }
+
+  return 'Event'
 })
 
 // After the existing computed properties, add a displaySubCategories computed property
@@ -382,8 +391,8 @@ const addToCart = () => {
   cartStore.addItem({
     eventId: event.value.id,
     eventTitle: event.value.title,
-    eventDate: event.value.event_date,
-    eventLocation: event.value.location,
+    eventDate: event.value.date, // ✅ Changed
+    eventLocation: event.value.address?.venue_name || event.value.location || 'Venue TBA', // ✅ Changed
     ticketType: ticket.name,
     ticketId: ticket.id,
     quantity: ticketQuantity.value,
@@ -715,9 +724,13 @@ function formatPrice(price) {
                     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                     <circle cx="12" cy="10" r="3"></circle>
                   </svg>
-                  <div class="event-info__meta-content">
+                  <!-- <div class="event-info__meta-content">
                     <span class="event-info__meta-label">Location</span>
                     <span class="event-info__meta-value">{{ event.location }}</span>
+                  </div> -->
+                  <div class="event-info__meta-content">
+                    <span class="event-info__meta-label">Location</span>
+                    <span class="event-info__meta-value">{{ event.address.venue_name }}</span>
                   </div>
                 </div>
 

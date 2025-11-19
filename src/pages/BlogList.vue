@@ -11,9 +11,19 @@ const posts = ref([])
 const loading = ref(true)
 const error = ref(null)
 
-onMounted(async () => {
+// Load blog posts
+const loadBlogPosts = async () => {
+  loading.value = true
+  error.value = null
+
   try {
-    posts.value = await blogService.getAllPosts()
+    const response = await fetch('/api/blog-posts')
+    if (!response.ok) {
+      throw new Error('Failed to load blog posts')
+    }
+
+    const data = await response.json()
+    posts.value = data
 
     // Get the first post's image for social sharing if available
     const socialImage =
@@ -32,11 +42,14 @@ onMounted(async () => {
       image: socialImage,
     })
   } catch (e) {
-    error.value = 'Failed to load blog posts'
-    console.error('Error loading blog posts:', e)
+    error.value = 'Failed to load blog posts. Please try again later.'
   } finally {
     loading.value = false
   }
+}
+
+onMounted(() => {
+  loadBlogPosts()
 })
 
 const navigateToPost = (slug) => {

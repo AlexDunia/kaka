@@ -51,36 +51,47 @@ const formattedSalesEnd = computed(() => {
 // Create computed properties from event if available
 const eventTitle = computed(() => props.event?.title || '')
 const eventImage = computed(() => props.event?.main_image || '')
-const eventLocation = computed(() => props.event?.location || '')
 
-// Format date for display
+// FIX: Laravel returns address.venue_name, not location
+const eventLocation = computed(() => {
+  if (props.event?.address?.venue_name) {
+    return props.event.address.venue_name
+  }
+  return props.event?.location || 'Venue TBA'
+})
+
+// Format date for display - FIX: Laravel returns 'date', not 'event_date'
 const displayDate = computed(() => {
-  const eventDate = props.event?.event_date ? new Date(props.event.event_date) : null
+  const eventDate = props.event?.date ? new Date(props.event.date) : null
   return eventDate && !isNaN(eventDate) ? eventDate.getDate() : ''
 })
 
 const displayMonth = computed(() => {
-  const eventDate = props.event?.event_date ? new Date(props.event.event_date) : null
+  const eventDate = props.event?.date ? new Date(props.event.date) : null
   return eventDate && !isNaN(eventDate)
     ? eventDate.toLocaleDateString('en-US', { month: 'short' })
     : ''
 })
 
 const displayYear = computed(() => {
-  const eventDate = props.event?.event_date ? new Date(props.event.event_date) : null
+  const eventDate = props.event?.date ? new Date(props.event.date) : null
   return eventDate && !isNaN(eventDate) ? eventDate.getFullYear() : ''
 })
 
 // Format price
 const formattedPrice = computed(() => {
-  if (!props.event?.price) return 'Free'
+  if (!props.event?.price) return 'Free' // Return just the number value, we'll add the Naira sign in the template
 
-  // Return just the number value, we'll add the Naira sign in the template
   return typeof props.event.price === 'number' ? props.event.price.toFixed(2) : props.event.price
 })
 
-// Get category display name
+// FIX: Category is an object with name property, not a string
 const categoryDisplayName = computed(() => {
+  // Check if category is an object with name property
+  if (props.event?.category?.name) {
+    return props.event.category.name
+  } // Fallback to old logic if category is a string
+
   const category = props.event?.category
   if (!category) return 'Event'
 
@@ -103,8 +114,7 @@ const categoryDisplayName = computed(() => {
 })
 
 const viewDetails = () => {
-  if (!props.showDetails || !props.event) return
-  // Use the useSlug composable to get the proper URL
+  if (!props.showDetails || !props.event) return // Use the useSlug composable to get the proper URL
   const url = getEventUrl(props.event)
   router.push(url)
 }
@@ -152,6 +162,7 @@ const viewDetails = () => {
           <span>{{ event?.rating || '4.5' }}</span>
         </div>
       </div>
+
       <div class="event-card__footer">
         <div class="event-card__footer-text">
           <div class="event-card__location">
@@ -180,7 +191,6 @@ const viewDetails = () => {
     </div>
   </div>
 </template>
-
 <style scoped>
 .event-card {
   width: 100%;
