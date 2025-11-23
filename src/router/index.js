@@ -30,7 +30,7 @@ const router = createRouter({
     {
       path: '/login',
       name: 'login',
-      component: () => import('../pages/Login.vue'),
+      component: () => import('../pages/LoginPage.vue'),
       meta: {
         title: 'Login',
         description: 'Login to your account to manage your tickets and events.',
@@ -210,6 +210,11 @@ const router = createRouter({
       },
     },
     {
+      path: '/auth/google/success',
+      name: 'google-callback',
+      component: () => import('../components/GoogleCallback.vue'),
+    },
+    {
       path: '/blog/:slug',
       name: 'blog-post',
       component: () => import('@/pages/BlogPost.vue'),
@@ -217,6 +222,7 @@ const router = createRouter({
         title: 'Blog Post',
       },
     },
+
     {
       path: '/transactions',
       name: 'transactions',

@@ -11,23 +11,23 @@ export const useAuthStore = defineStore('auth', {
   }),
 
   getters: {
-    isAuthenticated: (state) => !!state.token,
+    isAuthenticated: (state) => !!state.user, // ✅ Changed from !!state.token
     getUser: (state) => state.user,
     getError: (state) => state.error,
     isLoading: (state) => state.loading,
+    isAdmin: (state) => state.user?.role === 'admin', // ✅ Added
   },
 
   actions: {
     async initialize() {
       try {
-        const token = localStorage.getItem('auth_token')
-        if (token) {
-          this.token = token
-          await this.fetchUser()
+        const userJson = localStorage.getItem('user')
+        if (userJson) {
+          this.user = JSON.parse(userJson)
         }
       } catch (err) {
         this.error = err.message || 'Failed to initialize auth store'
-        throw err
+        localStorage.removeItem('user')
       }
     },
 
@@ -66,6 +66,7 @@ export const useAuthStore = defineStore('auth', {
         this.token = null
         this.user = null
         localStorage.removeItem('auth_token')
+        localStorage.removeItem('user')
         setAuthToken(null)
         this.loading = false
       }
@@ -156,6 +157,12 @@ export const useAuthStore = defineStore('auth', {
       } finally {
         this.loading = false
       }
+    },
+
+    // ✅ ADD THIS METHOD FOR GOOGLE OAUTH
+    setUser(userData) {
+      this.user = userData
+      localStorage.setItem('user', JSON.stringify(userData))
     },
   },
 })
