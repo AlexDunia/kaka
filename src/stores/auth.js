@@ -9,6 +9,7 @@ export const useAuthStore = defineStore('auth', {
     user: null,
     loading: false,
     error: null,
+    authProvider: null, // 'local' or 'google'
   }),
 
   getters: {
@@ -23,15 +24,19 @@ export const useAuthStore = defineStore('auth', {
     async initialize() {
       try {
         const userJson = localStorage.getItem('user')
+        const provider = localStorage.getItem('authProvider')
         if (userJson) {
           this.user = JSON.parse(userJson)
+          this.authProvider = provider || null
           // Verify session is still valid
           await this.fetchUser()
         }
       } catch (err) {
         this.error = err.message || 'Failed to initialize auth store'
         localStorage.removeItem('user')
+        localStorage.removeItem('authProvider')
         this.user = null
+        this.authProvider = null
       }
     },
 
@@ -48,6 +53,8 @@ export const useAuthStore = defineStore('auth', {
 
         // Fetch user data after successful login
         await this.fetchUser()
+        this.authProvider = 'local'
+        localStorage.setItem('authProvider', 'local')
 
         return this.user
       } catch (err) {
@@ -91,16 +98,14 @@ export const useAuthStore = defineStore('auth', {
       this.error = null
 
       try {
-        await axios.post(
-          `${API_BASE_URL}/api/logout`,
-          {},
-          { withCredentials: true }, // ✅ Send cookies
-        )
+        await axios.post(`${API_BASE_URL}/api/logout`, {}, { withCredentials: true })
       } catch (err) {
         this.error = err.message || 'Logout failed'
       } finally {
         this.user = null
+        this.authProvider = null
         localStorage.removeItem('user')
+        localStorage.removeItem('authProvider')
         this.loading = false
       }
     },
@@ -190,9 +195,11 @@ export const useAuthStore = defineStore('auth', {
     },
 
     // ✅ For Google OAuth callback
-    setUser(userData) {
+    setUser(userData, provider = 'google') {
       this.user = userData
+      this.authProvider = provider
       localStorage.setItem('user', JSON.stringify(userData))
+      localStorage.setItem('authProvider', provider)
     },
   },
 })
