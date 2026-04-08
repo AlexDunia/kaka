@@ -2,6 +2,7 @@
 import { RouterLink, RouterView } from 'vue-router'
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useCartStore } from '@/stores/cart'
+import { useAuthStore } from '@/stores/auth'
 import { useRoute } from 'vue-router'
 import { useSeo } from '@/composables/useSeo'
 import HeroSection from '@/components/HeroSection.vue'
@@ -35,22 +36,6 @@ const closeMenu = () => {
   document.body.style.overflow = ''
 }
 
-// ✅ Optimized scroll handler (non-reactive, throttled)
-const handleScroll = throttle(() => {
-  const scrolled = window.scrollY > 20
-  document.body.classList.toggle('scrolled', scrolled)
-}, 100)
-
-onMounted(() => {
-  window.addEventListener('scroll', handleScroll)
-  handleScroll() // initialize immediately
-})
-
-onUnmounted(() => {
-  window.removeEventListener('scroll', handleScroll)
-  document.body.style.overflow = ''
-})
-
 // ✅ Update meta tags when route changes
 watch(
   () => route.meta,
@@ -69,7 +54,37 @@ watch(
 )
 
 const cartStore = useCartStore()
+const authStore = useAuthStore()
 const cartCount = computed(() => cartStore.itemCount)
+const isAuthenticated = computed(() => authStore.isAuthenticated)
+const avatarUrl = computed(
+  () =>
+    authStore.user?.avatar_url ||
+    authStore.user?.profile_picture ||
+    authStore.user?.photoURL ||
+    null,
+)
+const avatarInitials = computed(() => {
+  const name = authStore.user?.display_name || authStore.user?.name || authStore.user?.email || ''
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (!parts.length) return '??'
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+})
+const scrollPosition = ref(0)
+const handleScroll = throttle(() => {
+  scrollPosition.value = window.scrollY
+}, 100)
+
+onMounted(() => {
+  window.addEventListener('scroll', handleScroll)
+  handleScroll()
+  authStore.initialize()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
+})
 </script>
 
 <template>
@@ -80,7 +95,7 @@ const cartCount = computed(() => cartStore.itemCount)
         <div class="logo">
           <RouterLink to="/">
             <img
-              src="https://res.cloudinary.com/dnuhjsckk/image/upload/v1751633898/tdlogo_lfg0lh-_2_hcydfz.png"
+              src="https://res.cloudinary.com/dnuhjsckk/image/upload/v1775522493/rushhourticketbg_raobzp.png"
               alt="TD Logo"
               class="logo-img"
             />
@@ -154,6 +169,26 @@ const cartCount = computed(() => cartStore.itemCount)
         </nav>
 
         <div class="header-actions">
+          <template v-if="isAuthenticated">
+            <div
+              class="user-avatar"
+              :title="authStore.user?.display_name || authStore.user?.name || 'Profile'"
+            >
+              <img
+                v-if="avatarUrl"
+                :src="avatarUrl"
+                :alt="authStore.user?.display_name || authStore.user?.name || 'Avatar'"
+                class="avatar-image"
+              />
+              <span v-else class="avatar-fallback">{{ avatarInitials }}</span>
+            </div>
+          </template>
+
+          <template v-else>
+            <RouterLink to="/login" class="auth-link">Login</RouterLink>
+            <RouterLink to="/register" class="auth-button">Sign up</RouterLink>
+          </template>
+
           <RouterLink to="/cart" class="cart-icon">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -252,7 +287,7 @@ const cartCount = computed(() => cartStore.itemCount)
       <div class="footer-simple">
         <div class="footer-logo-col">
           <img
-            src="https://res.cloudinary.com/dnuhjsckk/image/upload/v1751633898/tdlogo_lfg0lh-_2_hcydfz.png"
+            src="https://res.cloudinary.com/dnuhjsckk/image/upload/v1775522493/rushhourticketbg_raobzp.png"
             alt="TD Logo"
             class="footer-logo-img"
           />
@@ -379,7 +414,7 @@ const cartCount = computed(() => cartStore.itemCount)
 }
 
 .logo-img {
-  height: 60px;
+  height: 80px;
   width: auto;
   display: block;
   margin-right: 0.5rem;
@@ -415,7 +450,72 @@ const cartCount = computed(() => cartStore.itemCount)
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 2rem;
+  gap: 1rem;
+}
+
+.user-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: linear-gradient(135deg, #f06292, #8e44ad);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+  flex-shrink: 0;
+}
+
+.avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.avatar-fallback {
+  width: 100%;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-link,
+.auth-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  color: #ffffff;
+  border-radius: 999px;
+  padding: 0.65rem 1rem;
+  font-size: 0.9rem;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.auth-link {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.auth-link:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.auth-button {
+  background: #f06292;
+  color: #ffffff;
+}
+
+.auth-button:hover {
+  background: #d6458b;
 }
 
 .cart-icon {

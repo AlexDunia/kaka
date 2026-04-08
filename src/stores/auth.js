@@ -28,11 +28,15 @@ export const useAuthStore = defineStore('auth', {
         if (userJson) {
           this.user = JSON.parse(userJson)
           this.authProvider = provider || null
-          // Verify session is still valid
-          await this.fetchUser()
+
+          // Only verify session for local logins
+          // Google users rely on localStorage persistence
+          if (provider === 'local') {
+            await this.fetchUser()
+          }
         }
       } catch (err) {
-        this.error = err.message || 'Failed to initialize auth store'
+        this.error = err.message || 'Failed to initialize'
         localStorage.removeItem('user')
         localStorage.removeItem('authProvider')
         this.user = null
