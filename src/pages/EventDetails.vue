@@ -1,5 +1,6 @@
 <script setup>
-import { ref, onMounted, computed, watch, onUnmounted } from 'vue'
+import { ref, onMounted, computed, watch, onUnmounted, onBeforeUnmount } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import { useEventStore } from '@/stores/events'
 import QRCode from 'qrcode.vue'
@@ -16,9 +17,11 @@ const { updatePageTitle, updateMetaDescription, updateSocialMeta, addEventStruct
   useSeo()
 const { generateSlug } = useSlug()
 
-const loading = ref(true)
+const { currentEvent, isLoadingEvent } = storeToRefs(eventStore)
+const loading = ref(false)
 const error = ref(null)
-const event = computed(() => eventStore.currentEvent)
+const event = currentEvent
+
 const showPurchaseModal = ref(false)
 const showQRModal = ref(false)
 const qrValue = ref('')
@@ -93,28 +96,20 @@ const fetchEventData = async () => {
 
   try {
     const eventId = route.params.id
+
     if (!eventId) {
       throw new Error('No event ID provided')
     }
 
-    // Check if we already have this event in the store
-    if (eventStore.currentEvent?.id === parseInt(eventId)) {
-      // If the event is expired, force a refresh
-      if (eventStore.currentEvent.sales_status?.is_expired) {
-        await eventStore.fetchEventById(eventId, true) // Force refresh
-      }
-      return
-    }
+    await eventStore.fetchEventById(parseInt(eventId))
 
-    await eventStore.fetchEventById(eventId)
-
-    if (!event.value) {
+    if (!eventStore.currentEvent) {
       throw new Error('Event not found')
     }
   } catch (err) {
     error.value = err.message || 'Failed to load event details'
   } finally {
-    loading.value = false
+    loading.value = false // ← always runs, no early returns
   }
 }
 
@@ -143,60 +138,62 @@ onUnmounted(() => {
   }
 })
 
+onBeforeUnmount(() => {
+  eventStore.clearCurrentEvent()
+})
+
 // Update watch to handle polling
 watch(
   event,
   (newEvent) => {
-    if (newEvent) {
-      // Clear existing poll interval
-      if (pollInterval.value) {
-        clearInterval(pollInterval.value)
-      }
+    if (!newEvent) return
 
-      // Start polling if near expiry
-      startPollingIfNearExpiry()
-
-      // Update SEO data
-      updatePageTitle(newEvent.title)
-
-      const description = newEvent.description
-        ? newEvent.description.substring(0, 155) + (newEvent.description.length > 155 ? '...' : '')
-        : `${newEvent.title} - Get tickets for this event on ${formattedDate.value}`
-
-      updateMetaDescription(description)
-
-      // Update URL if needed
-      if (route.params.id && !route.params.slug && newEvent.title) {
-        const slug = newEvent.slug || generateSlug(newEvent.title)
-        router.replace(`/events/${slug}`)
-      }
-
-      // Update social sharing tags
-      const canonical =
-        window.location.origin +
-        (newEvent.slug
-          ? `/events/${newEvent.slug}`
-          : newEvent.title
-            ? `/events/${generateSlug(newEvent.title)}`
-            : `/event/${newEvent.id}`)
-
-      shareUrl.value = canonical
-      shareTitle.value = newEvent.title
-      shareDescription.value = description
-      shareImage.value = eventImage.value
-
-      updateSocialMeta({
-        title: newEvent.title,
-        description: description,
-        image: eventImage.value,
-        url: canonical,
-      })
-
-      addEventStructuredData({
-        ...newEvent,
-        url: canonical,
-      })
+    // Clear existing poll interval
+    if (pollInterval.value) {
+      clearInterval(pollInterval.value)
     }
+
+    // Start polling if near expiry
+    startPollingIfNearExpiry()
+
+    // Update SEO data
+    updatePageTitle(newEvent.title)
+
+    const description = newEvent.description
+      ? newEvent.description.substring(0, 155) + (newEvent.description.length > 155 ? '...' : '')
+      : `${newEvent.title} - Get tickets for this event on ${formattedDate.value}`
+
+    updateMetaDescription(description)
+
+    // Update URL if needed
+    if (route.params.id && !route.params.slug && newEvent.title) {
+      const slug = newEvent.slug || generateSlug(newEvent.title)
+      router.replace(`/events/${route.params.id}-${slug}`)
+    }
+
+    // Update social sharing tags
+    const canonical =
+      window.location.origin +
+      (newEvent.id
+        ? `/events/${newEvent.id}-${newEvent.slug || generateSlug(newEvent.title)}`
+        : `/event/${newEvent.id}`)
+
+    shareUrl.value = canonical
+    shareTitle.value = newEvent.title
+    shareDescription.value = description
+    shareImage.value = eventImage.value
+
+    updateSocialMeta({
+      title: newEvent.title,
+      description: description,
+      image: eventImage.value,
+      url: canonical,
+    })
+
+    addEventStructuredData({
+      ...newEvent,
+      url: canonical,
+    })
   },
   { immediate: true },
 )
@@ -224,8 +221,8 @@ onMounted(() => {
 // Watch for route changes to refetch data when navigating between events
 watch(
   () => route.params.id,
-  (newId) => {
-    if (newId) {
+  (newId, oldId) => {
+    if (newId && newId !== oldId) {
       fetchEventData()
     }
   },
@@ -603,7 +600,9 @@ function formatPrice(price) {
   <div class="event-details">
     <div class="container">
       <!-- Loading state -->
-      <div v-if="loading" class="event-details__loading">Loading event details...</div>
+      <div v-if="loading || isLoadingEvent" class="event-details__loading">
+        Loading event details...
+      </div>
 
       <!-- Error state -->
       <div v-else-if="error" class="event-details__error">

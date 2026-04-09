@@ -294,45 +294,15 @@ const dataService = {
       throw error
     }
   },
+
   async getEventById(id) {
     try {
-      // Validate ID before sending to API
       if (!id || isNaN(parseInt(id))) {
         throw new Error('Invalid event ID')
       }
 
-      const cacheKey = `event_${id}`
-      const cachedEvent = cacheManager.get(cacheKey)
-
-      // If we have a cached event that's not expired, use it
-      if (cachedEvent && !cachedEvent.sales_status?.is_expired) {
-        console.debug('Using cached event data:', cacheKey)
-        return cachedEvent
-      }
-
-      // Add cache busting parameter and ETag support
-      const headers = { 'X-Request-ID': Math.random().toString(36).substring(2, 15) }
-      if (cachedEvent) {
-        headers['If-None-Match'] = cachedEvent.etag
-      }
-
-      const response = await axios.get(`${EVENTS_API_URL}?id=${parseInt(id)}&_=${Date.now()}`, {
-        headers,
-      })
-
-      // If we got a 304 Not Modified, use cached data
-      if (response.status === 304 && cachedEvent) {
-        return cachedEvent
-      }
-
-      // Store the new data in cache with ETag
-      const eventData = response.data
-      if (eventData) {
-        eventData.etag = response.headers.etag
-        cacheManager.set(cacheKey, eventData)
-      }
-
-      return eventData
+      const response = await axios.get(`${EVENTS_API_URL}/${parseInt(id)}`)
+      return response.data // { data: eventObject }
     } catch (error) {
       console.error(`Error fetching event ID ${id}:`, error)
       throw error

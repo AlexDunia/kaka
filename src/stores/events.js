@@ -9,6 +9,7 @@ export const useEventStore = defineStore('events', () => {
   const featuredEvents = ref([])
   const currentEvent = ref(null)
   const isLoading = ref(false)
+  const isLoadingEvent = ref(false)
   const error = ref(null)
   const searchQuery = ref('')
   const currentCategory = ref('all')
@@ -79,39 +80,32 @@ export const useEventStore = defineStore('events', () => {
       return currentEvent.value
     }
 
-    isLoading.value = true
+    isLoadingEvent.value = true
     error.value = null
 
     try {
       const response = await eventService.getEventById(id)
-      console.log('Event by ID response:', response)
 
-      // ✅ FIX: Check if response is an array and get first item
-      let event = response
-
-      // If response is wrapped in data property
-      if (response && response.data) {
-        event = Array.isArray(response.data) ? response.data[0] : response.data
-      }
-      // If response itself is an array
-      else if (Array.isArray(response)) {
-        event = response[0]
-      }
+      // show() returns { data: singleEventObject }, not an array
+      const event = response?.data ?? null
 
       if (event) {
         currentEvent.value = event
-        console.log('✅ Event set:', event)
       } else {
         error.value = 'Event not found'
       }
+
       return event
     } catch (err) {
       error.value = err.message || 'Failed to fetch event details'
-      console.error('❌ Error:', err)
       throw err
     } finally {
-      isLoading.value = false
+      isLoadingEvent.value = false
     }
+  }
+
+  const clearCurrentEvent = () => {
+    currentEvent.value = null
   }
 
   const fetchEventsByCategory = async (category, refresh = false, page = 1) => {
@@ -503,7 +497,7 @@ export const useEventStore = defineStore('events', () => {
       return currentEvent.value
     }
 
-    isLoading.value = true
+    isLoadingEvent.value = true
     error.value = null
 
     try {
@@ -534,7 +528,7 @@ export const useEventStore = defineStore('events', () => {
       currentEvent.value = null // Clear currentEvent on error
       throw err // Re-throw the error so the component can handle it
     } finally {
-      isLoading.value = false
+      isLoadingEvent.value = false
     }
   }
 
@@ -544,6 +538,7 @@ export const useEventStore = defineStore('events', () => {
     featuredEvents,
     currentEvent,
     isLoading,
+    isLoadingEvent,
     error,
     searchQuery,
     currentCategory,
@@ -564,6 +559,7 @@ export const useEventStore = defineStore('events', () => {
     searchEvents,
     resetFilters,
     fetchEventBySlug,
+    clearCurrentEvent,
 
     // Computed
     filteredEvents,

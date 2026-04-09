@@ -52,15 +52,6 @@ const { isLoading: initialLoadComplete, stopLoading: completeInitialLoad } = use
   initialState: false,
 })
 
-// Watch store loading state
-watch(storeLoading, (newValue) => {
-  if (newValue) {
-    startLoading()
-  } else {
-    stopLoading()
-  }
-})
-
 // Watch events to update loading state
 watch(
   events,
