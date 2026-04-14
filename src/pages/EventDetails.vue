@@ -8,11 +8,13 @@ import { useCartStore } from '@/stores/cart'
 import { useSeo } from '@/composables/useSeo'
 import { useSlug } from '@/composables/useSlug'
 import SeoImage from '@/components/SeoImage.vue'
+import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
 const router = useRouter()
 const eventStore = useEventStore()
 const cartStore = useCartStore()
+const authStore = useAuthStore()
 const { updatePageTitle, updateMetaDescription, updateSocialMeta, addEventStructuredData } =
   useSeo()
 const { generateSlug } = useSlug()
@@ -22,6 +24,12 @@ const loading = ref(false)
 const error = ref(null)
 const event = currentEvent
 
+// ── Like state ──────────────────────────────────────────────────────────────
+const isLiked = ref(false)
+const likesCount = ref(0)
+const likeLoading = ref(false)
+
+// ── Modal / UI state ─────────────────────────────────────────────────────────
 const showPurchaseModal = ref(false)
 const showQRModal = ref(false)
 const qrValue = ref('')
@@ -30,26 +38,26 @@ const notificationTimeout = ref(null)
 const toasterLoading = ref(false)
 const toasterTimeout = ref(null)
 const lastEventPage = ref(null)
-
-// --- New refs for Share Modal ---
 const showShareModal = ref(false)
 const isSharing = ref(false)
 const shareUrl = ref('')
 const shareTitle = ref('')
 const shareDescription = ref('')
 const shareImage = ref('')
-// --- End New refs for Share Modal ---
+const ticketSectionRef = ref(null)
+const selectedTicketType = ref(null)
+const ticketQuantity = ref(1)
+const pollInterval = ref(null)
 
-// Only use main_image from DB, no fallback
+// ── Computed ─────────────────────────────────────────────────────────────────
 const eventImage = computed(() => {
   if (!event.value) return ''
   return event.value.main_image || ''
 })
 
-// Format date
 const formattedDate = computed(() => {
   if (!event.value) return ''
-  const eventDate = new Date(event.value.date) // ✅ Changed from event_date
+  const eventDate = new Date(event.value.date)
   return isNaN(eventDate)
     ? ''
     : eventDate.toLocaleDateString('en-US', {
@@ -62,13 +70,11 @@ const formattedDate = computed(() => {
       })
 })
 
-// Update isExpired computed property to use backend sales_status
 const isExpired = computed(() => {
   if (!event.value?.sales_status) return false
   return event.value.sales_status.is_expired
 })
 
-// Update formattedSalesEndDate to exclude time
 const formattedSalesEndDate = computed(() => {
   if (!event.value?.sales_status?.sales_end) return ''
   const salesEnd = new Date(event.value.sales_status.sales_end)
@@ -80,436 +86,40 @@ const formattedSalesEndDate = computed(() => {
   })
 })
 
-// Add debounce utility
-const debounce = (fn, delay) => {
-  let timeoutId
-  return (...args) => {
-    clearTimeout(timeoutId)
-    timeoutId = setTimeout(() => fn(...args), delay)
-  }
-}
-
-// Optimize event fetching
-const fetchEventData = async () => {
-  loading.value = true
-  error.value = null
-
-  try {
-    const eventId = route.params.id
-
-    if (!eventId) {
-      throw new Error('No event ID provided')
-    }
-
-    await eventStore.fetchEventById(parseInt(eventId))
-
-    if (!eventStore.currentEvent) {
-      throw new Error('Event not found')
-    }
-  } catch (err) {
-    error.value = err.message || 'Failed to load event details'
-  } finally {
-    loading.value = false // ← always runs, no early returns
-  }
-}
-
-// Add polling for expired events
-const pollInterval = ref(null)
-
-const startPollingIfNearExpiry = () => {
-  if (!event.value?.sales_status?.sales_end) return
-
-  const salesEnd = new Date(event.value.sales_status.sales_end)
-  const now = new Date()
-  const timeUntilExpiry = salesEnd - now
-
-  // If within 5 minutes of expiry, poll every 30 seconds
-  if (timeUntilExpiry > 0 && timeUntilExpiry <= 5 * 60 * 1000) {
-    pollInterval.value = setInterval(() => {
-      fetchEventData()
-    }, 30000)
-  }
-}
-
-// Cleanup polling on component unmount
-onUnmounted(() => {
-  if (pollInterval.value) {
-    clearInterval(pollInterval.value)
-  }
-})
-
-onBeforeUnmount(() => {
-  eventStore.clearCurrentEvent()
-})
-
-// Update watch to handle polling
-watch(
-  event,
-  (newEvent) => {
-    if (!newEvent) return
-
-    // Clear existing poll interval
-    if (pollInterval.value) {
-      clearInterval(pollInterval.value)
-    }
-
-    // Start polling if near expiry
-    startPollingIfNearExpiry()
-
-    // Update SEO data
-    updatePageTitle(newEvent.title)
-
-    const description = newEvent.description
-      ? newEvent.description.substring(0, 155) + (newEvent.description.length > 155 ? '...' : '')
-      : `${newEvent.title} - Get tickets for this event on ${formattedDate.value}`
-
-    updateMetaDescription(description)
-
-    // Update URL if needed
-    if (route.params.id && !route.params.slug && newEvent.title) {
-      const slug = newEvent.slug || generateSlug(newEvent.title)
-      router.replace(`/events/${route.params.id}-${slug}`)
-    }
-
-    // Update social sharing tags
-    const canonical =
-      window.location.origin +
-      (newEvent.id
-        ? `/events/${newEvent.id}-${newEvent.slug || generateSlug(newEvent.title)}`
-        : `/event/${newEvent.id}`)
-
-    shareUrl.value = canonical
-    shareTitle.value = newEvent.title
-    shareDescription.value = description
-    shareImage.value = eventImage.value
-
-    updateSocialMeta({
-      title: newEvent.title,
-      description: description,
-      image: eventImage.value,
-      url: canonical,
-    })
-
-    addEventStructuredData({
-      ...newEvent,
-      url: canonical,
-    })
-  },
-  { immediate: true },
-)
-
-// Optimize ticket selection
-const openPurchaseModalWithTicket = debounce((ticketTypeId) => {
-  if (isExpired.value) {
-    showToaster('This event has expired and tickets are no longer available', false)
-    return
-  }
-
-  selectedTicketType.value = ticketTypeId
-
-  // Small delay to ensure Vue has updated the props
-  setTimeout(() => {
-    showPurchaseModal.value = true
-  }, 50)
-}, 300) // Debounce for 300ms to prevent double-clicks
-
-// Fetch event data when component mounts
-onMounted(() => {
-  fetchEventData()
-})
-
-// Watch for route changes to refetch data when navigating between events
-watch(
-  () => route.params.id,
-  (newId, oldId) => {
-    if (newId && newId !== oldId) {
-      fetchEventData()
-    }
-  },
-)
-
-// Go back to events
-const goBack = () => {
-  router.back()
-}
-
-// Add the variables and functions for the modal
-const ticketQuantity = ref(1)
-
-// Get selected ticket name
-const getSelectedTicketName = () => {
-  const ticket = ticketTypes.value.find((t) => t.id === selectedTicketType.value)
-  return ticket ? ticket.name : ''
-}
-
-// Get selected ticket price
-const getSelectedTicketPrice = () => {
-  const ticket = ticketTypes.value.find((t) => t.id === selectedTicketType.value)
-  return ticket ? formatPrice(ticket.price) : ''
-}
-
-// Calculate total price
-const calculateTotal = () => {
-  const ticket = ticketTypes.value.find((t) => t.id === selectedTicketType.value)
-  if (!ticket) return formatPrice(0)
-  return formatPrice(ticket.price * ticketQuantity.value)
-}
-
-// Increment quantity
-const incrementQuantity = () => {
-  if (ticketQuantity.value < 10) {
-    ticketQuantity.value++
-  }
-}
-
-// Decrement quantity
-const decrementQuantity = () => {
-  if (ticketQuantity.value > 1) {
-    ticketQuantity.value--
-  }
-}
-
-// Close purchase modal - combined version
-const closePurchaseModal = () => {
-  showPurchaseModal.value = false
-  selectedTicketType.value = null
-  ticketQuantity.value = 1
-}
-
-// First, add a formattedCategory computed property for category name display
 const formattedCategory = computed(() => {
   if (!event.value) return ''
-
-  // If category is an object with name property
-  if (event.value.category?.name) {
-    return event.value.category.name
-  }
-
-  // If category is a string
+  if (event.value.category?.name) return event.value.category.name
   if (typeof event.value.category === 'string') {
     return (
       event.value.category.charAt(0).toUpperCase() +
       event.value.category.slice(1).replace(/-/g, ' ')
     )
   }
-
   return 'Event'
 })
 
-// After the existing computed properties, add a displaySubCategories computed property
 const displaySubCategories = computed(() => {
   if (!event.value || !event.value.sub_categories) return []
-
-  // The sub_categories field is stored as JSON in the database and decoded by the API
-  // Filter out empty strings and return array of subcategories
   return event.value.sub_categories.filter((cat) => cat && cat.trim() !== '')
 })
 
-// Merge event options
-const mergeEventOptions = () => {
-  if (!event.value) return []
-
-  // If event has selectedEventOptions, use those
-  if (event.value.selectedEventOptions && event.value.selectedEventOptions.length > 0) {
-    return event.value.selectedEventOptions
-  }
-
-  // If event has customEventOptions, combine with default options
-  if (event.value.customEventOptions && event.value.customEventOptions.length > 0) {
-    const defaultOptions = ['Live performance', 'Food & drinks available', 'Indoor event']
-    return [...defaultOptions, ...event.value.customEventOptions]
-  }
-
-  // Default fallback options
-  return ['Live performance', 'Food & drinks available', 'Indoor event']
-}
-
-// Replace the generateBarcode function with this
-const generateQRCode = () => {
-  if (!event.value || !selectedTicketType.value) return
-
-  // Create a unique URL for this ticket type
-  qrValue.value = `${window.location.origin}/event/${event.value.id}?ticket=${selectedTicketType.value}`
-  showQRModal.value = true
-}
-
-const downloadQRCode = () => {
-  const canvas = document.querySelector('.qr-code canvas')
-  if (!canvas) return
-
-  const link = document.createElement('a')
-  link.download = `${event.value.title}-${getSelectedTicketName()}-ticket.png`
-  link.href = canvas.toDataURL('image/png')
-  link.click()
-
-  // Close the QR modal after download
-  showQRModal.value = false
-}
-
-// Add this watch effect to handle URL parameters
-watch(
-  () => route.query,
-  (query) => {
-    if (query.ticket && event.value) {
-      const ticketId = query.ticket
-      const ticket = ticketTypes.value.find((t) => t.id === ticketId)
-      if (ticket) {
-        openPurchaseModalWithTicket(ticketId)
-      }
-    }
-  },
-  { immediate: true },
-)
-
-function showToaster(message, autoCheckout = false) {
-  notification.value = message
-  toasterLoading.value = autoCheckout
-  if (notificationTimeout.value) clearTimeout(notificationTimeout.value)
-  if (toasterTimeout.value) clearTimeout(toasterTimeout.value)
-  if (autoCheckout) {
-    lastEventPage.value = router.currentRoute.value.fullPath
-    toasterTimeout.value = setTimeout(() => {
-      notification.value = null
-      toasterLoading.value = false
-      router.push('/checkout')
-    }, 4000) // 4 seconds
-  } else {
-    notificationTimeout.value = setTimeout(() => {
-      notification.value = null
-      toasterLoading.value = false
-    }, 3000)
-  }
-}
-
-const addToCart = () => {
-  if (!event.value || !selectedTicketType.value) return
-  const ticket = ticketTypes.value.find((t) => t.id === selectedTicketType.value)
-  if (!ticket) return
-  cartStore.addItem({
-    eventId: event.value.id,
-    eventTitle: event.value.title,
-    eventDate: event.value.date, // ✅ Changed
-    eventLocation: event.value.address?.venue_name || event.value.location || 'Venue TBA', // ✅ Changed
-    ticketType: ticket.name,
-    ticketId: ticket.id,
-    quantity: ticketQuantity.value,
-    pricePerTicket: ticket.price,
-    totalPrice: ticket.price * ticketQuantity.value,
-    eventImage: eventImage.value,
-  })
-  closePurchaseModal()
-  showToaster(`${ticketQuantity.value} of ${event.value.title} successfully added to cart`, true)
-}
-
-// --- Share Modal Functions ---
-const openShareModal = async () => {
-  if (!event.value) return // Ensure event data is loaded
-  isSharing.value = true
-  // Simulate loading/preparation time
-  await new Promise((resolve) => setTimeout(resolve, 400))
-  isSharing.value = false
-  showShareModal.value = true
-}
-
-const closeShareModal = () => {
-  showShareModal.value = false
-}
-
-const shareLink = (platform) => {
-  const url = encodeURIComponent(shareUrl.value || window.location.href)
-  const title = encodeURIComponent(shareTitle.value || document.title)
-  const whatsAppText = encodeURIComponent(`${shareTitle.value} - Check out this event!`)
-  const genericText = encodeURIComponent(shareDescription.value || '')
-
-  let shareWindowUrl = ''
-
-  switch (platform) {
-    case 'twitter':
-      shareWindowUrl = `https://twitter.com/intent/tweet?url=${url}&text=${title}`
-      break
-    case 'facebook':
-      shareWindowUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`
-      break
-    case 'whatsapp':
-      shareWindowUrl = `https://api.whatsapp.com/send?text=${whatsAppText}%20${url}`
-      break
-    case 'linkedin':
-      shareWindowUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${url}&title=${title}&summary=${genericText}`
-      break
-    case 'copy':
-      navigator.clipboard
-        .writeText(shareUrl.value || window.location.href)
-        .then(() => {
-          showToaster('Link copied to clipboard!')
-          closeShareModal()
-        })
-        .catch(() => {
-          showToaster('Failed to copy link.', false)
-        })
-      return
-    default:
-      return
-  }
-
-  window.open(shareWindowUrl, '_blank', 'noopener,noreferrer,width=600,height=450')
-}
-// --- End Share Modal Functions ---
-
-// Add ref for ticket section
-const ticketSectionRef = ref(null)
-
-// Update scroll to tickets function with padding
-const scrollToTickets = () => {
-  if (ticketSectionRef.value) {
-    const padding = 20 // Padding from top
-    const elementPosition = ticketSectionRef.value.getBoundingClientRect().top
-    const offsetPosition = elementPosition + window.pageYOffset - padding
-
-    window.scrollTo({
-      top: offsetPosition,
-      behavior: 'smooth',
-    })
-  }
-}
-
-// Add back the necessary computed properties and refs
-const selectedTicketType = ref(null)
-
-// Calculate available tickets based on total tickets if not explicitly set
 const availableTickets = computed(() => {
   if (!event.value) return 0
-
-  // If availableTickets is explicitly set, use it
-  if (event.value.availableTickets !== undefined) {
-    return event.value.availableTickets
-  }
-
-  // Otherwise, use totalTickets (all tickets are initially available)
+  if (event.value.availableTickets !== undefined) return event.value.availableTickets
   return event.value.totalTickets || 0
 })
 
-// Update percentageSold to use the availableTickets computed property
 const percentageSold = computed(() => {
   if (!event.value || !event.value.totalTickets) return 0
-
-  const totalTickets = event.value.totalTickets
-  const available = availableTickets.value
-  const sold = totalTickets - available
-
-  return Math.round((sold / totalTickets) * 100)
+  const sold = event.value.totalTickets - availableTickets.value
+  return Math.round((sold / event.value.totalTickets) * 100)
 })
 
-// Update ticketTypes to use the actual ticket types from the event data
 const ticketTypes = computed(() => {
   if (!event.value) return []
-
-  // If event has ticketTypes defined from the database, use those
   if (event.value.ticketTypes && Array.isArray(event.value.ticketTypes)) {
-    // Find the max price among all ticket types
     const maxPrice = Math.max(...event.value.ticketTypes.map((t) => parseFloat(t.price) || 0))
-    // Map event ticket types to display format
     return event.value.ticketTypes.map((ticket, index) => {
-      // Generate different styles based on index
       const styles = [
         { icon: 'ticket', isTable: false },
         { icon: 'award', isTable: false },
@@ -521,7 +131,6 @@ const ticketTypes = computed(() => {
       const tableMatch = ticket.name?.match(/table for (\d+)/i)
       const seatsCount = tableMatch ? parseInt(tableMatch[1]) : isTableTicket ? 4 : 0
       const available = ticket.quantity || 0
-      // Only highlight if this ticket is the most expensive
       const highlight = (parseFloat(ticket.price) || 0) === maxPrice
       return {
         id: ticket.name?.toLowerCase().replace(/\s+/g, '-') || `ticket-${index}`,
@@ -534,11 +143,10 @@ const ticketTypes = computed(() => {
         highlight,
         icon: style.icon,
         isTable: isTableTicket,
-        seatsCount: seatsCount,
+        seatsCount,
       }
     })
   }
-  // Fallback to generated ticket types based on base price
   const basePrice = event.value.price || 0
   const fallbackTypes = [
     {
@@ -582,18 +190,317 @@ const ticketTypes = computed(() => {
       icon: 'grid',
     },
   ].filter((type) => type.available)
-  // Find max price in fallback
   const maxFallbackPrice = Math.max(...fallbackTypes.map((t) => t.price))
   return fallbackTypes.map((t) => ({ ...t, highlight: t.price === maxFallbackPrice }))
 })
 
-// Format price with currency and make the function a named helper
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function formatPrice(price) {
-  return new Intl.NumberFormat('en-NG', {
-    style: 'currency',
-    currency: 'NGN',
-  }).format(price)
+  return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(price)
 }
+
+const debounce = (fn, delay) => {
+  let timeoutId
+  return (...args) => {
+    clearTimeout(timeoutId)
+    timeoutId = setTimeout(() => fn(...args), delay)
+  }
+}
+
+function showToaster(message, autoCheckout = false) {
+  notification.value = message
+  toasterLoading.value = autoCheckout
+  if (notificationTimeout.value) clearTimeout(notificationTimeout.value)
+  if (toasterTimeout.value) clearTimeout(toasterTimeout.value)
+  if (autoCheckout) {
+    lastEventPage.value = router.currentRoute.value.fullPath
+    toasterTimeout.value = setTimeout(() => {
+      notification.value = null
+      toasterLoading.value = false
+      router.push('/checkout')
+    }, 4000)
+  } else {
+    notificationTimeout.value = setTimeout(() => {
+      notification.value = null
+      toasterLoading.value = false
+    }, 3000)
+  }
+}
+
+const mergeEventOptions = () => {
+  if (!event.value) return []
+  if (event.value.selectedEventOptions?.length > 0) return event.value.selectedEventOptions
+  if (event.value.customEventOptions?.length > 0) {
+    return [
+      'Live performance',
+      'Food & drinks available',
+      'Indoor event',
+      ...event.value.customEventOptions,
+    ]
+  }
+  return ['Live performance', 'Food & drinks available', 'Indoor event']
+}
+
+// ── Like functions ────────────────────────────────────────────────────────────
+const checkLikeStatus = async (eventId) => {
+  if (!authStore.isAuthenticated) return
+  try {
+    const result = await eventStore.checkLiked(eventId)
+    isLiked.value = result.liked
+    likesCount.value = result.likes_count ?? 0
+  } catch (e) {
+    // user not logged in or request failed — defaults stay
+  }
+}
+
+const handleLike = async () => {
+  if (!authStore.isAuthenticated) {
+    showToaster('Please log in to like events')
+    setTimeout(() => router.push('/login'), 1500)
+    return
+  }
+  likeLoading.value = true
+  try {
+    const result = await eventStore.toggleLike(event.value.id)
+    isLiked.value = result.liked
+    likesCount.value = result.likes_count ?? 0
+    showToaster(result.liked ? '❤️ Event saved to your likes!' : 'Removed from your likes')
+  } catch (e) {
+    showToaster('Something went wrong, please try again')
+  } finally {
+    likeLoading.value = false
+  }
+}
+
+// ── Fetch / polling ───────────────────────────────────────────────────────────
+const fetchEventData = async () => {
+  loading.value = true
+  error.value = null
+  try {
+    const eventId = route.params.id
+    if (!eventId) throw new Error('No event ID provided')
+    await eventStore.fetchEventById(parseInt(eventId))
+    if (!eventStore.currentEvent) throw new Error('Event not found')
+    if (eventStore.currentEvent?.title) {
+      document.title = `${eventStore.currentEvent.title} in Nigeria | KakaWorld`
+    }
+  } catch (err) {
+    error.value = err.message || 'Failed to load event details'
+  } finally {
+    loading.value = false
+  }
+}
+
+const startPollingIfNearExpiry = () => {
+  if (!event.value?.sales_status?.sales_end) return
+  const salesEnd = new Date(event.value.sales_status.sales_end)
+  const timeUntilExpiry = salesEnd - new Date()
+  if (timeUntilExpiry > 0 && timeUntilExpiry <= 5 * 60 * 1000) {
+    pollInterval.value = setInterval(() => fetchEventData(), 30000)
+  }
+}
+
+// ── Ticket modal functions ─────────────────────────────────────────────────────
+const getSelectedTicketName = () => {
+  const ticket = ticketTypes.value.find((t) => t.id === selectedTicketType.value)
+  return ticket ? ticket.name : ''
+}
+
+const getSelectedTicketPrice = () => {
+  const ticket = ticketTypes.value.find((t) => t.id === selectedTicketType.value)
+  return ticket ? formatPrice(ticket.price) : ''
+}
+
+const calculateTotal = () => {
+  const ticket = ticketTypes.value.find((t) => t.id === selectedTicketType.value)
+  if (!ticket) return formatPrice(0)
+  return formatPrice(ticket.price * ticketQuantity.value)
+}
+
+const incrementQuantity = () => {
+  if (ticketQuantity.value < 10) ticketQuantity.value++
+}
+const decrementQuantity = () => {
+  if (ticketQuantity.value > 1) ticketQuantity.value--
+}
+
+const closePurchaseModal = () => {
+  showPurchaseModal.value = false
+  selectedTicketType.value = null
+  ticketQuantity.value = 1
+}
+
+const openPurchaseModalWithTicket = debounce((ticketTypeId) => {
+  if (isExpired.value) {
+    showToaster('This event has expired and tickets are no longer available', false)
+    return
+  }
+  selectedTicketType.value = ticketTypeId
+  setTimeout(() => {
+    showPurchaseModal.value = true
+  }, 50)
+}, 300)
+
+const addToCart = () => {
+  if (!event.value || !selectedTicketType.value) return
+  const ticket = ticketTypes.value.find((t) => t.id === selectedTicketType.value)
+  if (!ticket) return
+  cartStore.addItem({
+    eventId: event.value.id,
+    eventTitle: event.value.title,
+    eventDate: event.value.date,
+    eventLocation: event.value.address?.venue_name || event.value.location || 'Venue TBA',
+    ticketType: ticket.name,
+    ticketId: ticket.id,
+    quantity: ticketQuantity.value,
+    pricePerTicket: ticket.price,
+    totalPrice: ticket.price * ticketQuantity.value,
+    eventImage: eventImage.value,
+  })
+  closePurchaseModal()
+  showToaster(`${ticketQuantity.value} × ${event.value.title} added to cart`, true)
+}
+
+const generateQRCode = () => {
+  if (!event.value || !selectedTicketType.value) return
+  qrValue.value = `${window.location.origin}/event/${event.value.id}?ticket=${selectedTicketType.value}`
+  showQRModal.value = true
+}
+
+const downloadQRCode = () => {
+  const canvas = document.querySelector('.qr-code canvas')
+  if (!canvas) return
+  const link = document.createElement('a')
+  link.download = `${event.value.title}-${getSelectedTicketName()}-ticket.png`
+  link.href = canvas.toDataURL('image/png')
+  link.click()
+  showQRModal.value = false
+}
+
+const scrollToTickets = () => {
+  if (ticketSectionRef.value) {
+    const offsetPosition =
+      ticketSectionRef.value.getBoundingClientRect().top + window.pageYOffset - 20
+    window.scrollTo({ top: offsetPosition, behavior: 'smooth' })
+  }
+}
+
+// ── Share functions ───────────────────────────────────────────────────────────
+const openShareModal = async () => {
+  if (!event.value) return
+  isSharing.value = true
+  await new Promise((resolve) => setTimeout(resolve, 400))
+  isSharing.value = false
+  showShareModal.value = true
+}
+
+const closeShareModal = () => {
+  showShareModal.value = false
+}
+
+const shareLink = (platform) => {
+  const url = encodeURIComponent(shareUrl.value || window.location.href)
+  const title = encodeURIComponent(shareTitle.value || document.title)
+  const whatsAppText = encodeURIComponent(`${shareTitle.value} - Check out this event!`)
+  const genericText = encodeURIComponent(shareDescription.value || '')
+  let shareWindowUrl = ''
+  switch (platform) {
+    case 'twitter':
+      shareWindowUrl = `https://twitter.com/intent/tweet?url=${url}&text=${title}`
+      break
+    case 'facebook':
+      shareWindowUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`
+      break
+    case 'whatsapp':
+      shareWindowUrl = `https://api.whatsapp.com/send?text=${whatsAppText}%20${url}`
+      break
+    case 'linkedin':
+      shareWindowUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${url}&title=${title}&summary=${genericText}`
+      break
+    case 'copy':
+      navigator.clipboard
+        .writeText(shareUrl.value || window.location.href)
+        .then(() => {
+          showToaster('Link copied to clipboard!')
+          closeShareModal()
+        })
+        .catch(() => showToaster('Failed to copy link.', false))
+      return
+    default:
+      return
+  }
+  window.open(shareWindowUrl, '_blank', 'noopener,noreferrer,width=600,height=450')
+}
+
+const goBack = () => router.back()
+
+// ── Watchers ──────────────────────────────────────────────────────────────────
+watch(
+  event,
+  (newEvent) => {
+    if (!newEvent) return
+    if (pollInterval.value) clearInterval(pollInterval.value)
+    startPollingIfNearExpiry()
+    updatePageTitle(newEvent.title)
+    const description = newEvent.description
+      ? newEvent.description.substring(0, 155) + (newEvent.description.length > 155 ? '...' : '')
+      : `${newEvent.title} - Get tickets for this event on ${formattedDate.value}`
+    updateMetaDescription(description)
+    if (route.params.id && !route.params.slug && newEvent.title) {
+      const slug = newEvent.slug || generateSlug(newEvent.title)
+      router.replace(`/events/${route.params.id}-${slug}`)
+    }
+    const canonical =
+      window.location.origin +
+      (newEvent.id
+        ? `/events/${newEvent.id}-${newEvent.slug || generateSlug(newEvent.title)}`
+        : `/event/${newEvent.id}`)
+    shareUrl.value = canonical
+    shareTitle.value = newEvent.title
+    shareDescription.value = description
+    shareImage.value = eventImage.value
+    updateSocialMeta({
+      title: newEvent.title,
+      description,
+      image: eventImage.value,
+      url: canonical,
+    })
+    addEventStructuredData({ ...newEvent, url: canonical })
+
+    // Check like status whenever a new event loads
+    checkLikeStatus(newEvent.id)
+  },
+  { immediate: true },
+)
+
+watch(
+  () => route.params.id,
+  (newId, oldId) => {
+    if (newId && newId !== oldId) fetchEventData()
+  },
+)
+
+watch(
+  () => route.query,
+  (query) => {
+    if (query.ticket && event.value) {
+      const ticket = ticketTypes.value.find((t) => t.id === query.ticket)
+      if (ticket) openPurchaseModalWithTicket(query.ticket)
+    }
+  },
+  { immediate: true },
+)
+
+// ── Lifecycle ─────────────────────────────────────────────────────────────────
+onMounted(() => fetchEventData())
+
+onUnmounted(() => {
+  if (pollInterval.value) clearInterval(pollInterval.value)
+})
+
+onBeforeUnmount(() => {
+  eventStore.clearCurrentEvent()
+})
 </script>
 
 <template>
@@ -630,7 +537,6 @@ function formatPrice(price) {
           Back to Events
         </button>
 
-        <!-- Event Details Section - Now first in the layout -->
         <div class="event-info">
           <div class="event-info__main">
             <div class="event-info__image-container">
@@ -674,7 +580,6 @@ function formatPrice(price) {
                   </svg>
                   Popular
                 </span>
-                <!-- Display subcategories as badges -->
                 <span
                   v-for="(subCategory, index) in displaySubCategories"
                   :key="index"
@@ -723,10 +628,6 @@ function formatPrice(price) {
                     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                     <circle cx="12" cy="10" r="3"></circle>
                   </svg>
-                  <!-- <div class="event-info__meta-content">
-                    <span class="event-info__meta-label">Location</span>
-                    <span class="event-info__meta-value">{{ event.location }}</span>
-                  </div> -->
                   <div class="event-info__meta-content">
                     <span class="event-info__meta-label">Location</span>
                     <span class="event-info__meta-value">{{ event.address.venue_name }}</span>
@@ -786,8 +687,9 @@ function formatPrice(price) {
                 </div>
               </div>
 
+              <!-- ── Action buttons: Share + Like side by side ── -->
               <div class="event-info__action">
-                <!-- Updated Share Button -->
+                <!-- Share Button -->
                 <button class="event-info__share-btn" @click="openShareModal" :disabled="isSharing">
                   <div v-if="isSharing" class="spinner"></div>
                   <svg
@@ -810,6 +712,34 @@ function formatPrice(price) {
                   </svg>
                   <span>{{ isSharing ? 'Preparing...' : 'Share Event' }}</span>
                 </button>
+
+                <!-- Like Button -->
+                <button
+                  class="event-info__like-btn"
+                  :class="{ 'event-info__like-btn--liked': isLiked }"
+                  @click="handleLike"
+                  :disabled="likeLoading"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    :fill="isLiked ? 'currentColor' : 'none'"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path
+                      d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                    />
+                  </svg>
+                  <span>
+                    {{ likeLoading ? '...' : isLiked ? 'Liked' : 'Like' }}
+                    <span v-if="likesCount > 0">({{ likesCount }})</span>
+                  </span>
+                </button>
               </div>
             </div>
           </div>
@@ -826,7 +756,7 @@ function formatPrice(price) {
               Event Sales Ended
               <div class="ticket-grid__subtitle">Sales ended on {{ formattedSalesEndDate }}</div>
             </template>
-            <template v-else> Select Ticket Type </template>
+            <template v-else>Select Ticket Type</template>
           </h2>
 
           <div v-if="isExpired" class="ticket-grid__expired-message">
@@ -919,16 +849,15 @@ function formatPrice(price) {
                     <line x1="15" y1="3" x2="15" y2="21"></line>
                   </svg>
                 </div>
-
                 <h3 class="ticket-card__name">{{ ticket.name }}</h3>
                 <p class="ticket-card__description">{{ ticket.description }}</p>
               </div>
 
               <div class="ticket-card__price">
                 <span class="ticket-card__price-amount">{{ formatPrice(ticket.price) }}</span>
-                <span v-if="ticket.isTable" class="ticket-card__seats">
-                  {{ ticket.seatsCount }} seats
-                </span>
+                <span v-if="ticket.isTable" class="ticket-card__seats"
+                  >{{ ticket.seatsCount }} seats</span
+                >
               </div>
 
               <div class="ticket-card__action">
@@ -968,7 +897,7 @@ function formatPrice(price) {
           <circle cx="20" cy="21" r="1"></circle>
           <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
         </svg>
-        <span> Buy ticket now </span>
+        <span>Buy ticket now</span>
       </button>
     </div>
 
@@ -999,7 +928,6 @@ function formatPrice(price) {
           <div class="share-modal__body">
             <div class="share-modal__preview">
               <div class="share-modal__preview-image">
-                <!-- Use SeoImage for consistent image handling -->
                 <SeoImage :src="shareImage" :alt="shareTitle" imgClass="preview-img" />
               </div>
               <div class="share-modal__preview-content">
@@ -1010,7 +938,6 @@ function formatPrice(price) {
                 }}</span>
               </div>
             </div>
-
             <div class="share-modal__platforms">
               <button
                 @click="shareLink('twitter')"
@@ -1087,7 +1014,7 @@ function formatPrice(price) {
       </div>
     </transition>
 
-    <!-- Premium modal -->
+    <!-- Purchase Modal -->
     <div v-if="showPurchaseModal" class="premium-modal-overlay" @click="closePurchaseModal">
       <div class="premium-modal" @click.stop>
         <div class="premium-modal__header">
@@ -1106,12 +1033,10 @@ function formatPrice(price) {
             </svg>
           </button>
         </div>
-
         <div class="premium-modal__body">
           <div v-if="event" class="premium-modal__content">
             <h4 class="premium-modal__event-title">{{ event.title }}</h4>
             <p class="premium-modal__event-details">{{ formattedDate }} • {{ event.location }}</p>
-
             <div class="premium-modal__ticket-section">
               <div class="premium-modal__ticket-info">
                 <div class="premium-modal__ticket-type">
@@ -1123,7 +1048,6 @@ function formatPrice(price) {
                   <strong>{{ getSelectedTicketPrice() }}</strong>
                 </div>
               </div>
-
               <div class="premium-modal__quantity-container">
                 <div class="premium-modal__quantity-label">Quantity:</div>
                 <div class="premium-modal__quantity-controls" aria-label="Change ticket quantity">
@@ -1147,14 +1071,11 @@ function formatPrice(price) {
                 </div>
               </div>
             </div>
-
             <div class="premium-modal__divider"></div>
-
             <div class="premium-modal__summary">
               <div class="premium-modal__total-label">Total</div>
               <div class="premium-modal__total-value">{{ calculateTotal() }}</div>
             </div>
-
             <div class="premium-modal__actions">
               <button
                 class="premium-modal__favorite"
@@ -1201,7 +1122,7 @@ function formatPrice(price) {
       </div>
     </div>
 
-    <!-- Add this new QR Code modal after the premium modal -->
+    <!-- QR Code Modal -->
     <div v-if="showQRModal" class="qr-modal-overlay" @click="showQRModal = false">
       <div class="qr-modal" @click.stop>
         <div class="qr-modal__header">
@@ -1252,6 +1173,7 @@ function formatPrice(price) {
       </div>
     </div>
 
+    <!-- Toaster Notification -->
     <transition name="toaster-fade">
       <div v-if="notification" class="toaster-notification world-class-toaster">
         <svg

@@ -130,21 +130,6 @@ const resetSearch = async () => {
   searchTerm.value = ''
 }
 
-// Update handleSearch method
-const handleSearch = async () => {
-  try {
-    if (searchTerm.value.trim() !== '') {
-      startLoading()
-      await eventStore.searchEvents(searchTerm.value)
-    }
-  } catch {
-    // Handle error silently in production
-    stopLoading()
-  } finally {
-    stopLoading()
-  }
-}
-
 // Add clearSearch method
 const clearSearch = async () => {
   await resetSearch()
@@ -216,24 +201,6 @@ onUnmounted(() => {
 
 <template>
   <div class="home-page">
-    <!-- Hero Banner -->
-    <div class="hero-banner">
-      <div class="hero-content">
-        <h1>Discover Amazing Events</h1>
-        <p>Find and join events happening around you</p>
-        <div class="search-container">
-          <input
-            v-model="searchTerm"
-            type="text"
-            placeholder="Search events..."
-            class="search-input"
-            @keyup.enter="handleSearch"
-          />
-          <button @click="handleSearch" class="search-button">Search</button>
-        </div>
-      </div>
-    </div>
-
     <!-- Loading Indicator for Initial Load -->
     <div v-if="isLoading && !initialLoadComplete && !events.length" class="loading-container">
       <SkeletonLoader type="rect" width="100%" height="40px" :color="skeletonColor" />
@@ -248,27 +215,29 @@ onUnmounted(() => {
 
     <!-- Search Results Section - Show when search term exists -->
     <section v-if="storeSearchQuery && filteredEvents.length > 0" class="search-results">
-      <div class="section-header">
-        <h2>Search Results for "{{ storeSearchQuery }}"</h2>
-        <div class="search-actions">
-          <button @click="clearSearch" class="clear-search-btn" title="Clear search">
-            <span class="close-icon">×</span>
-          </button>
-          <span class="view-all" @click="viewAll = !viewAll">
-            {{ viewAll ? 'View Less' : 'View All' }}
-          </span>
+      <div class="section-inner">
+        <div class="section-header">
+          <h2>Search Results for "{{ storeSearchQuery }}"</h2>
+          <div class="search-actions">
+            <button @click="clearSearch" class="clear-search-btn" title="Clear search">
+              <span class="close-icon">×</span>
+            </button>
+            <span class="view-all" @click="viewAll = !viewAll">
+              {{ viewAll ? 'View Less' : 'View All' }}
+            </span>
+          </div>
         </div>
-      </div>
 
-      <div v-if="isLoading" class="search-skeleton">
-        <SkeletonLoader type="grid" :count="6" :color="skeletonColor" />
-      </div>
-      <div v-else class="event-grid">
-        <EventCard
-          v-for="event in filteredEvents.slice(0, viewAll ? undefined : 6)"
-          :key="event.id"
-          :event="event"
-        />
+        <div v-if="isLoading" class="search-skeleton">
+          <SkeletonLoader type="grid" :count="6" :color="skeletonColor" />
+        </div>
+        <div v-else class="event-grid">
+          <EventCard
+            v-for="event in filteredEvents.slice(0, viewAll ? undefined : 6)"
+            :key="event.id"
+            :event="event"
+          />
+        </div>
       </div>
     </section>
 
@@ -277,37 +246,41 @@ onUnmounted(() => {
       v-else-if="storeSearchQuery && filteredEvents.length === 0 && !isLoading"
       class="empty-search-results"
     >
-      <div class="section-header">
-        <h2>No Results Found</h2>
-        <button @click="clearSearch" class="clear-search-btn" title="Clear search">
-          <span class="close-icon">×</span>
-        </button>
-      </div>
-      <div class="empty-state">
-        <p>
-          No events found matching "{{ storeSearchQuery }}". Try different keywords or browse
-          categories.
-        </p>
+      <div class="section-inner">
+        <div class="section-header">
+          <h2>No Results Found</h2>
+          <button @click="clearSearch" class="clear-search-btn" title="Clear search">
+            <span class="close-icon">×</span>
+          </button>
+        </div>
+        <div class="empty-state">
+          <p>
+            No events found matching "{{ storeSearchQuery }}". Try different keywords or browse
+            categories.
+          </p>
+        </div>
       </div>
     </section>
 
     <!-- Featured Events Section -->
     <!-- Featured Events Section -->
     <section v-if="!isLoading || sortedFeaturedEvents.length > 0" class="featured-events">
-      <div class="section-header">
-        <h2>Featured Events</h2>
-        <p>Debug: {{ sortedFeaturedEvents.length }} events</p>
-      </div>
+      <div class="section-inner">
+        <div class="section-header">
+          <h2>Featured Events</h2>
+          <p>Debug: {{ sortedFeaturedEvents.length }} events</p>
+        </div>
 
-      <div v-if="loadingFeatured && !sortedFeaturedEvents.length" class="featured-skeleton">
-        <SkeletonLoader type="grid" :count="3" :color="skeletonColor" />
-      </div>
-      <div v-else-if="sortedFeaturedEvents.length === 0" class="empty-state">
-        <p>No featured events available. Check back soon!</p>
-      </div>
-      <div v-else class="event-grid">
-        <p>About to render {{ sortedFeaturedEvents.length }} EventCards</p>
-        <EventCard v-for="event in sortedFeaturedEvents" :key="event.id" :event="event" />
+        <div v-if="loadingFeatured && !sortedFeaturedEvents.length" class="featured-skeleton">
+          <SkeletonLoader type="grid" :count="3" :color="skeletonColor" />
+        </div>
+        <div v-else-if="sortedFeaturedEvents.length === 0" class="empty-state">
+          <p>No featured events available. Check back soon!</p>
+        </div>
+        <div v-else class="event-grid">
+          <p>About to render {{ sortedFeaturedEvents.length }} EventCards</p>
+          <EventCard v-for="event in sortedFeaturedEvents" :key="event.id" :event="event" />
+        </div>
       </div>
     </section>
 
@@ -316,57 +289,58 @@ onUnmounted(() => {
       v-if="(!storeSearchQuery || storeSearchQuery === '') && (!isLoading || events.length > 0)"
       class="upcoming-events"
     >
-      <div class="section-header">
-        <h2>All Events</h2>
-        <span class="view-all" @click="viewAll = !viewAll">
-          {{ viewAll ? 'View Less' : 'View All' }}
-        </span>
-      </div>
+      <div class="section-inner">
+        <div class="section-header">
+          <h2>All Events</h2>
+          <span class="view-all" @click="viewAll = !viewAll">
+            {{ viewAll ? 'View Less' : 'View All' }}
+          </span>
+        </div>
 
-      <div class="category-tabs">
-        <button
-          class="tab"
-          :class="{ active: activeTab === 'all' }"
-          @click="getEventsByCategory('all')"
-        >
-          All
-        </button>
-        <button
-          class="tab"
-          :class="{ active: activeTab === 'music' }"
-          @click="getEventsByCategory('music')"
-        >
-          Music
-        </button>
-        <button
-          class="tab"
-          :class="{ active: activeTab === 'art' }"
-          @click="getEventsByCategory('art')"
-        >
-          Art
-        </button>
-        <button
-          class="tab"
-          :class="{ active: activeTab === 'food' }"
-          @click="getEventsByCategory('food')"
-        >
-          Food
-        </button>
-        <button
-          class="tab"
-          :class="{ active: activeTab === 'tech' }"
-          @click="getEventsByCategory('tech')"
-        >
-          Tech
-        </button>
-        <button
-          class="tab"
-          :class="{ active: activeTab === 'sports' }"
-          @click="getEventsByCategory('sports')"
-        >
-          Sports
-        </button>
-      </div>
+        <div class="category-tabs">
+          <button
+            class="tab"
+            :class="{ active: activeTab === 'all' }"
+            @click="getEventsByCategory('all')"
+          >
+            All
+          </button>
+          <button
+            class="tab"
+            :class="{ active: activeTab === 'music' }"
+            @click="getEventsByCategory('music')"
+          >
+            Music
+          </button>
+          <button
+            class="tab"
+            :class="{ active: activeTab === 'art' }"
+            @click="getEventsByCategory('art')"
+          >
+            Art
+          </button>
+          <button
+            class="tab"
+            :class="{ active: activeTab === 'food' }"
+            @click="getEventsByCategory('food')"
+          >
+            Food
+          </button>
+          <button
+            class="tab"
+            :class="{ active: activeTab === 'tech' }"
+            @click="getEventsByCategory('tech')"
+          >
+            Tech
+          </button>
+          <button
+            class="tab"
+            :class="{ active: activeTab === 'sports' }"
+            @click="getEventsByCategory('sports')"
+          >
+            Sports
+          </button>
+        </div>
 
       <div v-if="isLoading" class="events-skeleton">
         <SkeletonLoader type="grid" :count="6" :color="skeletonColor" />
@@ -384,6 +358,7 @@ onUnmounted(() => {
           :event="event"
         />
       </div>
+      </div>
     </section>
   </div>
 </template>
@@ -391,74 +366,18 @@ onUnmounted(() => {
 <style scoped>
 .home-page {
   width: 100%;
-  padding: 0 30px;
-}
-
-.hero-banner {
-  position: relative;
-  height: 300px;
-  border-radius: 10px;
-  overflow: hidden;
-  margin-bottom: 40px;
-  background: rgba(30, 30, 36, 0.4); /* Further reduced opacity to 40% */
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-}
-
-.hero-content {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  padding: 60px 20px;
-  text-align: center;
-  color: white;
-  border-radius: 10px;
+  margin: 0;
+  padding: 60px 0 80px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
+  gap: 40px;
 }
 
-.hero-content h1 {
-  font-size: 2.8rem;
-  margin-bottom: 10px;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
-}
-
-.hero-content p {
-  font-size: 1.2rem;
-  margin-bottom: 30px;
-  opacity: 0.9;
-}
-
-.search-container {
-  display: flex;
-  max-width: 90%;
+.section-inner {
+  max-width: 1200px;
+  width: 100%;
   margin: 0 auto;
-}
-
-.search-input {
-  flex: 1;
-  padding: 15px;
-  border: none;
-  border-radius: 5px 0 0 5px;
-  font-size: 1rem;
-}
-
-.search-button {
-  padding: 15px 30px;
-  background-color: #4caf50;
-  color: white;
-  border: none;
-  border-radius: 0 5px 5px 0;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.search-button:hover {
-  background-color: #45a049;
+  padding: 0 30px;
 }
 
 .section-header {
@@ -680,10 +599,6 @@ onUnmounted(() => {
     grid-template-columns: repeat(3, 1fr);
     gap: 24px;
   }
-
-  .hero-content h1 {
-    font-size: 2.25rem;
-  }
 }
 
 @media (max-width: 992px) {
@@ -693,42 +608,18 @@ onUnmounted(() => {
   }
 
   .home-page {
-    padding: 0 20px;
-  }
-
-  .hero-content h1 {
-    font-size: 1.6rem;
+    padding: 0 20px 50px;
   }
 }
 
 @media (max-width: 768px) {
-  .hero-content h1 {
-    font-size: 2rem;
-  }
-
-  .hero-content p {
-    font-size: 1rem;
-  }
-
-  .search-container {
-    flex-direction: column;
-    max-width: 100%;
-  }
-
-  .search-input {
-    border-radius: 5px;
-    margin-bottom: 10px;
-    width: 100%;
-  }
-
-  .search-button {
-    border-radius: 5px;
-    width: 100%;
-  }
-
   .event-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 16px;
+  }
+
+  .home-page {
+    padding: 0 18px 40px;
   }
 
   .category-tabs {
@@ -757,27 +648,13 @@ onUnmounted(() => {
   }
 
   .home-page {
-    padding: 0 16px;
-  }
-
-  .search-container {
-    max-width: 100%;
+    padding: 0 16px 30px;
   }
 
   .featured-events,
   .upcoming-events,
   .search-results {
     padding: 20px 16px;
-  }
-
-  .hero-content h1 {
-    font-size: 1.75rem;
-    margin-bottom: 8px;
-  }
-
-  .hero-content p {
-    font-size: 0.95rem;
-    margin-bottom: 20px;
   }
 
   .section-header {
@@ -788,11 +665,7 @@ onUnmounted(() => {
 /* Small phone optimization */
 @media (max-width: 375px) {
   .home-page {
-    padding: 0 12px;
-  }
-
-  .hero-content h1 {
-    font-size: 1.5rem;
+    padding: 0 12px 30px;
   }
 
   .section-header h2 {
@@ -814,10 +687,6 @@ onUnmounted(() => {
 
 /* Ultra small devices (Galaxy Fold) */
 @media (max-width: 280px) {
-  .hero-content h1 {
-    font-size: 1.5rem;
-  }
-
   .section-header h2 {
     font-size: 1.25rem;
   }
@@ -830,19 +699,8 @@ onUnmounted(() => {
 
 /* Landscape mode optimization */
 @media (max-height: 500px) and (orientation: landscape) {
-  .search-container {
-    flex-direction: row;
-    gap: 10px;
-  }
-
-  .search-input {
-    margin-bottom: 0;
-    border-radius: 5px;
-  }
-
-  .search-button {
-    width: auto;
-    border-radius: 5px;
+  .event-grid {
+    gap: 12px;
   }
 }
 
@@ -870,24 +728,19 @@ onUnmounted(() => {
     align-items: center;
     justify-content: center;
   }
-
-  .search-button,
-  .search-input {
-    min-height: 48px;
-  }
 }
 
 /* Style enhancements for sections */
 .featured-events,
 .upcoming-events,
-.search-results {
+.search-results,
+.empty-search-results {
   position: relative;
-  padding: 30px;
+  padding: 40px 0;
   border-radius: 0;
   background-color: rgba(18, 18, 24, 0.2);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  margin-bottom: 40px;
   border: none;
   border-top: 1px solid rgba(255, 255, 255, 0.025);
   border-bottom: 1px solid rgba(255, 255, 255, 0.025);

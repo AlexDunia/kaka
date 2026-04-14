@@ -258,19 +258,19 @@ const viewDetails = () => {
   position: absolute;
   bottom: 15px;
   right: 15px;
-  background-color: rgba(232, 67, 147, 0.9);
-  color: white;
+  background-color: #34d36b;
+  color: #0b0b0f;
   padding: 8px;
-  border-radius: 8px;
+  border-radius: 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   min-width: 50px;
   text-align: center;
-  box-shadow: 0 4px 12px rgba(232, 67, 147, 0.4);
+  box-shadow: 0 6px 18px rgba(52, 211, 107, 0.35);
 }
 
 .event-card__date-day {
@@ -289,7 +289,7 @@ const viewDetails = () => {
 
 .event-card__date-year {
   font-size: 0.6rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(11, 11, 15, 0.8);
 }
 
 .event-card__content {

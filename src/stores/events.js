@@ -23,6 +23,31 @@ export const useEventStore = defineStore('events', () => {
   const totalPages = ref(0)
 
   // Actions
+  const API_BASE_URL = 'http://127.0.0.1:8000'
+
+  const toggleLike = async (eventId) => {
+    const response = await axios.post(
+      `${API_BASE_URL}/api/events/${eventId}/toggle-like`,
+      {},
+      { withCredentials: true },
+    )
+    return response.data
+  }
+
+  const checkLiked = async (eventId) => {
+    const response = await axios.get(`${API_BASE_URL}/api/events/${eventId}/check-liked`, {
+      withCredentials: true,
+    })
+    return response.data
+  }
+
+  const fetchLikedEvents = async () => {
+    const response = await axios.get(`${API_BASE_URL}/api/user/liked-events`, {
+      withCredentials: true,
+    })
+    return response.data
+  }
+
   const fetchAllEvents = async (refresh = false, page = 1) => {
     const fiveMinutesAgo = Date.now() - 5 * 60 * 1000
     if (
@@ -547,6 +572,9 @@ export const useEventStore = defineStore('events', () => {
     itemsPerPage,
     totalPages,
     lastFetch,
+    toggleLike,
+    checkLiked,
+    fetchLikedEvents,
 
     // Actions
     fetchAllEvents,

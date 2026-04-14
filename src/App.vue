@@ -11,6 +11,7 @@ import throttle from 'lodash.throttle' // ✅ use throttling to reduce scroll ev
 const isMobileMenuOpen = ref(false)
 const currentYear = ref(new Date().getFullYear())
 const route = useRoute()
+const showHero = computed(() => route.name === 'home' || route.path === '/')
 const { updateMetaDescription, updateSocialMeta } = useSeo()
 
 const navigationLinks = [
@@ -89,13 +90,12 @@ onUnmounted(() => {
 
 <template>
   <div class="app-container">
-    <HeroSection />
     <header class="app-header" :class="{ 'nav-shadow': scrollPosition > 20 }">
       <div class="container">
         <div class="logo">
           <RouterLink to="/">
             <img
-              src="https://res.cloudinary.com/dnuhjsckk/image/upload/v1775522493/rushhourticketbg_raobzp.png"
+              src="https://res.cloudinary.com/dnuhjsckk/image/upload/v1775755308/rushhourticketbg_fyfbiu.png"
               alt="TD Logo"
               class="logo-img"
             />
@@ -233,6 +233,8 @@ onUnmounted(() => {
       </div>
     </header>
 
+    <HeroSection v-if="showHero" />
+
     <!-- Mobile Navigation Modal -->
     <Transition name="modal">
       <div v-if="isMobileMenuOpen" class="mobile-nav-modal" :class="{ open: isMobileMenuOpen }">
@@ -287,7 +289,7 @@ onUnmounted(() => {
       <div class="footer-simple">
         <div class="footer-logo-col">
           <img
-            src="https://res.cloudinary.com/dnuhjsckk/image/upload/v1775522493/rushhourticketbg_raobzp.png"
+            src="https://res.cloudinary.com/dnuhjsckk/image/upload/v1775755308/rushhourticketbg_fyfbiu.png"
             alt="TD Logo"
             class="footer-logo-img"
           />
@@ -428,7 +430,7 @@ onUnmounted(() => {
 }
 
 .nav-item {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.9);
   text-decoration: none;
   font-size: 0.9rem;
   font-weight: 500;
@@ -444,7 +446,8 @@ onUnmounted(() => {
 }
 
 .nav-item.active {
-  color: #ffffff;
+  color: #34d36b;
+  font-weight: 600;
 }
 
 .header-actions {
@@ -458,15 +461,15 @@ onUnmounted(() => {
   height: 44px;
   border-radius: 50%;
   overflow: hidden;
-  background: linear-gradient(135deg, #f06292, #8e44ad);
+  background: #34d36b;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #ffffff;
+  color: #121212;
   font-weight: 700;
   font-size: 0.95rem;
   text-transform: uppercase;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
   flex-shrink: 0;
 }
 
@@ -510,12 +513,12 @@ onUnmounted(() => {
 }
 
 .auth-button {
-  background: #f06292;
-  color: #ffffff;
+  background: #34d36b;
+  color: #0b0b0f;
 }
 
 .auth-button:hover {
-  background: #d6458b;
+  background: #2ebc5f;
 }
 
 .cart-icon {
