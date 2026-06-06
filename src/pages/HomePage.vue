@@ -27,16 +27,9 @@ onMounted(() => {
 
 // Store
 const eventStore = useEventStore()
-const {
-  events,
-  featuredEvents,
-  error,
-  searchQuery: storeSearchQuery,
-  isLoading: storeLoading,
-} = storeToRefs(eventStore)
+const { events, featuredEvents, error, searchQuery: storeSearchQuery } = storeToRefs(eventStore)
 
 // Local state
-const searchTerm = ref('')
 const viewAll = ref(false)
 const skeletonColor = ref('rgba(255, 255, 255, 0.08)') // Subtle gray skeleton color
 const safetyTimer = ref(null)
@@ -75,36 +68,13 @@ watch(
   { immediate: true },
 )
 
-// Set active tab with loading and safety
-const activeTab = ref('all')
-const setActiveTab = (tab) => {
-  activeTab.value = tab
-}
-
 // Computed
 const sortedEvents = computed(() => {
-  // If we're in a search context, sort the search results
   if (storeSearchQuery.value && storeSearchQuery.value.trim() !== '') {
     return [...eventStore.events].sort((a, b) => b.id - a.id)
   }
 
-  // Otherwise filter by active tab and local search term, then sort
-  let events = []
-  if (activeTab.value === 'all') {
-    events = eventStore.events.filter((event) => {
-      return event.title.toLowerCase().includes(searchTerm.value.toLowerCase())
-    })
-  } else {
-    events = eventStore.events.filter((event) => {
-      return (
-        event.category === activeTab.value &&
-        event.title.toLowerCase().includes(searchTerm.value.toLowerCase())
-      )
-    })
-  }
-
-  // Sort filtered events by ID (newest/highest ID first)
-  return events.sort((a, b) => b.id - a.id)
+  return []
 })
 
 // Replace filteredEvents computed property with sortedEvents
@@ -115,19 +85,9 @@ const sortedFeaturedEvents = computed(() => {
   return [...featuredEvents.value].sort((a, b) => b.id - a.id)
 })
 
-// When search term is updated in store, sync with local searchTerm
-watch(storeSearchQuery, (newValue) => {
-  searchTerm.value = newValue || ''
-})
-
 // Methods with safety
-const getEventsByCategory = async (category) => {
-  await setActiveTab(category)
-}
-
 const resetSearch = async () => {
   await eventStore.resetFilters()
-  searchTerm.value = ''
 }
 
 // Add clearSearch method
@@ -284,80 +244,22 @@ onUnmounted(() => {
       </div>
     </section>
 
-    <!-- Upcoming Events Section - Only show if not searching -->
-    <section
-      v-if="(!storeSearchQuery || storeSearchQuery === '') && (!isLoading || events.length > 0)"
-      class="upcoming-events"
-    >
-      <div class="section-inner">
-        <div class="section-header">
-          <h2>All Events</h2>
-          <span class="view-all" @click="viewAll = !viewAll">
-            {{ viewAll ? 'View Less' : 'View All' }}
-          </span>
-        </div>
-
-        <div class="category-tabs">
-          <button
-            class="tab"
-            :class="{ active: activeTab === 'all' }"
-            @click="getEventsByCategory('all')"
-          >
-            All
-          </button>
-          <button
-            class="tab"
-            :class="{ active: activeTab === 'music' }"
-            @click="getEventsByCategory('music')"
-          >
-            Music
-          </button>
-          <button
-            class="tab"
-            :class="{ active: activeTab === 'art' }"
-            @click="getEventsByCategory('art')"
-          >
-            Art
-          </button>
-          <button
-            class="tab"
-            :class="{ active: activeTab === 'food' }"
-            @click="getEventsByCategory('food')"
-          >
-            Food
-          </button>
-          <button
-            class="tab"
-            :class="{ active: activeTab === 'tech' }"
-            @click="getEventsByCategory('tech')"
-          >
-            Tech
-          </button>
-          <button
-            class="tab"
-            :class="{ active: activeTab === 'sports' }"
-            @click="getEventsByCategory('sports')"
-          >
-            Sports
-          </button>
-        </div>
-
-      <div v-if="isLoading" class="events-skeleton">
-        <SkeletonLoader type="grid" :count="6" :color="skeletonColor" />
-      </div>
-      <div v-else-if="error" class="error-message">
-        {{ error }}
-      </div>
-      <div v-else-if="filteredEvents.length === 0" class="empty-state">
-        <p>No events found. Try a different category or create your own event!</p>
-      </div>
-      <div v-else class="event-grid fade-in">
-        <EventCard
-          v-for="event in filteredEvents.slice(0, viewAll ? undefined : 6)"
-          :key="event.id"
-          :event="event"
-        />
-      </div>
+    <section class="static-category-strip" aria-label="Event categories">
+      <div class="static-category-strip__content">
+        <span>Seminars</span>
+        <span>Artists & Vendors</span>
+        <span>*</span>
+        <span>Music</span>
+        <span>*</span>
+        <span>Family</span>
+        <span>*</span>
+        <span>Seminars & Conferences</span>
+        <span>*</span>
+        <span>Movies</span>
+        <span>*</span>
+        <span>Educational</span>
+        <span>*</span>
+        <span>Seminars</span>
       </div>
     </section>
   </div>
@@ -371,6 +273,8 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 40px;
+  background-color: var(--color-bg);
+  color: var(--color-text);
 }
 
 .section-inner {
@@ -386,7 +290,7 @@ onUnmounted(() => {
   align-items: center;
   margin-bottom: 30px;
   padding-bottom: 15px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid var(--color-border);
   position: relative;
 }
 
@@ -397,19 +301,18 @@ onUnmounted(() => {
   left: 0;
   width: 100px;
   height: 1px;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0));
+  background: linear-gradient(90deg, var(--color-border), transparent);
 }
 
 .section-header h2 {
   font-size: 1.8rem;
-  color: white;
-  font-weight: 700;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  margin: 0;
+  color: var(--color-text);
   letter-spacing: -0.02em;
 }
 
 .view-all {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--color-muted);
   cursor: pointer;
   font-weight: 500;
   transition: all 0.3s ease;
@@ -417,8 +320,21 @@ onUnmounted(() => {
 
 .view-all:hover {
   text-decoration: none;
-  color: #e84393;
+  color: var(--color-accent);
   transform: translateY(-1px);
+}
+
+.search-results,
+.empty-search-results,
+.featured-events {
+  position: relative;
+  padding: 40px 0;
+  border-radius: 0;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 12px 30px var(--color-shadow);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .event-grid {
@@ -432,96 +348,26 @@ onUnmounted(() => {
 }
 
 .event-grid > * {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 24px var(--color-shadow);
   transition:
     transform 0.4s cubic-bezier(0.215, 0.61, 0.355, 1),
     box-shadow 0.4s cubic-bezier(0.215, 0.61, 0.355, 1),
     opacity 0.4s cubic-bezier(0.215, 0.61, 0.355, 1);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--color-card-border);
   max-width: 100%;
   min-width: 0;
   display: flex;
   flex-direction: column;
   height: auto;
   max-height: 350px;
-  opacity: 0.92;
+  background-color: var(--color-surface);
+  color: var(--color-text);
 }
 
 .event-grid > *:hover {
   opacity: 1;
   transform: translateY(-8px);
-  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.16);
-}
-
-.category-tabs {
-  display: flex;
-  gap: 15px;
-  margin-bottom: 35px;
-  flex-wrap: wrap;
-  padding: 5px 0;
-}
-
-.tab {
-  padding: 10px 20px;
-  background-color: rgba(18, 18, 24, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 25px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-  color: rgba(255, 255, 255, 0.7);
-  font-weight: 500;
-  font-size: 0.9rem;
-  letter-spacing: 0.3px;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  position: relative;
-  overflow: hidden;
-}
-
-.tab::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.05), transparent);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
-}
-
-.tab:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: white;
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-}
-
-.tab:hover::before {
-  opacity: 1;
-}
-
-.tab.active {
-  background: linear-gradient(135deg, rgba(232, 67, 147, 0.7), rgba(192, 72, 137, 0.8));
-  color: white;
-  border-color: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 5px 15px rgba(232, 67, 147, 0.2);
-  transform: translateY(-2px);
-  font-weight: 600;
-}
-
-.tab.active::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: rgba(255, 255, 255, 0.5);
-  transform: scaleX(0.7);
-  transform-origin: center;
-  border-radius: 2px;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.3);
 }
 
 .loading-container,
@@ -529,6 +375,7 @@ onUnmounted(() => {
 .empty-state {
   text-align: center;
   padding: 20px;
+  color: var(--color-text);
 }
 
 .loading-container {
@@ -545,7 +392,7 @@ onUnmounted(() => {
   margin: 0 auto 15px;
   border: 3px solid rgba(255, 255, 255, 0.1);
   border-radius: 50%;
-  border-top-color: #e84393;
+  border-top-color: var(--color-accent);
   animation: spin 1s ease-in-out infinite;
 }
 
@@ -556,7 +403,7 @@ onUnmounted(() => {
 }
 
 .error-message {
-  color: #e74c3c;
+  color: var(--color-danger);
   background-color: rgba(231, 76, 60, 0.1);
   border-radius: 8px;
   padding: 15px;
@@ -566,8 +413,8 @@ onUnmounted(() => {
 .retry-button {
   margin-top: 10px;
   padding: 8px 16px;
-  background-color: #e74c3c;
-  color: white;
+  background-color: var(--color-danger);
+  color: #fff;
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -579,14 +426,73 @@ onUnmounted(() => {
 }
 
 .empty-state {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(255, 255, 255, 0.04);
   border-radius: 8px;
-  border: 1px dashed rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.7);
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  color: var(--color-muted);
   padding: 30px;
 }
 
-/* Enhance responsive grid layout */
+.search-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.clear-search-btn {
+  background: none;
+  border: none;
+  color: var(--color-muted);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.clear-search-btn:hover {
+  color: var(--color-accent);
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.close-icon {
+  line-height: 1;
+}
+
+.search-actions span {
+  font-weight: 500;
+}
+
+.featured-skeleton,
+.events-skeleton,
+.search-skeleton {
+  width: 100%;
+  min-height: 350px;
+  margin-bottom: 40px;
+}
+
+.static-category-strip {
+  background-color: #ec4899;
+  color: #040308;
+  padding: 18px 0;
+}
+
+.static-category-strip__content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  font-size: 1rem;
+}
+
 @media (max-width: 1400px) {
   .event-grid {
     grid-template-columns: repeat(4, 1fr);
@@ -622,20 +528,6 @@ onUnmounted(() => {
     padding: 0 18px 40px;
   }
 
-  .category-tabs {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 8px;
-    margin-bottom: 24px;
-    scroll-snap-type: x mandatory;
-  }
-
-  .tab {
-    scroll-snap-align: start;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-
   .section-header h2 {
     font-size: 1.5rem;
   }
@@ -651,18 +543,11 @@ onUnmounted(() => {
     padding: 0 16px 30px;
   }
 
-  .featured-events,
-  .upcoming-events,
-  .search-results {
-    padding: 20px 16px;
-  }
-
   .section-header {
     margin-bottom: 20px;
   }
 }
 
-/* Small phone optimization */
 @media (max-width: 375px) {
   .home-page {
     padding: 0 12px 30px;
@@ -671,149 +556,29 @@ onUnmounted(() => {
   .section-header h2 {
     font-size: 1.25rem;
   }
-
-  .tab {
-    padding: 8px 14px;
-    font-size: 0.8rem;
-  }
-
-  .featured-events,
-  .upcoming-events,
-  .search-results {
-    padding: 15px 12px;
-    margin-bottom: 30px;
-  }
 }
 
-/* Ultra small devices (Galaxy Fold) */
 @media (max-width: 280px) {
   .section-header h2 {
     font-size: 1.25rem;
   }
-
-  .tab {
-    padding: 6px 12px;
-    font-size: 0.75rem;
-  }
 }
 
-/* Landscape mode optimization */
 @media (max-height: 500px) and (orientation: landscape) {
   .event-grid {
     gap: 12px;
   }
 }
 
-/* Tablets in portrait orientation */
 @media (min-width: 768px) and (max-width: 992px) and (orientation: portrait) {
   .event-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
-/* High DPI screens */
-@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-  .featured-events,
-  .upcoming-events,
-  .search-results {
-    border-width: 0.5px;
-  }
-}
-
-/* Ensure touch-friendliness on mobile */
 @media (pointer: coarse) {
-  .tab {
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-}
-
-/* Style enhancements for sections */
-.featured-events,
-.upcoming-events,
-.search-results,
-.empty-search-results {
-  position: relative;
-  padding: 40px 0;
-  border-radius: 0;
-  background-color: rgba(18, 18, 24, 0.2);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: none;
-  border-top: 1px solid rgba(255, 255, 255, 0.025);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.025);
-  box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.05),
-    0 1px 2px rgba(255, 255, 255, 0.025);
-}
-
-/* Add this to the HomePage.vue file to enhance the background */
-body {
-  background-color: #121212;
-  background-image:
-    radial-gradient(circle at 10% 20%, rgba(232, 67, 147, 0.015) 0%, transparent 30%),
-    radial-gradient(circle at 90% 80%, rgba(232, 67, 147, 0.015) 0%, transparent 30%);
-  background-attachment: fixed;
-  color: white;
-}
-
-.search-actions {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-
-.clear-search-btn {
-  background: none;
-  border: none;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 1.5rem;
-  cursor: pointer;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  transition: all 0.2s ease;
-}
-
-.clear-search-btn:hover {
-  color: #e84393;
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.close-icon {
-  line-height: 1;
-  margin-top: -2px;
-}
-
-.empty-search-results {
-  margin-bottom: 30px;
-}
-
-/* Skeleton styles */
-.featured-skeleton,
-.events-skeleton,
-.search-skeleton {
-  width: 100%;
-  min-height: 350px;
-  margin-bottom: 40px;
-}
-
-.fade-in {
-  animation: fade-in 0.5s ease-out;
-}
-
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
+  .event-grid > * {
+    box-shadow: 0 6px 16px var(--color-shadow);
   }
 }
 </style>

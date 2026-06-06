@@ -194,7 +194,7 @@ const viewDetails = () => {
 <style scoped>
 .event-card {
   width: 100%;
-  background-color: rgba(18, 18, 24, 0.4);
+  background-color: var(--color-surface);
   border-radius: 12px;
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -204,20 +204,21 @@ const viewDetails = () => {
   min-height: 350px;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 24px var(--color-shadow);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-card-border);
+  color: var(--color-text);
 }
 
 .event-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
 }
 
 /* Focus styles for keyboard users - accessibility */
 .event-card:focus-visible {
-  outline: 2px solid var(--primary, #e84393);
+  outline: 2px solid var(--color-accent);
   outline-offset: 3px;
   transform: translateY(-5px);
 }
@@ -258,8 +259,8 @@ const viewDetails = () => {
   position: absolute;
   bottom: 15px;
   right: 15px;
-  background-color: #34d36b;
-  color: #0b0b0f;
+  background-color: var(--color-primary);
+  color: #ffffff;
   padding: 8px;
   border-radius: 10px;
   display: flex;
@@ -271,6 +272,12 @@ const viewDetails = () => {
   min-width: 50px;
   text-align: center;
   box-shadow: 0 6px 18px rgba(52, 211, 107, 0.35);
+}
+
+.event-card__date-day,
+.event-card__date-month,
+.event-card__date-year {
+  color: #ffffff;
 }
 
 .event-card__date-day {
@@ -289,7 +296,6 @@ const viewDetails = () => {
 
 .event-card__date-year {
   font-size: 0.6rem;
-  color: rgba(11, 11, 15, 0.8);
 }
 
 .event-card__content {
@@ -313,7 +319,7 @@ const viewDetails = () => {
   margin: 0;
   line-height: 1.4;
   flex: 1;
-  color: white;
+  color: var(--color-text);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -350,7 +356,7 @@ const viewDetails = () => {
 
 .event-card__location {
   font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--color-muted);
   display: flex;
   align-items: center;
   gap: 5px;
@@ -366,7 +372,7 @@ const viewDetails = () => {
 
 .event-card__price {
   font-weight: 700;
-  color: #e84393;
+  color: var(--color-accent);
   font-size: 1.3rem;
   display: flex;
   flex-direction: column;
@@ -377,7 +383,7 @@ const viewDetails = () => {
 .event-card__price-label {
   font-size: 0.73rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--color-muted);
   margin-bottom: 4px;
   text-transform: uppercase;
   letter-spacing: 0.03em;

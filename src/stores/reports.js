@@ -8,7 +8,7 @@ export const useReportStore = defineStore('reports', () => {
   const weeklyReport = ref(null)
   const categorySalesChart = ref(null)
   const revenueChartData = ref(null)
-  const loading = ref(false)
+  const isLoading = ref(false)
   const error = ref(null)
 
   // Actions
@@ -20,7 +20,7 @@ export const useReportStore = defineStore('reports', () => {
       throw new Error('Admin privileges required')
     }
 
-    loading.value = true
+    isLoading.value = true
     error.value = null
 
     try {
@@ -31,7 +31,7 @@ export const useReportStore = defineStore('reports', () => {
       error.value = err.message || 'Failed to fetch weekly report'
       throw err
     } finally {
-      loading.value = false
+      isLoading.value = false
     }
   }
 
@@ -43,7 +43,7 @@ export const useReportStore = defineStore('reports', () => {
       throw new Error('Admin privileges required')
     }
 
-    loading.value = true
+    isLoading.value = true
     error.value = null
 
     try {
@@ -54,7 +54,7 @@ export const useReportStore = defineStore('reports', () => {
       error.value = err.message || 'Failed to fetch category sales chart'
       throw err
     } finally {
-      loading.value = false
+      isLoading.value = false
     }
   }
 
@@ -66,7 +66,7 @@ export const useReportStore = defineStore('reports', () => {
       throw new Error('Admin privileges required')
     }
 
-    loading.value = true
+    isLoading.value = true
     error.value = null
 
     try {
@@ -77,7 +77,7 @@ export const useReportStore = defineStore('reports', () => {
       error.value = err.message || 'Failed to fetch revenue chart data'
       throw err
     } finally {
-      loading.value = false
+      isLoading.value = false
     }
   }
 
@@ -106,7 +106,7 @@ export const useReportStore = defineStore('reports', () => {
     weeklyReport,
     categorySalesChart,
     revenueChartData,
-    loading,
+    isLoading,
     error,
     hasReports,
     formattedTotalRevenue,
@@ -117,4 +117,3 @@ export const useReportStore = defineStore('reports', () => {
     fetchRevenueChartData,
   }
 })
- 

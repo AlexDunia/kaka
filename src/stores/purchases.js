@@ -6,7 +6,7 @@ import { useAuthStore } from './auth'
 export const usePurchaseStore = defineStore('purchases', () => {
   // State
   const purchases = ref([])
-  const loading = ref(false)
+  const isLoading = ref(false)
   const error = ref(null)
 
   // Actions
@@ -14,7 +14,7 @@ export const usePurchaseStore = defineStore('purchases', () => {
     const authStore = useAuthStore()
     if (!authStore.user) return []
 
-    loading.value = true
+    isLoading.value = true
     error.value = null
 
     try {
@@ -25,7 +25,7 @@ export const usePurchaseStore = defineStore('purchases', () => {
       error.value = err.message || 'Failed to fetch purchase history'
       throw err
     } finally {
-      loading.value = false
+      isLoading.value = false
     }
   }
 
@@ -37,7 +37,7 @@ export const usePurchaseStore = defineStore('purchases', () => {
       return []
     }
 
-    loading.value = true
+    isLoading.value = true
     error.value = null
 
     try {
@@ -48,7 +48,7 @@ export const usePurchaseStore = defineStore('purchases', () => {
       error.value = err.message || 'Failed to fetch purchases'
       throw err
     } finally {
-      loading.value = false
+      isLoading.value = false
     }
   }
 
@@ -59,7 +59,7 @@ export const usePurchaseStore = defineStore('purchases', () => {
       throw new Error('Authentication required')
     }
 
-    loading.value = true
+    isLoading.value = true
     error.value = null
 
     try {
@@ -77,7 +77,7 @@ export const usePurchaseStore = defineStore('purchases', () => {
       error.value = err.message || 'Failed to complete purchase'
       throw err
     } finally {
-      loading.value = false
+      isLoading.value = false
     }
   }
 
@@ -88,7 +88,7 @@ export const usePurchaseStore = defineStore('purchases', () => {
       throw new Error('Authentication required')
     }
 
-    loading.value = true
+    isLoading.value = true
     error.value = null
 
     try {
@@ -105,7 +105,7 @@ export const usePurchaseStore = defineStore('purchases', () => {
       error.value = err.message || 'Failed to cancel purchase'
       throw err
     } finally {
-      loading.value = false
+      isLoading.value = false
     }
   }
 
@@ -117,7 +117,7 @@ export const usePurchaseStore = defineStore('purchases', () => {
       throw new Error('Admin privileges required')
     }
 
-    loading.value = true
+    isLoading.value = true
     error.value = null
 
     try {
@@ -127,7 +127,7 @@ export const usePurchaseStore = defineStore('purchases', () => {
       error.value = err.message || 'Failed to fetch purchase statistics'
       throw err
     } finally {
-      loading.value = false
+      isLoading.value = false
     }
   }
 
@@ -154,7 +154,7 @@ export const usePurchaseStore = defineStore('purchases', () => {
 
   return {
     purchases,
-    loading,
+    isLoading,
     error,
     upcomingPurchases,
     pastPurchases,
@@ -166,4 +166,3 @@ export const usePurchaseStore = defineStore('purchases', () => {
     getPurchaseStats,
   }
 })
- 

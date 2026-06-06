@@ -14,6 +14,35 @@ const route = useRoute()
 const showHero = computed(() => route.name === 'home' || route.path === '/')
 const { updateMetaDescription, updateSocialMeta } = useSeo()
 
+const themePreferenceKey = 'kaka-theme-preference'
+const theme = ref('dark')
+
+const applyTheme = (value) => {
+  theme.value = value
+  if (typeof document !== 'undefined') {
+    document.documentElement.classList.toggle('light', value === 'light')
+  }
+  if (typeof window !== 'undefined') {
+    window.localStorage?.setItem(themePreferenceKey, value)
+  }
+}
+
+const initializeTheme = () => {
+  if (typeof window === 'undefined') return
+  const stored = window.localStorage?.getItem(themePreferenceKey)
+  if (stored === 'light' || stored === 'dark') {
+    applyTheme(stored)
+    return
+  }
+  const prefersLight =
+    window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches
+  applyTheme(prefersLight ? 'light' : 'dark')
+}
+
+const toggleTheme = () => {
+  applyTheme(theme.value === 'light' ? 'dark' : 'light')
+}
+
 const navigationLinks = [
   { path: '/', name: 'All' },
   { path: '/music', name: 'Music' },
@@ -81,6 +110,7 @@ onMounted(() => {
   window.addEventListener('scroll', handleScroll)
   handleScroll()
   authStore.initialize()
+  initializeTheme()
 })
 
 onUnmounted(() => {
@@ -169,6 +199,14 @@ onUnmounted(() => {
         </nav>
 
         <div class="header-actions">
+          <button
+            type="button"
+            class="theme-toggle"
+            @click="toggleTheme"
+            :aria-label="theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'"
+          >
+            <span aria-hidden="true">{{ theme === 'light' ? '🌙' : '☀️' }}</span>
+          </button>
           <template v-if="isAuthenticated">
             <div
               class="user-avatar"
@@ -389,7 +427,7 @@ onUnmounted(() => {
 }
 
 .app-header {
-  background-color: #121212;
+  background-color: var(--color-surface);
   padding: 1rem 0;
   position: sticky;
   top: 0;
@@ -430,7 +468,7 @@ onUnmounted(() => {
 }
 
 .nav-item {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--color-muted);
   text-decoration: none;
   font-size: 0.9rem;
   font-weight: 500;
@@ -442,11 +480,11 @@ onUnmounted(() => {
 
 .nav-item:hover {
   cursor: pointer;
-  color: #ffffff;
+  color: var(--color-text);
 }
 
 .nav-item.active {
-  color: #34d36b;
+  color: var(--color-primary);
   font-weight: 600;
 }
 
@@ -454,6 +492,28 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 1rem;
+}
+
+.theme-toggle {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition:
+    border-color 0.3s ease,
+    transform 0.3s ease;
+}
+
+.theme-toggle:hover {
+  border-color: var(--color-accent);
+  transform: translateY(-1px);
 }
 
 .user-avatar {
@@ -681,7 +741,7 @@ onUnmounted(() => {
 }
 
 .app-footer {
-  background-color: var(--secondary);
+  background-color: var(--color-surface);
   padding: 3rem 1rem 2rem;
   width: 100%;
   margin-top: 2rem;
@@ -784,6 +844,52 @@ onUnmounted(() => {
   height: 45px;
   width: auto;
   display: block;
+}
+</style>
+
+<style>
+:root {
+  --color-primary: #22c55e;
+  --color-accent: #ec4899;
+  --color-bg: #0b0f19;
+  --color-surface: #131319;
+  --color-text: #ffffff;
+  /* --color-muted: #ffffff; */
+  --color-muted: #bcbec3;
+  --color-hero-label: rgba(255, 255, 255, 0.75);
+  --color-hero-subtitle: rgba(255, 255, 255, 0.85);
+  --color-search-field: rgba(37, 35, 45, 0.4);
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-card-border: rgba(255, 255, 255, 0.05);
+  --color-shadow: rgba(0, 0, 0, 0.35);
+  --color-tab-bg: rgba(255, 255, 255, 0.06);
+  --color-tab-border: rgba(255, 255, 255, 0.04);
+  --color-tab-active-gradient: linear-gradient(135deg, var(--color-accent), #b63685);
+  --color-danger: #e74c3c;
+}
+
+.light {
+  --color-bg: #ffffff;
+  --color-surface: #f3f4f6;
+  --color-text: #111827;
+  --color-muted: #6b7280;
+  --color-border: rgba(17, 24, 39, 0.2);
+  --color-card-border: rgba(203, 213, 224, 0.4);
+  --color-shadow: rgba(0, 0, 0, 0.1);
+  --color-tab-bg: rgba(15, 23, 42, 0.12);
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: 'Inter', system-ui, sans-serif;
+  transition:
+    background-color 0.4s ease,
+    color 0.4s ease;
+  background-image:
+    radial-gradient(circle at 10% 20%, rgba(236, 72, 153, 0.08) 0%, transparent 30%),
+    radial-gradient(circle at 90% 80%, rgba(236, 72, 153, 0.08) 0%, transparent 30%);
+  min-height: 100vh;
 }
 
 /* Responsive styles */

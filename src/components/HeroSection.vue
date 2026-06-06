@@ -202,7 +202,7 @@ onUnmounted(() => {
           <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path
               d="M11 18a7 7 0 1 1 4.9-2.1l4.6 4.6-1.4 1.4-4.6-4.6A7 7 0 0 1 11 18z"
-              fill="#fff"
+              fill="currentColor"
               stroke="none"
             />
           </svg>
@@ -250,7 +250,7 @@ onUnmounted(() => {
   width: min(520px, 85vw);
   max-width: 520px;
   text-align: left;
-  color: #fff;
+  color: var(--color-text);
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -261,7 +261,7 @@ onUnmounted(() => {
   letter-spacing: 0.4rem;
   text-transform: uppercase;
   margin: 0;
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--color-hero-label);
 }
 
 .hero-title-wrapper {
@@ -313,7 +313,7 @@ onUnmounted(() => {
 .hero-subtitle {
   margin: 0;
   font-size: 1rem;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--color-hero-subtitle);
   max-width: 460px;
 }
 
@@ -328,7 +328,7 @@ onUnmounted(() => {
 
 .search-field {
   position: relative;
-  background: rgba(37, 35, 45, 0.4);
+  background: var(--color-search-field);
   border-radius: 32px;
   padding: 18px 24px 18px 60px;
   display: flex;
@@ -351,14 +351,14 @@ onUnmounted(() => {
   left: 24px;
   width: 24px;
   height: 24px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--color-muted);
 }
 
 .search-input {
   flex: 1;
   border: none;
   background: transparent;
-  color: rgba(255, 255, 255, 0.95);
+  color: var(--color-text);
   font-size: 1rem;
   line-height: 1.4;
   outline: none;
@@ -366,7 +366,7 @@ onUnmounted(() => {
 }
 
 .search-input::placeholder {
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--color-muted);
 }
 
 .search-submit {
@@ -374,12 +374,13 @@ onUnmounted(() => {
   height: 44px;
   border-radius: 50%;
   border: none;
-  background: linear-gradient(135deg, #ed6fb0, #a44bd0);
+  background: linear-gradient(135deg, var(--color-accent), #a44bd0);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+  color: var(--color-text);
 }
 
 .search-submit svg {
