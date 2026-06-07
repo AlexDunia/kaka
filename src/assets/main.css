@@ -1,8 +1,8 @@
 @import '../styles/base.css';
 @import '../styles/utilities.css';
 
-/* Import Google Fonts - Inter */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+/* Fonts from my HTML file */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Figtree:wght@300;400;500;600;700&display=swap');
 
 #app {
   width: 100%;

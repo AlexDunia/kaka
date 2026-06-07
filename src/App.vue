@@ -12,6 +12,7 @@ const isMobileMenuOpen = ref(false)
 const currentYear = ref(new Date().getFullYear())
 const route = useRoute()
 const showHero = computed(() => route.name === 'home' || route.path === '/')
+const isCreateEventRoute = computed(() => route.name === 'CreateEvent')
 const { updateMetaDescription, updateSocialMeta } = useSeo()
 
 const themePreferenceKey = 'kaka-theme-preference'
@@ -120,7 +121,11 @@ onUnmounted(() => {
 
 <template>
   <div class="app-container">
-    <header class="app-header" :class="{ 'nav-shadow': scrollPosition > 20 }">
+    <header
+      v-if="!isCreateEventRoute"
+      class="app-header"
+      :class="{ 'nav-shadow': scrollPosition > 20 }"
+    >
       <div class="container">
         <div class="logo">
           <RouterLink to="/">
@@ -428,7 +433,7 @@ onUnmounted(() => {
 
 .app-header {
   background-color: var(--color-surface);
-  padding: 1rem 0;
+  padding: 0.75rem 0;
   position: sticky;
   top: 0;
   z-index: 1000;
@@ -869,20 +874,20 @@ onUnmounted(() => {
 }
 
 .light {
-  --color-bg: #ffffff;
-  --color-surface: #f3f4f6;
-  --color-text: #111827;
-  --color-muted: #6b7280;
-  --color-border: rgba(17, 24, 39, 0.2);
-  --color-card-border: rgba(203, 213, 224, 0.4);
-  --color-shadow: rgba(0, 0, 0, 0.1);
-  --color-tab-bg: rgba(15, 23, 42, 0.12);
+  --color-bg: #f5f2ee;
+  --color-surface: #fdfcfa;
+  --color-text: #0d0d0d;
+  --color-muted: #7a746e;
+  --color-border: #e4ded7;
+  --color-card-border: #e4ded7;
+  --color-shadow: rgba(0, 0, 0, 0.08);
+  --color-tab-bg: #ede9e3;
 }
 
 body {
   background-color: var(--color-bg);
   color: var(--color-text);
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Figtree', sans-serif;
   transition:
     background-color 0.4s ease,
     color 0.4s ease;

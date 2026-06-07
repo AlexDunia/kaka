@@ -198,8 +198,18 @@ function isSameDay(date1, date2) {
 }
 
 function isDateDisabled(date) {
-  if (props.minDate && date < props.minDate) return true
-  if (props.maxDate && date > props.maxDate) return true
+  const target = new Date(date)
+  target.setHours(0, 0, 0, 0)
+  if (props.minDate) {
+    const min = new Date(props.minDate)
+    min.setHours(0, 0, 0, 0)
+    if (target < min) return true
+  }
+  if (props.maxDate) {
+    const max = new Date(props.maxDate)
+    max.setHours(23, 59, 59, 999)
+    if (target > max) return true
+  }
   return false
 }
 
@@ -470,6 +480,8 @@ watch(
 .day-cell.disabled {
   color: #ddd;
   cursor: not-allowed;
+  filter: blur(0.5px);
+  opacity: 0.35;
 }
 
 .time-picker-container {
@@ -582,5 +594,51 @@ watch(
 
 .apply-btn:hover {
   background-color: #3755d8;
+}
+
+:global(:root:not(.light)) .datetime-picker {
+  background-color: #19181e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+:global(:root:not(.light)) .datetime-picker-header,
+:global(:root:not(.light)) .datetime-picker-tabs,
+:global(:root:not(.light)) .datetime-picker-actions {
+  background-color: #19181e;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+:global(:root:not(.light)) .datetime-picker-header h3,
+:global(:root:not(.light)) .calendar-header span,
+:global(:root:not(.light)) .time-buttons span,
+:global(:root:not(.light)) .time-separator {
+  color: #ffffff;
+}
+
+:global(:root:not(.light)) .datetime-picker-tabs button,
+:global(:root:not(.light)) .weekday,
+:global(:root:not(.light)) .time-input-group label,
+:global(:root:not(.light)) .close-btn,
+:global(:root:not(.light)) .nav-btn {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+:global(:root:not(.light)) .day-cell,
+:global(:root:not(.light)) .time-btn,
+:global(:root:not(.light)) .cancel-btn,
+:global(:root:not(.light)) .ampm-toggle button {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.85);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+:global(:root:not(.light)) .day-cell.selected,
+:global(:root:not(.light)) .ampm-toggle button.active,
+:global(:root:not(.light)) .apply-btn,
+:global(:root:not(.light)) .datetime-picker-tabs button.active::after {
+  background-color: rgba(233, 75, 159, 0.25);
+  border-color: rgba(233, 75, 159, 0.4);
+  color: #ffffff;
 }
 </style>

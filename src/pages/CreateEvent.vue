@@ -1,5433 +1,2374 @@
+<script setup>
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  BanknotesIcon,
+  CalendarDaysIcon,
+  CheckIcon,
+  ChevronRightIcon,
+  ClockIcon,
+  DocumentTextIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  GlobeAltIcon,
+  InformationCircleIcon,
+  LinkIcon,
+  MapPinIcon,
+  MinusIcon,
+  PencilIcon,
+  PhotoIcon,
+  PlusIcon,
+  QuestionMarkCircleIcon,
+  SparklesIcon,
+  TagIcon,
+  TicketIcon,
+  TrashIcon,
+  UserIcon,
+  UsersIcon,
+  XMarkIcon,
+} from '@heroicons/vue/24/outline'
+import DateTimePickerInput from '@/components/DateTimePickerInput.vue'
+import EventCard from '@/components/EventCard.vue'
+import {
+  DEFAULT_CREATE_EVENT_TIPS,
+  buildCreateEventPayload,
+  saveCreateEventDraft,
+} from '@/services/createEventService'
+
+const router = useRouter()
+
+const steps = ['Basics', 'Details', 'Tickets', 'Attendees']
+const today = new Date()
+today.setHours(0, 0, 0, 0)
+
+const categories = [
+  'Conference & Summit',
+  'Music & Concert',
+  'Food & Dining',
+  'Art & Culture',
+  'Business & Networking',
+  'Sports & Fitness',
+  'Workshop & Training',
+  'Party & Social',
+  'Startup & Tech',
+  'Faith & Community',
+  'Theatre & Performing Arts',
+  'Education & Learning',
+]
+
+const venues = [
+  ['Eko Hotel & Suites', 'Plot 1415 Adetokunbo Ademola St, Victoria Island, Lagos'],
+  ['The Civic Centre', 'Ozumba Mbadiwe Ave, Victoria Island, Lagos'],
+  ['Landmark Event Centre', 'Water Corporation Dr, Oniru, Lagos'],
+  ['Terra Kulture', '1376 Tiamiyu Savage St, Victoria Island, Lagos'],
+  ['Transcorp Hilton Abuja', '1 Aguiyi-Ironsi St, Maitama, Abuja'],
+]
+
+const detailOptions = [
+  { type: 'parking', label: 'Parking', icon: MapPinIcon, placeholder: 'Free parking on-site from 5pm.' },
+  { type: 'dress', label: 'Dress code', icon: SparklesIcon, placeholder: 'Smart casual, formal, or themed attire.' },
+  { type: 'bring', label: 'What to bring', icon: DocumentTextIcon, placeholder: 'Valid ID, ticket, business cards, or supplies.' },
+  { type: 'agenda', label: 'Agenda', icon: ClockIcon, placeholder: '9:00 AM registration, 10:00 AM keynote...' },
+  { type: 'speakers', label: 'Speakers', icon: UserIcon, placeholder: 'Speaker names, roles, and session topics.' },
+  { type: 'food', label: 'Food & drinks', icon: InformationCircleIcon, placeholder: 'Cocktails, light bites, vegetarian or halal options.' },
+  { type: 'transport', label: 'Getting there', icon: MapPinIcon, placeholder: 'Ride-share, public transport, or parking notes.' },
+  { type: 'faq', label: 'FAQs', icon: QuestionMarkCircleIcon, placeholder: 'Answer common attendee questions.' },
+]
+
+const ticketTemplates = [
+  { name: 'Early Bird', unitType: 'individual', color: '#1a7a4a', price: 5000 },
+  { name: 'General Admission', unitType: 'individual', color: '#1a5fa6', price: 10000 },
+  { name: 'VIP', unitType: 'individual', color: '#c8960a', price: 30000 },
+  { name: 'Gold Table', unitType: 'table', color: '#c8960a', price: 250000 },
+  { name: 'Silver Table', unitType: 'table', color: '#7a8fa6', price: 150000 },
+  { name: 'Student', unitType: 'individual', color: '#302b63', price: 3000 },
+]
+
+const attendeeFieldDefaults = [
+  { id: 'name', label: 'Full name', help: 'First and last name', enabled: true, required: true },
+  { id: 'email', label: 'Email address', help: 'For ticket delivery and updates', enabled: true, required: true },
+  { id: 'phone', label: 'Phone number', help: 'For WhatsApp updates and emergency contact', enabled: true, required: false },
+  { id: 'company', label: 'Organisation / Company', help: 'Where they work or study', enabled: false, required: false },
+  { id: 'job', label: 'Job title', help: 'Their role or position', enabled: false, required: false },
+  { id: 'dietary', label: 'Dietary requirements', help: 'Useful for catered events', enabled: false, required: false },
+  { id: 'shirt', label: 'T-shirt size', help: 'If giving out merchandise', enabled: false, required: false },
+  { id: 'source', label: 'How did you hear about us?', help: 'Useful for marketing insight', enabled: false, required: false },
+]
+
+const coverTemplates = [
+  'linear-gradient(135deg,#0f0c29,#302b63,#24243e)',
+  'linear-gradient(135deg,#ff416c,#ff4b2b)',
+  'linear-gradient(135deg,#134e5e,#71b280)',
+  'linear-gradient(135deg,#f7971e,#ffd200)',
+  'linear-gradient(135deg,#c850c0,#ffcc70)',
+  'linear-gradient(135deg,#1a1a1a,#434343)',
+]
+
+const form = reactive({
+  title: '',
+  startsAt: tomorrowAt(18),
+  endsAt: tomorrowAt(22),
+  recurrenceType: 'once',
+  repeatFrequency: 'weekly',
+  repeatDays: ['Sat'],
+  repeatSessions: 8,
+  repeatEndDate: '',
+  format: 'in-person',
+  venue: '',
+  meetingLink: '',
+  category: '',
+  coverImage: '',
+  coverGradient: coverTemplates[0],
+  secondaryImages: [],
+  urlImages: [],
+  description: '',
+  organiser: '',
+  organiserWebsite: '',
+  tags: '',
+  extraDetails: [],
+  ticketMode: 'free',
+  freeCapacity: '',
+  tickets: [],
+  attendeeFields: attendeeFieldDefaults.map((field) => ({ ...field })),
+})
+
+const currentStep = ref(1)
+const previewOn = ref(window.localStorage?.getItem('kaka-create-preview') !== 'false')
+const draftSaved = ref(false)
+const activeUploadTab = ref('files')
+const showTemplates = ref(false)
+const showVenueResults = ref(false)
+const urlImageValue = ref('')
+const tipIndex = ref(0)
+const toast = ref('')
+const published = ref(false)
+const errors = reactive({})
+const ticketId = ref(0)
+let toastTimer
+let draftTimer
+
+const activeTips = computed(() =>
+  DEFAULT_CREATE_EVENT_TIPS.filter((tip) => tip.status === 'active').sort(
+    (a, b) => a.sortOrder - b.sortOrder,
+  ),
+)
+
+const currentTip = computed(() => activeTips.value[tipIndex.value]?.body || activeTips.value[0]?.body)
+
+const venueResults = computed(() => {
+  const query = form.venue.toLowerCase().trim()
+  if (!query) return []
+  return venues
+    .filter(([name, address]) => `${name} ${address}`.toLowerCase().includes(query))
+    .slice(0, 5)
+})
+
+const selectedDetailTypes = computed(() => new Set(form.extraDetails.map((detail) => detail.type)))
+
+const visibleTickets = computed(() => form.tickets.filter((ticket) => ticket.visible))
+
+const totalCapacity = computed(() =>
+  form.tickets.reduce((sum, ticket) => {
+    if (ticket.unitType === 'table') return sum + ticket.units * ticket.peoplePerUnit
+    return sum + ticket.units
+  }, 0),
+)
+
+const previewEvent = computed(() => ({
+  id: 'preview',
+  title: form.title || 'Your event name appears here',
+  main_image: form.coverImage,
+  date: form.startsAt?.toISOString?.() || form.startsAt,
+  location:
+    form.format === 'online'
+      ? 'Online event'
+      : form.venue || (form.format === 'hybrid' ? 'In-person & online' : 'Location TBC'),
+  category: { name: form.category || 'Event' },
+  price:
+    form.ticketMode === 'free'
+      ? 0
+      : Math.min(...visibleTickets.value.map((ticket) => Number(ticket.price) || 0), 0),
+  rating: '4.5',
+}))
+
+const recurrenceSummary = computed(() => {
+  if (form.recurrenceType === 'once') return 'This event happens once.'
+  const days = form.repeatDays.length ? ` on ${form.repeatDays.join(', ')}` : ''
+  const frequency = {
+    weekly: 'every week',
+    biweekly: 'every 2 weeks',
+    monthly: 'every month',
+  }[form.repeatFrequency]
+  return `This event repeats ${frequency}${form.repeatFrequency === 'monthly' ? '' : days} for ${form.repeatSessions || 1} sessions.`
+})
+
+const emailDate = computed(() => formatDateTime(form.startsAt))
+
+function tomorrowAt(hour) {
+  const date = new Date()
+  date.setDate(date.getDate() + 1)
+  date.setHours(hour, 0, 0, 0)
+  return date
+}
+
+function formatDateTime(value) {
+  if (!value) return 'Date and time'
+  return new Date(value).toLocaleString('en-NG', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+function showToast(message) {
+  toast.value = message
+  clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => {
+    toast.value = ''
+  }, 2400)
+}
+
+function markDraftSaved() {
+  draftSaved.value = true
+  clearTimeout(draftTimer)
+  draftTimer = setTimeout(() => {
+    draftSaved.value = false
+  }, 2200)
+}
+
+function saveDraft() {
+  saveCreateEventDraft(form)
+  markDraftSaved()
+}
+
+function togglePreview() {
+  previewOn.value = !previewOn.value
+  window.localStorage?.setItem('kaka-create-preview', previewOn.value ? 'true' : 'false')
+}
+
+function setStep(step) {
+  currentStep.value = step
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function goNext() {
+  if (!validateStep(currentStep.value)) return
+  if (currentStep.value < steps.length) setStep(currentStep.value + 1)
+}
+
+function goBack() {
+  if (currentStep.value > 1) setStep(currentStep.value - 1)
+}
+
+function setError(key, message) {
+  errors[key] = message
+}
+
+function clearError(key) {
+  delete errors[key]
+}
+
+function validateStep(step) {
+  Object.keys(errors).forEach(clearError)
+
+  if (step === 1) {
+    if (!form.title.trim()) setError('title', 'Please enter an event name.')
+    if (!form.startsAt) setError('startsAt', 'Please choose a start date and time.')
+    if (!form.endsAt) setError('endsAt', 'Please choose an end date and time.')
+    if (form.startsAt && new Date(form.startsAt) < today) {
+      setError('startsAt', 'Start date cannot be in the past.')
+    }
+    if (form.endsAt && form.startsAt && new Date(form.endsAt) <= new Date(form.startsAt)) {
+      setError('endsAt', 'End time must be after the start time.')
+    }
+    if (form.format !== 'online' && !form.venue.trim()) {
+      setError('venue', 'Please enter the venue or address.')
+    }
+    if ((form.format === 'online' || form.format === 'hybrid') && !form.meetingLink.trim()) {
+      setError('meetingLink', 'Please add the meeting link for online attendees.')
+    }
+    if (!form.category) setError('category', 'Please choose a category.')
+  }
+
+  if (step === 2 && !form.coverImage) {
+    setError('coverImage', 'Please add a cover image so attendees can recognise your event.')
+  }
+
+  if (step === 3 && form.ticketMode === 'paid') {
+    if (!form.tickets.length) setError('tickets', 'Add at least one paid ticket category.')
+    form.tickets.forEach((ticket) => {
+      if (!ticket.name.trim()) setError(`ticket-${ticket.id}-name`, 'Ticket name is required.')
+      if (ticket.price < 0) setError(`ticket-${ticket.id}-price`, 'Ticket price cannot be negative.')
+    })
+  }
+
+  const firstError = Object.keys(errors)[0]
+  if (firstError) {
+    requestAnimationFrame(() => {
+      document.querySelector(`[data-error-key="${firstError}"]`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      })
+    })
+    return false
+  }
+  return true
+}
+
+function pickVenue(name) {
+  form.venue = name
+  showVenueResults.value = false
+}
+
+function toggleRepeatDay(day) {
+  if (form.repeatDays.includes(day)) {
+    form.repeatDays = form.repeatDays.filter((item) => item !== day)
+  } else {
+    form.repeatDays.push(day)
+  }
+}
+
+function handleFiles(files) {
+  Array.from(files)
+    .filter((file) => file.type.startsWith('image/'))
+    .slice(0, 6 - form.secondaryImages.length - (form.coverImage ? 1 : 0))
+    .forEach((file) => {
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const src = event.target?.result
+        if (!src) return
+        if (!form.coverImage) form.coverImage = src
+        else form.secondaryImages.push(src)
+        clearError('coverImage')
+      }
+      reader.readAsDataURL(file)
+    })
+}
+
+function addUrlImage() {
+  const url = urlImageValue.value.trim()
+  if (!url || !/\.(jpe?g|png|webp|gif)(\?.*)?$/i.test(url)) {
+    showToast('Use a direct image URL ending in jpg, png, webp, or gif.')
+    return
+  }
+  if (!form.coverImage) form.coverImage = url
+  else form.secondaryImages.push(url)
+  form.urlImages.push(url)
+  urlImageValue.value = ''
+  clearError('coverImage')
+}
+
+function setCover(src, secondaryIndex = null) {
+  if (secondaryIndex !== null) {
+    const previousCover = form.coverImage
+    form.coverImage = src
+    form.secondaryImages.splice(secondaryIndex, 1)
+    if (previousCover) form.secondaryImages.unshift(previousCover)
+  } else {
+    form.coverImage = src
+  }
+}
+
+function removeCover() {
+  form.coverImage = form.secondaryImages.shift() || ''
+}
+
+function removeSecondaryImage(index) {
+  form.secondaryImages.splice(index, 1)
+}
+
+function applyCoverTemplate(gradient) {
+  form.coverGradient = gradient
+  showTemplates.value = false
+}
+
+function addDetail(option) {
+  if (selectedDetailTypes.value.has(option.type)) return
+  form.extraDetails.push({ type: option.type, label: option.label, icon: option.icon, value: '' })
+}
+
+function removeDetail(type) {
+  form.extraDetails = form.extraDetails.filter((detail) => detail.type !== type)
+}
+
+function selectTicketMode(mode) {
+  form.ticketMode = mode
+  clearError('tickets')
+}
+
+function addTicket(template = { name: '', unitType: 'individual', color: '#3d3935', price: 0 }) {
+  form.tickets.push({
+    id: ++ticketId.value,
+    name: template.name,
+    unitType: template.unitType,
+    color: template.color,
+    price: template.price,
+    units: 0,
+    peoplePerUnit: template.unitType === 'table' ? 10 : 1,
+    maxPerPerson: 1,
+    visible: true,
+    perks: '',
+    salesStart: '',
+    salesEnd: '',
+  })
+  clearError('tickets')
+}
+
+function removeTicket(id) {
+  form.tickets = form.tickets.filter((ticket) => ticket.id !== id)
+}
+
+function ticketSeatCount(ticket) {
+  return ticket.unitType === 'table' ? ticket.units * ticket.peoplePerUnit : ticket.units
+}
+
+function publishEvent() {
+  if (!validateStep(4)) return
+  buildCreateEventPayload(form)
+  saveDraft()
+  published.value = true
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+onMounted(() => {
+  setInterval(() => {
+    tipIndex.value = (tipIndex.value + 1) % activeTips.value.length
+  }, 7000)
+})
+</script>
+
 <template>
-  <div class="create-event">
-    <div class="container">
-      <router-link to="/" class="back-link">
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
+  <div class="create-event-page">
+    <div v-if="toast" class="ce-toast">{{ toast }}</div>
+
+    <header v-if="!published" class="ce-header">
+      <RouterLink to="/" class="ce-logo" aria-label="Go home">
+        <img
+          src="https://res.cloudinary.com/dnuhjsckk/image/upload/v1775755308/rushhourticketbg_fyfbiu.png"
+          alt="Kaka"
+        />
+      </RouterLink>
+      <ChevronRightIcon class="ce-header-chevron" aria-hidden="true" />
+      <nav class="ce-progress" aria-label="Create event progress">
+        <button
+          v-for="(step, index) in steps"
+          :key="step"
+          type="button"
+          class="ce-step"
+          :class="{ active: currentStep === index + 1, done: currentStep > index + 1 }"
+          @click="currentStep > index + 1 && setStep(index + 1)"
         >
-          <path
-            d="M19 12H5"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-          <path
-            d="M12 19L5 12L12 5"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        </svg>
-        <span>BACK</span>
-      </router-link>
+          <span class="ce-step-number">{{ index + 1 }}</span>
+          <span>{{ step }}</span>
+        </button>
+      </nav>
+      <div class="ce-header-actions">
+        <span class="draft-badge" :class="{ show: draftSaved }">
+          <CheckIcon aria-hidden="true" /> Draft saved
+        </span>
+        <button type="button" class="ghost-btn" @click="saveDraft">Save draft</button>
+      </div>
+    </header>
 
-      <div class="create-event__header">
-        <h1 class="create-event__title">Make Your Event dYZ%</h1>
-        <p class="create-event__subtitle">Fill out this form to create your event - it's easy!</p>
+    <main v-if="!published" class="ce-wrap">
+      <div class="preview-toggle">
+        <span>See your event as attendees will</span>
+        <button type="button" class="preview-btn" :class="{ on: previewOn }" @click="togglePreview">
+          <EyeIcon v-if="previewOn" aria-hidden="true" />
+          <EyeSlashIcon v-else aria-hidden="true" />
+          Preview: {{ previewOn ? 'On' : 'Off' }}
+        </button>
       </div>
 
-      <div v-if="error" class="create-event__alert create-event__alert--error">
-        {{ error }}
-      </div>
+      <div class="ce-columns" :class="{ 'preview-off': !previewOn }">
+        <section class="ce-form">
+          <div v-if="currentStep === 1" class="screen">
+            <div class="screen-head">
+              <h1>Let's build your<br /><em>event.</em> 🎉</h1>
+              <p>Start with the basics. Everything can be updated after publishing.</p>
+            </div>
 
-      <div v-if="success" class="create-event__alert create-event__alert--success">
-        Event created successfully! Redirecting to event page...
-      </div>
+            <div class="ce-card">
+              <div class="field" data-error-key="title">
+                <label for="event-name">Event name</label>
+                <input
+                  id="event-name"
+                  v-model="form.title"
+                  class="field-input field-input-xl"
+                  :class="{ error: errors.title }"
+                  maxlength="100"
+                  placeholder="e.g. Lagos Tech Summit 2026"
+                  @input="clearError('title')"
+                />
+                <p v-if="errors.title" class="error-text">{{ errors.title }}</p>
+              </div>
 
-      <form @submit.prevent="handleSubmit" class="create-event__form">
-        <div class="form-section">
-          <h2 class="section-title">
-            <span class="diamond"></span>
-            Event Information
-          </h2>
-
-          <div class="form-group">
-            <label for="title" class="form-label">Event Name</label>
-            <input
-              id="title"
-              v-model="form.title"
-              type="text"
-              class="form-input"
-              :class="{ 'form-input--error': !validation.title.valid }"
-              placeholder="What's your event called?"
-            />
-            <p v-if="!validation.title.valid" class="form-error">{{ validation.title.message }}</p>
-            <p v-else class="form-helper">Name it something people will understand right away</p>
-          </div>
-
-          <div class="form-group">
-            <label for="organizer" class="form-label">Organizer Name</label>
-            <input
-              id="organizer"
-              v-model="form.organizer"
-              type="text"
-              class="form-input"
-              :class="{ 'form-input--error': !validation.organizer.valid }"
-              placeholder="Who's hosting this?"
-            />
-            <p v-if="!validation.organizer.valid" class="form-error">
-              {{ validation.organizer.message }}
-            </p>
-          </div>
-
-          <div class="form-group">
-            <label for="category" class="form-label">Event Category</label>
-            <select
-              id="category"
-              v-model="form.category"
-              class="form-select"
-              :class="{ 'form-input--error': !validation.category.valid }"
-            >
-              <option value="" disabled>Select a category</option>
-              <option v-for="category in categories" :key="category.id" :value="category.id">
-                {{ category.name }}
-              </option>
-              _
-            </select>
-            <p v-if="!validation.category.valid" class="form-error">
-              {{ validation.category.message }}
-            </p>
-            <p v-else class="form-helper">The right category helps people find your event</p>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Sub Categories</label>
-            <div class="subcategories-display">
-              <div class="selected-subcategories">
-                <div v-if="displayedSubCategories.length === 0" class="no-subcategories">
-                  No subcategories selected
+              <div class="divider"><span>When</span></div>
+              <div class="two-col">
+                <div data-error-key="startsAt">
+                  <DateTimePickerInput
+                    v-model="form.startsAt"
+                    label="Starts"
+                    placeholder="Select start date and time"
+                    modal-title="Select start date and time"
+                    :min-date="today"
+                    :error="errors.startsAt"
+                    date-format="YYYY-MM-DD"
+                    time-format="hh:mm A"
+                  />
                 </div>
-                <div
-                  v-for="(subCat, index) in displayedSubCategories"
-                  :key="index"
-                  class="selected-subcategory"
-                >
-                  <span>{{ getSubCategoryName(subCat) }}</span>
+                <div data-error-key="endsAt">
+                  <DateTimePickerInput
+                    v-model="form.endsAt"
+                    label="Ends"
+                    placeholder="Select end date and time"
+                    modal-title="Select end date and time"
+                    :min-date="today"
+                    :error="errors.endsAt"
+                    date-format="YYYY-MM-DD"
+                    time-format="hh:mm A"
+                  />
+                </div>
+              </div>
+
+              <div class="field">
+                <label>One-time or recurring?</label>
+                <p class="help">Choose whether this event happens once or repeats.</p>
+                <div class="pill-row">
                   <button
                     type="button"
-                    @click="removeSubCategoryById(subCat)"
-                    class="remove-subcategory-btn"
-                    aria-label="Remove subcategory"
+                    class="pill"
+                    :class="{ selected: form.recurrenceType === 'once' }"
+                    @click="form.recurrenceType = 'once'"
                   >
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M18 6L6 18"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                      <path
-                        d="M6 6L18 18"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-              <button
-                type="button"
-                @click="openSubCategoryModal"
-                class="manage-subcategories-btn"
-                :disabled="form.category === ''"
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M12 5V19"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <path
-                    d="M5 12H19"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
-                <span>{{ displayedSubCategories.length ? 'Edit' : 'Add' }} Subcategories</span>
-              </button>
-            </div>
-            <p v-if="!validation.subCategories.valid" class="form-error">
-              {{ validation.subCategories.message }}
-            </p>
-            <p v-else class="form-helper">
-              Add up to 5 subcategories to describe your event better
-            </p>
-          </div>
-
-          <div class="form-group">
-            <label for="description" class="form-label">Event Description</label>
-            <textarea
-              id="description"
-              v-model="form.description"
-              class="form-textarea"
-              :class="{ 'form-input--error': !validation.description.valid }"
-              placeholder="Tell people what makes your event special..."
-              rows="5"
-            ></textarea>
-            <p v-if="!validation.description.valid" class="form-error">
-              {{ validation.description.message }}
-            </p>
-            <p v-else class="form-helper">Tell people what will happen at your event</p>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Event Images</label>
-            <div class="image-upload-container">
-              <div class="image-upload-row">
-                <div
-                  class="image-upload-dropzone"
-                  :class="{ 'has-image': mainImagePreview }"
-                  @click="triggerMainImageUpload"
-                  @dragover.prevent
-                  @drop.prevent="handleMainImageDrop"
-                >
-                  <img
-                    v-if="mainImagePreview"
-                    :src="mainImagePreview"
-                    alt="Main image preview"
-                    class="preview-image"
-                  />
-                  <div v-if="mainImagePreview" class="image-overlay">
-                    <button type="button" class="remove-image-btn" @click.stop="removeMainImage">
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M18 6L6 18"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
-                        <path
-                          d="M6 6L18 18"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
-                      </svg>
-                      <span>Remove</span>
-                    </button>
-                  </div>
-                  <div v-else class="upload-placeholder">
-                    <div class="upload-icon">
-                      <svg
-                        width="32"
-                        height="32"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <rect
-                          x="3"
-                          y="3"
-                          width="18"
-                          height="18"
-                          rx="2"
-                          stroke="currentColor"
-                          stroke-width="1.5"
-                        />
-                        <path
-                          d="M3 16L7 12C7.94 11.06 9.44 11.06 10.38 12L16.5 18"
-                          stroke="currentColor"
-                          stroke-width="1.5"
-                          stroke-linecap="round"
-                        />
-                        <path
-                          d="M14 16L16 14C16.94 13.06 18.44 13.06 19.38 14L21 15.5"
-                          stroke="currentColor"
-                          stroke-width="1.5"
-                          stroke-linecap="round"
-                        />
-                        <circle cx="9" cy="8" r="2" stroke="currentColor" stroke-width="1.5" />
-                      </svg>
-                    </div>
-                    <div class="upload-text">
-                      <span class="primary-text">Main Event Image</span>
-                      <span class="secondary-text">Drag & drop or click to upload</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  class="image-upload-dropzone banner-dropzone"
-                  :class="{ 'has-image': bannerImagePreview }"
-                  @click="triggerBannerImageUpload"
-                  @dragover.prevent
-                  @drop.prevent="handleBannerImageDrop"
-                >
-                  <img
-                    v-if="bannerImagePreview"
-                    :src="bannerImagePreview"
-                    alt="Banner image preview"
-                    class="preview-image"
-                  />
-                  <div v-if="bannerImagePreview" class="image-overlay">
-                    <button type="button" class="remove-image-btn" @click.stop="removeBannerImage">
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M18 6L6 18"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
-                        <path
-                          d="M6 6L18 18"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
-                      </svg>
-                      <span>Remove</span>
-                    </button>
-                  </div>
-                  <div v-else class="upload-placeholder">
-                    <div class="upload-icon">
-                      <svg
-                        width="32"
-                        height="32"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <rect
-                          x="2"
-                          y="4"
-                          width="20"
-                          height="13"
-                          rx="2"
-                          stroke="currentColor"
-                          stroke-width="1.5"
-                        />
-                        <path
-                          d="M2 13L6 9C6.94 8.06 8.44 8.06 9.38 9L15.5 15"
-                          stroke="currentColor"
-                          stroke-width="1.5"
-                          stroke-linecap="round"
-                        />
-                        <path
-                          d="M14 13L16 11C16.94 10.06 18.44 10.06 19.38 11L22 13.5"
-                          stroke="currentColor"
-                          stroke-width="1.5"
-                          stroke-linecap="round"
-                        />
-                        <circle cx="8" cy="7" r="1.5" stroke="currentColor" stroke-width="1.5" />
-                      </svg>
-                    </div>
-                    <div class="upload-text">
-                      <span class="primary-text">Banner Image</span>
-                      <span class="secondary-text">Drag & drop or click to upload</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="image-inputs">
-                <input
-                  id="mainImage"
-                  ref="mainImageInput"
-                  type="file"
-                  class="image-input"
-                  accept="image/*"
-                  @change="handleMainImageUpload"
-                />
-                <input
-                  id="bannerImage"
-                  ref="bannerImageInput"
-                  type="file"
-                  class="image-input"
-                  accept="image/*"
-                  @change="handleBannerImageUpload"
-                />
-              </div>
-            </div>
-            <p
-              v-if="!validation.mainImage.valid || !validation.bannerImage.valid"
-              class="form-error"
-            >
-              {{
-                !validation.mainImage.valid
-                  ? validation.mainImage.message
-                  : validation.bannerImage.message
-              }}
-            </p>
-            <p v-else class="form-helper">
-              Upload images for your event. The main image will appear on cards throughout the site,
-              while the banner will be displayed on your event's detail page.
-            </p>
-          </div>
-        </div>
-
-        <div class="form-section">
-          <h2 class="section-title">
-            <span class="diamond"></span>
-            Date & Time
-          </h2>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="date" class="form-label">Event Date</label>
-              <div class="date-picker-wrapper">
-                <input
-                  id="date"
-                  v-model="form.date"
-                  type="text"
-                  readonly
-                  class="form-input date-input"
-                  :class="{ 'form-input--error': !validation.date.valid }"
-                  :min="today"
-                  @click="openDatePicker"
-                />
-                <div v-if="showDateTip" class="picker-tip">
-                  <div class="tip-arrow"></div>
-                  <div class="tip-content">
-                    <p>Click to open calendar</p>
-                    <span>Select a date for your event</span>
-                  </div>
-                </div>
-              </div>
-              <p v-if="!validation.date.valid" class="form-error">{{ validation.date.message }}</p>
-              <p v-else class="form-helper">Click to open the calendar</p>
-            </div>
-
-            <div class="form-group">
-              <label for="time" class="form-label">Start Time</label>
-              <div class="time-picker-wrapper">
-                <input
-                  id="time"
-                  v-model="form.time"
-                  type="text"
-                  readonly
-                  class="form-input time-input"
-                  :class="{ 'form-input--error': !validation.time.valid }"
-                  @click="openTimePicker"
-                  placeholder="Select a time"
-                />
-                <div v-if="showTimeTip" class="picker-tip">
-                  <div class="tip-arrow"></div>
-                  <div class="tip-content">
-                    <p>Click to select time</p>
-                    <span>Use our easy time selector</span>
-                  </div>
-                </div>
-              </div>
-              <p v-if="!validation.time.valid" class="form-error">{{ validation.time.message }}</p>
-              <p v-else class="form-helper">Click to open time selector</p>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="duration" class="form-label">Event Duration</label>
-            <select id="duration" v-model="form.duration" class="form-select">
-              <option value="" disabled>Select duration</option>
-              <option v-for="option in durationOptions" :key="option" :value="option">
-                {{ option }}
-              </option>
-            </select>
-            <p class="form-helper">Tell people how long your event will last</p>
-          </div>
-        </div>
-
-        <div class="form-section">
-          <h2 class="section-title">
-            <span class="diamond"></span>
-            Location Details
-          </h2>
-
-          <div class="form-group">
-            <label for="location" class="form-label">Venue Name & Address</label>
-            <input
-              id="location"
-              v-model="form.location"
-              type="text"
-              class="form-input"
-              :class="{ 'form-input--error': !validation.location.valid }"
-              placeholder="Where is your event happening?"
-            />
-            <p v-if="!validation.location.valid" class="form-error">
-              {{ validation.location.message }}
-            </p>
-            <p v-else class="form-helper">Add the full address so people can find your event</p>
-          </div>
-
-          <div class="location-map-placeholder">
-            <div class="location-map-content">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                <circle cx="12" cy="10" r="3"></circle>
-              </svg>
-              <p>Maps coming soon</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="form-section">
-          <h2 class="section-title">
-            <span class="diamond"></span>
-            Ticket Information
-          </h2>
-
-          <div v-if="!validation.ticketTypes.valid" class="form-error ticket-types-error">
-            {{ validation.ticketTypes.message }}
-          </div>
-
-          <div class="ticket-types-container">
-            <div v-for="(ticket, index) in form.ticketTypes" :key="index" class="ticket-type-card">
-              <div class="ticket-type-header">
-                <h3 class="ticket-type-title">Ticket #{{ index + 1 }}</h3>
-                <div class="ticket-type-actions">
-                  <button
-                    type="button"
-                    @click="duplicateTicketType(index)"
-                    class="ticket-action-btn ticket-action-duplicate"
-                    title="Duplicate ticket"
-                  >
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <rect
-                        x="9"
-                        y="9"
-                        width="13"
-                        height="13"
-                        rx="2"
-                        stroke="currentColor"
-                        stroke-width="2"
-                      />
-                      <path
-                        d="M5 15H4C2.89543 15 2 14.1046 2 13V4C2 2.89543 2.89543 2 4 2H13C14.1046 2 15 2.89543 15 4V5"
-                        stroke="currentColor"
-                        stroke-width="2"
-                      />
-                    </svg>
+                    <CalendarDaysIcon aria-hidden="true" /> One-time
                   </button>
                   <button
                     type="button"
-                    @click="removeTicketType(index)"
-                    class="ticket-action-btn ticket-action-remove"
-                    title="Remove ticket"
-                    :disabled="form.ticketTypes.length <= 1"
+                    class="pill"
+                    :class="{ selected: form.recurrenceType === 'recur' }"
+                    @click="form.recurrenceType = 'recur'"
                   >
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M18 6L6 18"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                      <path
-                        d="M6 6L18 18"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
+                    <ClockIcon aria-hidden="true" /> Recurring
                   </button>
                 </div>
               </div>
 
-              <div class="form-group">
-                <label :for="'ticket-name-' + index" class="form-label">Ticket Name</label>
-                <div class="ticket-name-input-wrapper">
-                  <input
-                    :id="'ticket-name-' + index"
-                    v-model="ticket.name"
-                    type="text"
-                    class="form-input"
-                    placeholder="e.g. Early Bird, VIP, General Admission"
-                  />
-                  <div class="ticket-template-dropdown">
+              <div v-if="form.recurrenceType === 'recur'" class="sub-panel">
+                <div class="info-card">
+                  <InformationCircleIcon aria-hidden="true" />
+                  <div>
+                    <strong>Recurring events</strong>
+                    <p>Each session can be shown clearly so attendees know what they are choosing.</p>
+                  </div>
+                </div>
+                <div class="two-col">
+                  <div class="field">
+                    <label for="repeat-frequency">Repeats</label>
+                    <select id="repeat-frequency" v-model="form.repeatFrequency" class="field-input">
+                      <option value="weekly">Every week</option>
+                      <option value="biweekly">Every 2 weeks</option>
+                      <option value="monthly">Every month</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="repeat-sessions">Sessions</label>
+                    <input
+                      id="repeat-sessions"
+                      v-model.number="form.repeatSessions"
+                      min="1"
+                      type="number"
+                      class="field-input"
+                    />
+                  </div>
+                </div>
+                <div v-if="form.repeatFrequency !== 'monthly'" class="field">
+                  <label>Repeat on</label>
+                  <div class="day-row">
                     <button
+                      v-for="day in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']"
+                      :key="day"
                       type="button"
-                      class="ticket-template-btn"
-                      @click="openTemplateModal(index)"
+                      class="day-chip"
+                      :class="{ selected: form.repeatDays.includes(day) }"
+                      @click="toggleRepeatDay(day)"
                     >
-                      <span>Templates</span>
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M6 9L12 15L18 9"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
-                      </svg>
+                      {{ day.slice(0, 1) }}
                     </button>
-                    <div class="ticket-template-options">
-                      <button
-                        v-for="template in ticketTemplates"
-                        :key="template.name"
-                        type="button"
-                        class="ticket-template-option"
-                        @click="applyTemplate(index, template)"
-                      >
-                        {{ template.name }}
+                  </div>
+                </div>
+                <p class="recurrence-preview">{{ recurrenceSummary }}</p>
+              </div>
+
+              <div class="divider"><span>Format</span></div>
+              <div class="field">
+                <label>Where is it happening?</label>
+                <div class="pill-row">
+                  <button
+                    v-for="format in [
+                      ['in-person', 'In-person', MapPinIcon],
+                      ['online', 'Online', GlobeAltIcon],
+                      ['hybrid', 'Hybrid', LinkIcon],
+                    ]"
+                    :key="format[0]"
+                    type="button"
+                    class="pill"
+                    :class="{ selected: form.format === format[0] }"
+                    @click="form.format = format[0]"
+                  >
+                    <component :is="format[2]" aria-hidden="true" /> {{ format[1] }}
+                  </button>
+                </div>
+              </div>
+
+              <div v-if="form.format !== 'online'" class="field" data-error-key="venue">
+                <label for="venue">Venue / Location</label>
+                <div class="input-with-icon">
+                  <MapPinIcon aria-hidden="true" />
+                  <input
+                    id="venue"
+                    v-model="form.venue"
+                    class="field-input"
+                    :class="{ error: errors.venue }"
+                    placeholder="Type a venue name or address"
+                    @focus="showVenueResults = true"
+                    @input="clearError('venue')"
+                  />
+                </div>
+                <div v-if="showVenueResults && venueResults.length" class="venue-results">
+                  <button
+                    v-for="[name, address] in venueResults"
+                    :key="name"
+                    type="button"
+                    @click="pickVenue(name)"
+                  >
+                    <strong>{{ name }}</strong>
+                    <span>{{ address }}</span>
+                  </button>
+                </div>
+                <p v-if="errors.venue" class="error-text">{{ errors.venue }}</p>
+              </div>
+
+              <div v-if="form.format !== 'in-person'" class="field" data-error-key="meetingLink">
+                <label for="meeting-link">Meeting link</label>
+                <input
+                  id="meeting-link"
+                  v-model="form.meetingLink"
+                  type="url"
+                  class="field-input"
+                  :class="{ error: errors.meetingLink }"
+                  placeholder="https://meet.google.com/... or Zoom link"
+                  @input="clearError('meetingLink')"
+                />
+                <p v-if="errors.meetingLink" class="error-text">{{ errors.meetingLink }}</p>
+                <p v-else class="help">Only shown to confirmed attendees in their email.</p>
+              </div>
+
+              <div class="divider"><span>Category</span></div>
+              <div class="field" data-error-key="category">
+                <label for="category">What type of event?</label>
+                <select
+                  id="category"
+                  v-model="form.category"
+                  class="field-input"
+                  :class="{ error: errors.category }"
+                  @change="clearError('category')"
+                >
+                  <option value="">Choose a category...</option>
+                  <option v-for="category in categories" :key="category">{{ category }}</option>
+                </select>
+                <p v-if="errors.category" class="error-text">{{ errors.category }}</p>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="currentStep === 2" class="screen">
+            <div class="screen-head">
+              <h1>Make it<br /><em>unforgettable.</em></h1>
+              <p>Events with great photos and descriptions get more sign-ups.</p>
+            </div>
+
+            <div class="ce-card">
+              <div class="field" data-error-key="coverImage">
+                <div class="field-top">
+                  <div>
+                    <label>Event images <span>Required cover · max 6</span></label>
+                    <p class="help">First image is the cover. Secondary images stay in the gallery.</p>
+                  </div>
+                  <button type="button" class="text-btn" @click="showTemplates = !showTemplates">
+                    <SparklesIcon aria-hidden="true" /> Templates
+                  </button>
+                </div>
+
+                <div class="upload-tabs">
+                  <button
+                    type="button"
+                    :class="{ active: activeUploadTab === 'files' }"
+                    @click="activeUploadTab = 'files'"
+                  >
+                    <PhotoIcon aria-hidden="true" /> Upload files
+                  </button>
+                  <button
+                    type="button"
+                    :class="{ active: activeUploadTab === 'url' }"
+                    @click="activeUploadTab = 'url'"
+                  >
+                    <LinkIcon aria-hidden="true" /> Image URL
+                  </button>
+                </div>
+
+                <div
+                  v-if="activeUploadTab === 'files'"
+                  class="upload-zone"
+                  :class="{ error: errors.coverImage }"
+                  @click="$refs.fileInput.click()"
+                  @dragover.prevent
+                  @drop.prevent="handleFiles($event.dataTransfer.files)"
+                >
+                  <div class="upload-ring"><PhotoIcon aria-hidden="true" /></div>
+                  <strong>Drop images here or browse</strong>
+                  <span>JPG, PNG, or WebP · best 1600x900px · up to 6 images</span>
+                  <input ref="fileInput" type="file" hidden multiple accept="image/*" @change="handleFiles($event.target.files)" />
+                </div>
+
+                <div v-else class="url-panel">
+                  <input
+                    v-model="urlImageValue"
+                    type="url"
+                    class="field-input"
+                    placeholder="https://example.com/photo.jpg"
+                    @keyup.enter="addUrlImage"
+                  />
+                  <button type="button" class="inline-btn" @click="addUrlImage">
+                    <PlusIcon aria-hidden="true" /> Add image link
+                  </button>
+                </div>
+
+                <div v-if="showTemplates" class="template-grid">
+                  <button
+                    v-for="gradient in coverTemplates"
+                    :key="gradient"
+                    type="button"
+                    :style="{ background: gradient }"
+                    @click="applyCoverTemplate(gradient)"
+                    aria-label="Apply cover template"
+                  />
+                </div>
+
+                <p v-if="errors.coverImage" class="error-text">{{ errors.coverImage }}</p>
+
+                <div v-if="form.coverImage || form.secondaryImages.length" class="image-strip">
+                  <div v-if="form.coverImage" class="image-thumb primary">
+                    <img :src="form.coverImage" alt="Cover preview" />
+                    <span>Cover</span>
+                    <button type="button" @click="removeCover" aria-label="Remove cover">
+                      <XMarkIcon aria-hidden="true" />
+                    </button>
+                  </div>
+                  <div
+                    v-for="(image, index) in form.secondaryImages"
+                    :key="image + index"
+                    class="image-thumb"
+                  >
+                    <img :src="image" alt="Secondary preview" />
+                    <div class="thumb-actions">
+                      <button type="button" @click="setCover(image, index)">Set cover</button>
+                      <button type="button" @click="removeSecondaryImage(index)" aria-label="Remove image">
+                        <TrashIcon aria-hidden="true" />
                       </button>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div class="form-row">
-                <div class="form-group">
-                  <label :for="'ticket-price-' + index" class="form-label">Price ($)</label>
-                  <input
-                    :id="'ticket-price-' + index"
-                    v-model.number="ticket.price"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    class="form-input"
-                    placeholder="0.00"
-                  />
-                </div>
-
-                <div class="form-group">
-                  <label :for="'ticket-quantity-' + index" class="form-label">Quantity</label>
-                  <input
-                    :id="'ticket-quantity-' + index"
-                    v-model.number="ticket.quantity"
-                    type="number"
-                    min="1"
-                    class="form-input"
-                    placeholder="10"
-                  />
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label :for="'ticket-description-' + index" class="form-label"
-                  >Description (Optional)</label
-                >
+              <div class="divider"><span>Description</span></div>
+              <div class="field">
+                <label for="description">Tell people what to expect <span>Optional</span></label>
                 <textarea
-                  :id="'ticket-description-' + index"
-                  v-model="ticket.description"
-                  class="form-textarea ticket-description"
-                  rows="2"
-                  placeholder="Describe what's included with this ticket"
-                ></textarea>
+                  id="description"
+                  v-model="form.description"
+                  class="field-input"
+                  rows="4"
+                  placeholder="What will people experience? What's the agenda? Who should come?"
+                />
               </div>
 
-              <div class="ticket-sales-period">
-                <h4 class="ticket-section-subtitle">Sales End Date</h4>
-                <p class="ticket-section-helper">
-                  Should this ticket type have a deadline? If yes, tell us when sales should stop.
-                  This is optional.
-                </p>
-
-                <div class="form-row">
-                  <div class="form-group">
-                    <label :for="'ticket-end-date-' + index" class="form-label">Date</label>
-                    <input
-                      :id="'ticket-end-date-' + index"
-                      v-model="ticket.salesEndDate"
-                      type="date"
-                      class="form-input"
-                      :min="today"
-                      :max="form.date"
-                    />
-                  </div>
-
-                  <div class="form-group">
-                    <label :for="'ticket-end-time-' + index" class="form-label">Time</label>
-                    <input
-                      :id="'ticket-end-time-' + index"
-                      v-model="ticket.salesEndTime"
-                      type="time"
-                      class="form-input"
-                    />
-                  </div>
+              <div class="divider"><span>Organiser</span></div>
+              <div class="two-col">
+                <div class="field">
+                  <label for="organiser">Name or org <span>Optional</span></label>
+                  <input id="organiser" v-model="form.organiser" class="field-input" placeholder="e.g. TechHub Lagos" />
+                </div>
+                <div class="field">
+                  <label for="website">Website <span>Optional</span></label>
+                  <input id="website" v-model="form.organiserWebsite" type="url" class="field-input" placeholder="https://..." />
                 </div>
               </div>
 
-              <div class="form-checkbox-wrapper">
-                <input
-                  :id="'ticket-featured-' + index"
-                  v-model="ticket.isFeatured"
-                  type="checkbox"
-                  class="form-checkbox"
-                />
-                <label :for="'ticket-featured-' + index" class="form-checkbox-label">
-                  Feature this ticket (highlighted in the ticket selection)
-                </label>
-              </div>
-            </div>
-
-            <button type="button" @click="addTicketType" class="add-ticket-type-btn">
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M12 5V19"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                <path
-                  d="M5 12H19"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-              <span>Add Another Ticket Type</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="form-section">
-          <h2 class="section-title">
-            <span class="diamond"></span>
-            Event Options
-          </h2>
-
-          <p class="section-intro">
-            Select features and amenities that your event offers to help attendees know what to
-            expect.
-          </p>
-
-          <div class="event-options-container">
-            <div class="event-options-grid">
-              <!-- Predefined event options -->
-              <div
-                v-for="option in predefinedEventOptions"
-                :key="'predefined-' + option"
-                class="event-option-item"
-                @click="toggleEventOption(option)"
-              >
-                <div
-                  class="event-option-checkbox"
-                  :class="{ 'event-option-checkbox--selected': isEventOptionSelected(option) }"
-                >
-                  <div class="event-option-label">{{ option }}</div>
-                  <svg
-                    v-if="isEventOptionSelected(option)"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="event-option-checkmark"
-                  >
-                    <path
-                      d="M20 6L9 17L4 12"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                </div>
-              </div>
-
-              <!-- Custom event options -->
-              <div
-                v-for="(option, index) in form.customEventOptions"
-                :key="'custom-' + index"
-                class="event-option-item"
-              >
-                <div class="event-option-checkbox event-option-checkbox--selected">
-                  <div class="event-option-label">{{ option }}</div>
-                  <button
-                    type="button"
-                    @click="removeCustomEventOption(index)"
-                    class="remove-option-btn"
-                    aria-label="Remove option"
-                  >
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M18 6L6 18"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                      <path
-                        d="M6 6L18 18"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div class="add-event-option">
-              <div class="custom-event-option-input">
-                <input
-                  type="text"
-                  v-model="newCustomEventOption"
-                  placeholder="Add your own event option..."
-                  class="form-input custom-option-input"
-                  @keyup.enter="addCustomEventOption"
-                />
+              <div class="divider"><span>Extra details</span></div>
+              <div class="detail-hint">💡 <strong>The more you share, the fewer questions you get.</strong></div>
+              <div class="detail-chip-row">
                 <button
+                  v-for="option in detailOptions"
+                  :key="option.type"
                   type="button"
-                  class="add-custom-option-btn"
-                  @click="addCustomEventOption"
-                  :disabled="!newCustomEventOption.trim()"
+                  class="detail-chip"
+                  :class="{ selected: selectedDetailTypes.has(option.type) }"
+                  @click="addDetail(option)"
                 >
-                  Add
+                  <span v-if="selectedDetailTypes.has(option.type)" class="green-check"><CheckIcon aria-hidden="true" /></span>
+                  <component v-else :is="option.icon" aria-hidden="true" />
+                  {{ option.label }}
                 </button>
               </div>
-            </div>
-          </div>
-
-          <div class="form-checkbox-wrapper mt-4">
-            <input id="featured" v-model="form.featured" type="checkbox" class="form-checkbox" />
-            <label for="featured" class="form-checkbox-label">
-              Feature this event (additional promotion fee may apply)
-            </label>
-          </div>
-          <p class="form-helper">Featured events show up on the homepage</p>
-        </div>
-
-        <!-- Add new FAQ section -->
-        <div class="form-section">
-          <h2 class="section-title">
-            <span class="diamond"></span>
-            Frequently Asked Questions
-            <span class="section-optional">(Optional)</span>
-          </h2>
-
-          <p class="section-intro">
-            Help attendees by answering common questions about your event. You can edit these
-            defaults or add your own.
-          </p>
-
-          <div class="faq-container">
-            <div v-for="(faq, index) in form.faqs" :key="index" class="faq-item">
-              <div class="faq-header">
-                <h3 class="faq-number">Q{{ index + 1 }}</h3>
-                <div class="faq-actions">
-                  <button
-                    type="button"
-                    @click="removeFaq(index)"
-                    class="faq-action-btn faq-action-remove"
-                    title="Remove question"
-                  >
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M18 6L6 18"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                      <path
-                        d="M6 6L18 18"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
+              <div v-if="form.extraDetails.length" class="detail-fields">
+                <div v-for="detail in form.extraDetails" :key="detail.type" class="detail-field-card">
+                  <button type="button" class="icon-btn danger" @click="removeDetail(detail.type)">
+                    <XMarkIcon aria-hidden="true" />
                   </button>
-                </div>
-              </div>
-
-              <div class="faq-content">
-                <div class="form-group">
-                  <label :for="'faq-question-' + index" class="form-label">Question</label>
-                  <input
-                    :id="'faq-question-' + index"
-                    v-model="faq.question"
-                    type="text"
-                    class="form-input"
-                    placeholder="Enter a question guests might ask"
+                  <label>{{ detail.label }}</label>
+                  <textarea
+                    v-model="detail.value"
+                    class="field-input"
+                    rows="2"
+                    :placeholder="detailOptions.find((item) => item.type === detail.type)?.placeholder"
                   />
                 </div>
+              </div>
 
-                <div class="form-group">
-                  <label :for="'faq-answer-' + index" class="form-label">Answer</label>
-                  <textarea
-                    :id="'faq-answer-' + index"
-                    v-model="faq.answer"
-                    class="form-textarea faq-answer"
-                    rows="3"
-                    placeholder="Provide a clear answer to the question"
-                  ></textarea>
-                </div>
+              <div class="divider"><span>Tags</span></div>
+              <div class="field">
+                <label for="tags">Tags <span>Optional</span></label>
+                <input id="tags" v-model="form.tags" class="field-input" placeholder="networking, AI, Lagos" />
+              </div>
+            </div>
+          </div>
+
+          <div v-if="currentStep === 3" class="screen">
+            <div class="screen-head">
+              <h1>Set up your<br /><em>tickets.</em></h1>
+              <p>Tell us how people will attend and what they will pay.</p>
+            </div>
+
+            <div class="info-card amber">
+              <TicketIcon aria-hidden="true" />
+              <div>
+                <strong>What are ticket categories?</strong>
+                <p>They let you offer different access levels at different prices, like Early Bird, General, VIP, or tables.</p>
               </div>
             </div>
 
-            <button type="button" @click="addFaq" class="add-faq-btn">
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M12 5V19"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                <path
-                  d="M5 12H19"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-              <span>Add Another Question</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="form-actions">
-          <button type="button" @click="resetForm" class="btn-secondary" :disabled="isSubmitting">
-            Reset Form
-          </button>
-          <button type="submit" class="btn-primary" :disabled="isSubmitting">
-            <span v-if="isSubmitting">
-              <svg class="spinner" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="12" cy="12" r="10" fill="none" stroke-width="3" />
-              </svg>
-              Creating Event...
-            </span>
-            <span v-else>Create Event</span>
-          </button>
-        </div>
-      </form>
-
-      <div class="create-event__note">
-        <p>
-          <strong>Note:</strong> Your event data is saved locally for now. Online saving coming
-          soon.
-        </p>
-      </div>
-    </div>
-
-    <div
-      v-if="showTemplateModal"
-      class="ticket-template-modal-overlay"
-      @click.self="closeTemplateModal"
-    >
-      <div class="ticket-template-modal">
-        <div class="ticket-template-modal-header">
-          <h3>Choose a Ticket Template</h3>
-          <button @click="closeTemplateModal" class="modal-close-btn" aria-label="Close">
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M18 6L6 18"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-              <path
-                d="M6 6L18 18"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-          </button>
-        </div>
-        <div class="ticket-template-modal-body">
-          <div
-            v-for="template in ticketTemplates"
-            :key="template.name"
-            class="template-card"
-            @click="applyTemplateFromModal(activeTicketIndex, template)"
-          >
-            <div class="template-card-content">
-              <h4 class="template-name">{{ template.name }}</h4>
-              <p class="template-description">{{ template.description }}</p>
-            </div>
-            <div class="template-card-icon">
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M20 6L9 17L4 12"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Add subcategory modal -->
-    <div
-      v-if="showSubCategoryModal"
-      class="subcategory-modal-overlay"
-      @click.self="closeSubCategoryModal"
-    >
-      <div class="subcategory-modal">
-        <div class="subcategory-modal-header">
-          <h3>Select or Add Subcategories</h3>
-          <button @click="closeSubCategoryModal" class="modal-close-btn" aria-label="Close">
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M18 6L6 18"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-              <path
-                d="M6 6L18 18"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-          </button>
-        </div>
-        <div class="subcategory-modal-body">
-          <p class="subcategory-modal-info">Select up to 5 subcategories or add your own</p>
-
-          <div class="subcategory-search">
-            <input
-              type="text"
-              v-model="subcategorySearchTerm"
-              placeholder="Search subcategories..."
-              class="subcategory-search-input"
-            />
-          </div>
-
-          <div class="subcategory-options">
-            <div class="subcategory-section">
-              <h4 class="subcategory-section-title">Available Subcategories</h4>
-              <div class="subcategory-chips">
-                <div
-                  v-for="subCategory in filteredSubCategories"
-                  :key="subCategory.id"
-                  class="subcategory-chip"
-                  :class="{ 'subcategory-chip--selected': isSubCategorySelected(subCategory.id) }"
-                  @click="toggleSubCategory(subCategory.id)"
-                >
-                  <span>{{ subCategory.name }}</span>
-                  <svg
-                    v-if="isSubCategorySelected(subCategory.id)"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M20 6L9 17L4 12"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            <div class="subcategory-section">
-              <h4 class="subcategory-section-title">Custom Subcategories</h4>
-              <div class="custom-subcategory-input">
-                <input
-                  type="text"
-                  v-model="newCustomSubCategory"
-                  placeholder="Enter your own subcategory..."
-                  class="form-input custom-input"
-                  @keyup.enter="addCustomSubCategory"
-                />
-                <button
-                  type="button"
-                  class="add-custom-btn"
-                  @click="addCustomSubCategory"
-                  :disabled="!newCustomSubCategory.trim()"
-                >
-                  Add
-                </button>
-              </div>
-
-              <div class="subcategory-chips custom-chips">
-                <div
-                  v-for="(custom, index) in customSubCategories"
-                  :key="'custom-' + index"
-                  class="subcategory-chip subcategory-chip--custom"
-                >
-                  <span>{{ custom }}</span>
+            <div class="ce-card">
+              <div class="field">
+                <label>How are people attending?</label>
+                <div class="ticket-mode-grid">
                   <button
-                    class="remove-custom-btn"
-                    @click="removeCustomSubCategory(index)"
-                    aria-label="Remove"
+                    type="button"
+                    class="ticket-mode-card"
+                    :class="{ selected: form.ticketMode === 'free' }"
+                    @click="selectTicketMode('free')"
                   >
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M18 6L6 18"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                      <path
-                        d="M6 6L18 18"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
+                    <span class="select-check"><CheckIcon aria-hidden="true" /></span>
+                    <TicketIcon aria-hidden="true" />
+                    <strong>Free admission</strong>
+                    <span>Anyone can register at no cost.</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="ticket-mode-card"
+                    :class="{ selected: form.ticketMode === 'paid' }"
+                    @click="selectTicketMode('paid')"
+                  >
+                    <span class="select-check"><CheckIcon aria-hidden="true" /></span>
+                    <BanknotesIcon aria-hidden="true" />
+                    <strong>Paid tickets</strong>
+                    <span>Set prices, create tiers, and get paid.</span>
                   </button>
                 </div>
               </div>
+
+              <div v-if="form.ticketMode === 'free'" class="sub-panel">
+                <div class="info-card green">
+                  <CheckIcon aria-hidden="true" />
+                  <div>
+                    <strong>Free event</strong>
+                    <p>Set a max number of spots to create urgency, or leave blank for unlimited.</p>
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="free-capacity">Max spots <span>Optional</span></label>
+                  <input id="free-capacity" v-model="form.freeCapacity" type="number" min="1" class="field-input" placeholder="e.g. 200" />
+                </div>
+              </div>
+
+              <div v-else class="paid-block" data-error-key="tickets">
+                <div class="field-top">
+                  <div>
+                    <label>Ticket categories</label>
+                    <p class="help">Tap a template, then customise price, quantity, and perks.</p>
+                  </div>
+                  <span class="count-badge">{{ form.tickets.length }} added</span>
+                </div>
+                <div class="quick-chip-row">
+                  <button
+                    v-for="template in ticketTemplates"
+                    :key="template.name"
+                    type="button"
+                    class="quick-chip"
+                    @click="addTicket(template)"
+                  >
+                    <span class="color-dot" :style="{ background: template.color }"></span>
+                    {{ template.name }}
+                  </button>
+                  <button type="button" class="quick-chip custom" @click="addTicket()">
+                    <PlusIcon aria-hidden="true" /> Add custom category
+                  </button>
+                </div>
+                <p v-if="errors.tickets" class="error-text">{{ errors.tickets }}</p>
+
+                <div v-if="!form.tickets.length" class="empty-state">
+                  <TicketIcon aria-hidden="true" />
+                  <strong>No ticket categories yet</strong>
+                  <span>Choose a template above or add a custom category.</span>
+                </div>
+
+                <div class="ticket-list">
+                  <article v-for="ticket in form.tickets" :key="ticket.id" class="ticket-card">
+                    <div class="ticket-card-head">
+                      <span class="color-dot" :style="{ background: ticket.color }"></span>
+                      <strong>{{ ticket.name || 'Unnamed ticket' }}</strong>
+                      <button type="button" class="icon-btn danger" @click="removeTicket(ticket.id)">
+                        <TrashIcon aria-hidden="true" />
+                      </button>
+                    </div>
+                    <div class="two-col">
+                      <div class="field" :data-error-key="`ticket-${ticket.id}-name`">
+                        <label>Ticket name</label>
+                        <input
+                          v-model="ticket.name"
+                          class="field-input"
+                          :class="{ error: errors[`ticket-${ticket.id}-name`] }"
+                          placeholder="e.g. General Admission"
+                          @input="clearError(`ticket-${ticket.id}-name`)"
+                        />
+                        <p v-if="errors[`ticket-${ticket.id}-name`]" class="error-text">
+                          {{ errors[`ticket-${ticket.id}-name`] }}
+                        </p>
+                      </div>
+                      <div class="field">
+                        <label>Unit type</label>
+                        <select v-model="ticket.unitType" class="field-input">
+                          <option value="individual">Individual seat</option>
+                          <option value="table">Group / Table</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="two-col">
+                      <div class="field">
+                        <label>{{ ticket.unitType === 'table' ? 'Number of tables' : 'Available spots' }}</label>
+                        <input v-model.number="ticket.units" type="number" min="0" class="field-input" placeholder="Leave blank for unlimited" />
+                      </div>
+                      <div v-if="ticket.unitType === 'table'" class="field">
+                        <label>People per table</label>
+                        <input v-model.number="ticket.peoplePerUnit" type="number" min="1" class="field-input" />
+                      </div>
+                    </div>
+                    <div class="two-col">
+                      <div class="field">
+                        <label>Price</label>
+                        <input v-model.number="ticket.price" type="number" min="0" class="field-input" placeholder="0 = free" />
+                      </div>
+                      <div class="field">
+                        <label>Max per person <span>Optional</span></label>
+                        <input v-model.number="ticket.maxPerPerson" type="number" min="1" class="field-input" />
+                      </div>
+                    </div>
+                    <div v-if="ticket.unitType === 'table' && ticket.units" class="calc-card">
+                      <SparklesIcon aria-hidden="true" />
+                      <span>{{ ticketSeatCount(ticket).toLocaleString() }} total seats</span>
+                    </div>
+                    <div class="two-col">
+                      <div class="field">
+                        <label>Sales open <span>Optional</span></label>
+                        <DateTimePickerInput v-model="ticket.salesStart" placeholder="Select sales open" :min-date="today" />
+                      </div>
+                      <div class="field">
+                        <label>Sales close <span>Optional</span></label>
+                        <DateTimePickerInput v-model="ticket.salesEnd" placeholder="Select sales close" :min-date="today" />
+                      </div>
+                    </div>
+                    <div class="field">
+                      <label>Perk description <span>Optional</span></label>
+                      <textarea v-model="ticket.perks" class="field-input" rows="2" placeholder="Includes dinner, front-row seating, premium access..." />
+                    </div>
+                    <label class="toggle-row">
+                      <span>
+                        <strong>Visible to attendees</strong>
+                        <small>Turn off to hide from your public event page.</small>
+                      </span>
+                      <input v-model="ticket.visible" type="checkbox" />
+                    </label>
+                  </article>
+                </div>
+
+                <div v-if="form.tickets.length" class="summary-row">
+                  <span>Total capacity</span>
+                  <strong>{{ totalCapacity.toLocaleString() }} seats</strong>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div class="subcategory-modal-footer">
-            <div class="subcategory-summary">
-              <span class="subcategory-count">{{ selectedSubCategoriesCount }}/5 selected</span>
+          <div v-if="currentStep === 4" class="screen">
+            <div class="screen-head">
+              <h1>Who's<br /><em>registering?</em></h1>
+              <p>Choose what information to collect. Fewer fields usually means more sign-ups.</p>
             </div>
-            <div class="subcategory-actions">
-              <button type="button" class="btn-secondary" @click="closeSubCategoryModal">
-                Cancel
-              </button>
-              <button type="button" class="btn-primary" @click="confirmSubCategories">Apply</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
 
-    <!-- Custom Time Picker Modal -->
-    <div v-if="isTimePickerOpen" class="time-picker-overlay" @click.self="closeTimePicker">
-      <div class="time-picker-modal">
-        <div class="time-picker-header">
-          <h3>Select Time</h3>
-          <button type="button" class="time-picker-close" @click="closeTimePicker">
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M18 6L6 18"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-              <path
-                d="M6 6L18 18"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-          </button>
-        </div>
-        <div class="time-picker-body">
-          <!-- Custom time input -->
-          <div class="custom-time-input">
-            <div class="time-input-group">
-              <input
-                type="text"
-                v-model="customHours"
-                class="time-input-field"
-                maxlength="2"
-                @focus="$event.target.select()"
-                @blur="formatTimeInputs"
-                @keydown="handleTimeInput"
-                placeholder="HH"
-              />
-              <span class="time-divider">:</span>
-              <input
-                type="text"
-                v-model="customMinutes"
-                class="time-input-field"
-                maxlength="2"
-                @focus="$event.target.select()"
-                @blur="formatTimeInputs"
-                @keydown="handleTimeInput"
-                placeholder="MM"
-              />
+            <div class="info-card amber">
+              <DocumentTextIcon aria-hidden="true" />
+              <div>
+                <strong>Your registration form</strong>
+                <p>Every attendee fills this when they sign up. Name and email stay required.</p>
+              </div>
             </div>
-          </div>
 
-          <div class="time-picker-grid">
-            <div
-              v-for="time in timeOptions"
-              :key="time"
-              class="time-option"
-              :class="{ selected: selectedTime === time }"
-              @click="selectTime(time)"
-            >
-              {{ time }}
-            </div>
-          </div>
-          <div class="time-period-selector">
-            <button
-              type="button"
-              class="time-period-btn"
-              :class="{ selected: selectedPeriod === 'AM' }"
-              @click="selectPeriod('AM')"
-            >
-              AM
-            </button>
-            <button
-              type="button"
-              class="time-period-btn"
-              :class="{ selected: selectedPeriod === 'PM' }"
-              @click="selectPeriod('PM')"
-            >
-              PM
-            </button>
-          </div>
-        </div>
-        <div class="time-picker-actions">
-          <button type="button" class="time-picker-btn time-picker-cancel" @click="closeTimePicker">
-            Cancel
-          </button>
-          <button
-            type="button"
-            class="time-picker-btn time-picker-apply"
-            @click="applyTimeSelection"
-          >
-            Apply
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Custom Date Picker Modal -->
-    <div v-if="isDatePickerOpen" class="date-picker-overlay" @click.self="closeDatePicker">
-      <div class="date-picker-modal">
-        <div class="date-picker-header">
-          <h3>Select Date</h3>
-          <button type="button" class="date-picker-close" @click="closeDatePicker">
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M18 6L6 18"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-              <path
-                d="M6 6L18 18"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-          </button>
-        </div>
-        <div class="date-picker-body">
-          <div class="date-picker-month-nav">
-            <button class="month-nav-btn" @click="previousMonth">
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
+            <div class="ce-card compact">
+              <label
+                v-for="field in form.attendeeFields"
+                :key="field.id"
+                class="toggle-row attendee-row"
               >
-                <path
-                  d="M15 18L9 12L15 6"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </button>
-            <div class="month-display">{{ monthNames[currentMonth] }} {{ currentYear }}</div>
-            <button class="month-nav-btn" @click="nextMonth">
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M9 18L15 12L9 6"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </button>
-          </div>
+                <span>
+                  <strong>{{ field.label }}</strong>
+                  <small>{{ field.help }}</small>
+                </span>
+                <span v-if="field.required" class="required-tag">Required</span>
+                <input v-else v-model="field.enabled" type="checkbox" />
+              </label>
+            </div>
 
-          <div class="date-picker-weekdays">
-            <div class="weekday" v-for="day in weekdays" :key="day">{{ day }}</div>
-          </div>
-
-          <div class="date-picker-days">
-            <div
-              v-for="(day, index) in calendarDays"
-              :key="index"
-              class="calendar-day"
-              :class="{
-                'other-month': !day.inCurrentMonth,
-                today: day.isToday,
-                selected: day.isSelected,
-                disabled: day.isDisabled,
-              }"
-              @click="!day.isDisabled && selectDate(day.date)"
-            >
-              {{ day.day }}
+            <div class="ce-card compact">
+              <div class="email-preview">
+                <div class="email-head">
+                  <span>From: {{ form.organiser || form.title || 'Your Event' }} via Kaka</span>
+                  <strong>You're in! {{ form.title || 'Your Event' }}</strong>
+                </div>
+                <div class="email-body">
+                  <p>Hi [Attendee name],</p>
+                  <p>Your registration is confirmed. We cannot wait to see you.</p>
+                  <div class="email-ticket">
+                    <strong>Ticket details</strong>
+                    <span>{{ form.title || 'Event name' }}</span>
+                    <span>{{ emailDate }}</span>
+                    <span>{{ previewEvent.location }}</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="date-picker-actions">
-          <button type="button" class="date-picker-btn date-picker-cancel" @click="closeDatePicker">
-            Cancel
-          </button>
-          <button
-            type="button"
-            class="date-picker-btn date-picker-apply"
-            @click="applyDateSelection"
-          >
-            Apply
-          </button>
-        </div>
+
+          <div class="nav-actions">
+            <button v-if="currentStep > 1" type="button" class="back-btn" @click="goBack">
+              <ArrowLeftIcon aria-hidden="true" />
+            </button>
+            <button
+              v-if="currentStep < steps.length"
+              type="button"
+              class="primary-btn"
+              @click="goNext"
+            >
+              Continue <ArrowRightIcon aria-hidden="true" />
+            </button>
+            <button v-else type="button" class="primary-btn publish" @click="publishEvent">
+              Publish Event <ArrowRightIcon aria-hidden="true" />
+            </button>
+          </div>
+        </section>
+
+        <aside v-if="previewOn" class="preview-col">
+          <span class="side-label">Live preview</span>
+          <EventCard :event="previewEvent" :show-details="false" />
+          <div class="tip-card">
+            <strong>💡 Tip</strong>
+            <p>{{ currentTip }}</p>
+          </div>
+        </aside>
       </div>
-    </div>
+    </main>
+
+    <section v-else class="success-screen">
+      <div class="success-ring"><CheckIcon aria-hidden="true" /></div>
+      <h1>Your event<br />is live!</h1>
+      <p>Share it and start collecting attendees. Your dashboard can track everything live.</p>
+      <div class="share-box">
+        <span>kaka.events/e/{{ (form.title || 'your-event').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') }}</span>
+        <button type="button" @click="showToast('Link copied')">Copy link</button>
+      </div>
+      <button type="button" class="primary-btn" @click="router.push('/')">Back to events</button>
+    </section>
   </div>
 </template>
 
-<script setup>
-import { ref, computed, reactive, watch, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useEventStore } from '@/stores/events'
-
-// Initialize references
-const router = useRouter()
-const eventStore = useEventStore()
-const error = ref(null)
-const success = ref(false)
-const isSubmitting = ref(false)
-const today = ref(new Date().toISOString().split('T')[0]) // Today's date in YYYY-MM-DD format
-const showTemplateModal = ref(false)
-const activeTicketIndex = ref(0)
-const showSubCategoryModal = ref(false)
-const tempSelectedSubCategories = ref([]) // Temporary storage for selected subcategories in modal
-const subCategorySearchTerm = ref('')
-const customSubCategories = ref([])
-const newCustomSubCategory = ref('')
-const categories = ref([])
-const availableSubCategories = ref([])
-const mainImagePreview = ref(null)
-const bannerImagePreview = ref(null)
-const newCustomEventOption = ref('')
-
-// Also initialize form with image fields
-const form = reactive({
-  title: '',
-  description: '',
-  category: '',
-  subCategories: [],
-  date: '',
-  time: '19:00',
-  location: '',
-  price: 0,
-  totalTickets: 100,
-  organizer: '',
-  duration: '',
-  featured: false,
-  imageIndex: Math.floor(Math.random() * 4), // Random image from available set
-  mainImage: null,
-  bannerImage: null,
-  selectedEventOptions: [], // Start with no options selected
-  customEventOptions: [], // For user-added custom options
-  ticketTypes: [
-    {
-      name: 'General Admission',
-      price: 0,
-      quantity: 100,
-      description: '',
-      salesEndDate: '',
-      salesEndTime: '23:59',
-      isFeatured: false,
-    },
-  ],
-  // Add FAQs to the form data
-  faqs: [
-    {
-      question: "What's included in the ticket price?",
-      answer:
-        'Your ticket includes entry to the event, access to all scheduled activities, and any materials needed for workshops. Food and drinks may be available for purchase separately.',
-    },
-    {
-      question: "What's the refund policy?",
-      answer:
-        'Tickets can be refunded up to 7 days before the event. After that, no refunds will be issued, but tickets are transferable to another person.',
-    },
-    {
-      question: 'Is there parking available?',
-      answer:
-        'Limited parking is available at the venue. We recommend using public transportation or rideshare services if possible.',
-    },
-    {
-      question: 'What should I bring with me?',
-      answer:
-        'Please bring your ticket (digital or printed), a valid ID, and any personal items you might need. Comfortable attire is recommended.',
-    },
-    {
-      question: 'Are there age restrictions for this event?',
-      answer:
-        'This event is open to attendees of all ages. Children under 12 must be accompanied by an adult.',
-    },
-  ],
-})
-
-// Form validation
-const validation = reactive({
-  title: { valid: true, message: '' },
-  description: { valid: true, message: '' },
-  category: { valid: true, message: '' },
-  subCategories: { valid: true, message: '' },
-  date: { valid: true, message: '' },
-  time: { valid: true, message: '' },
-  location: { valid: true, message: '' },
-  price: { valid: true, message: '' },
-  totalTickets: { valid: true, message: '' },
-  organizer: { valid: true, message: '' },
-  ticketTypes: { valid: true, message: '' },
-  mainImage: { valid: true, message: '' },
-  bannerImage: { valid: true, message: '' },
-})
-
-// Fetch categories on mount
-onMounted(async () => {
-  error.value = null // Start with no error message
-
-  try {
-    // Use axios directly to ensure we're hitting the exact Laravel API endpoints
-    const axios = (await import('axios')).default
-    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-    console.log('Configured API URL:', API_BASE_URL)
-
-    // Direct diagnostic check of the Laravel API root to verify connectivity
-    try {
-      console.log('Testing API connectivity with simple GET request...')
-      const pingResponse = await axios.get(`${API_BASE_URL}/api`, {
-        timeout: 5000, // 5 second timeout
-      })
-      console.log('API root response:', pingResponse.status, pingResponse.statusText)
-    } catch (pingErr) {
-      console.error('API root connectivity test failed:', pingErr.message)
-      // Check for CORS error
-      if (pingErr.message.includes('CORS') || pingErr.message.includes('Cross-Origin')) {
-        console.error('POSSIBLE CORS ISSUE DETECTED! Check your Laravel CORS configuration')
-      }
-    }
-
-    // Try different combinations of headers and configurations
-    const fetchOptions = [
-      // Option 1: Simple GET without any special headers
-      {
-        description: 'Simple GET',
-        config: { timeout: 10000 },
-      },
-      // Option 2: With AJAX header
-      {
-        description: 'With AJAX header',
-        config: {
-          headers: { 'X-Requested-With': 'XMLHttpRequest' },
-          timeout: 10000,
-        },
-      },
-      // Option 3: With Accept JSON header
-      {
-        description: 'With Accept JSON header',
-        config: {
-          headers: { Accept: 'application/json' },
-          timeout: 10000,
-        },
-      },
-      // Option 4: Full headers with credentials
-      {
-        description: 'Full headers with credentials',
-        config: {
-          withCredentials: true,
-          headers: {
-            Accept: 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'Content-Type': 'application/json',
-          },
-          timeout: 10000,
-        },
-      },
-    ]
-
-    // Try each option until one works
-    let categoriesSucceeded = false
-    for (const option of fetchOptions) {
-      if (categoriesSucceeded) break
-
-      try {
-        console.log(`Trying to fetch categories with: ${option.description}`)
-        const response = await axios.get(`${API_BASE_URL}/api/categories`, option.config)
-        console.log(`✅ CATEGORIES SUCCESS with ${option.description}:`, response.status)
-
-        if (response.data && response.data.data) {
-          categories.value = response.data.data
-          console.log('Categories loaded, count:', categories.value.length)
-        } else if (Array.isArray(response.data)) {
-          categories.value = response.data
-          console.log('Categories loaded as array, count:', categories.value.length)
-        } else {
-          console.warn('Unexpected response format:', response.data)
-          continue // Try next option
-        }
-
-        categoriesSucceeded = true
-      } catch (err) {
-        console.error(`❌ Failed with ${option.description}:`, err.message)
-      }
-    }
-
-    if (!categoriesSucceeded) {
-      throw new Error('All category fetch attempts failed')
-    }
-
-    // Now try to fetch subcategories with the same approach
-    let subcategoriesSucceeded = false
-    for (const option of fetchOptions) {
-      if (subcategoriesSucceeded) break
-
-      try {
-        console.log(`Trying to fetch subcategories with: ${option.description}`)
-        const response = await axios.get(`${API_BASE_URL}/api/subcategories`, option.config)
-        console.log(`✅ SUBCATEGORIES SUCCESS with ${option.description}:`, response.status)
-
-        if (response.data && response.data.data) {
-          availableSubCategories.value = response.data.data
-          console.log('Subcategories loaded, count:', availableSubCategories.value.length)
-        } else if (Array.isArray(response.data)) {
-          availableSubCategories.value = response.data
-          console.log('Subcategories loaded as array, count:', availableSubCategories.value.length)
-        } else {
-          console.warn('Unexpected response format:', response.data)
-          continue // Try next option
-        }
-
-        subcategoriesSucceeded = true
-      } catch (err) {
-        console.error(`❌ Failed with ${option.description}:`, err.message)
-      }
-    }
-
-    if (!subcategoriesSucceeded) {
-      throw new Error('All subcategory fetch attempts failed')
-    }
-  } catch (err) {
-    error.value = 'Failed to load categories from API'
-    console.error('API Error Details:', err)
-
-    // More detailed error information for troubleshooting
-    if (err.response) {
-      console.error('API Response Status:', err.response.status)
-      console.error('API Response Data:', err.response.data)
-      console.error('API Response Headers:', err.response.headers)
-
-      if (err.response.status === 404) {
-        error.value = 'API endpoints not found. Check Laravel routes.'
-      } else if (err.response.status === 401 || err.response.status === 403) {
-        error.value = 'Authentication error. API requires login.'
-      } else if (err.response.status >= 500) {
-        error.value = 'Server error. Check Laravel logs.'
-      }
-    } else if (err.request) {
-      console.error('No response received:', err.request)
-      error.value = 'No response from API server. Is Laravel running?'
-    } else {
-      console.error('Error setting up request:', err.message)
-      error.value = `Request setup error: ${err.message}`
-    }
-  }
-})
-
-// Add ticket type
-const addTicketType = () => {
-  form.ticketTypes.push({
-    name: '',
-    price: 0,
-    quantity: 50,
-    description: '',
-    salesEndDate: '',
-    salesEndTime: '23:59',
-    isFeatured: false,
-  })
-}
-
-// Remove ticket type
-const removeTicketType = (index) => {
-  form.ticketTypes.splice(index, 1)
-}
-
-// Duplicate ticket type
-const duplicateTicketType = (index) => {
-  const ticketToDuplicate = { ...form.ticketTypes[index] }
-  ticketToDuplicate.name = `${ticketToDuplicate.name} (Copy)`
-  form.ticketTypes.splice(index + 1, 0, ticketToDuplicate)
-}
-
-// Available ticket type templates
-const ticketTemplates = [
-  { name: 'Standard', description: 'Regular entry ticket for most guests', isFeatured: false },
-  { name: 'Early Bird', description: 'Limited time offer at a discounted price', isFeatured: true },
-  { name: 'VIP', description: 'Premium experience with exclusive benefits', isFeatured: true },
-  { name: 'Table for 4', description: 'Reserved table seating for 4 guests' },
-  { name: 'Table for 8', description: 'Reserved table seating for 8 guests' },
-  { name: 'Table for 12', description: 'Reserved table seating for a large group of 12' },
-  {
-    name: 'Gold',
-    description: 'Elite experience with exclusive perks and priority service',
-    isFeatured: true,
-  },
-  { name: 'Student', description: 'Discounted ticket with valid student ID' },
-  { name: 'Group (5+)', description: 'Discounted rate for groups of 5 or more' },
-]
-
-// Apply template to ticket
-const applyTemplate = (index, template) => {
-  form.ticketTypes[index].name = template.name
-  form.ticketTypes[index].description = template.description
-  if (template.isFeatured) {
-    form.ticketTypes[index].isFeatured = true
-  }
-}
-
-// Calculate total tickets
-const calculateTotalTickets = computed(() => {
-  return form.ticketTypes.reduce((sum, ticket) => sum + ticket.quantity, 0)
-})
-
-// Update total tickets when ticket quantities change
-watch(calculateTotalTickets, (newTotal) => {
-  form.totalTickets = newTotal
-})
-
-// Computed combined date and time
-const fullDateTime = computed(() => {
-  if (!form.date || !form.time) return null
-  const [year, month, day] = form.date.split('-')
-  const [hours, minutes] = form.time.split(':')
-  return new Date(year, month - 1, day, hours, minutes).toISOString()
-})
-
-// Duration options
-const durationOptions = [
-  '1 hour',
-  '2 hours',
-  '3 hours',
-  '4 hours',
-  '5 hours',
-  '1 day',
-  '2 days',
-  '3 days',
-  'Multiple days',
-]
-
-// Define stronger password regex if using authentication
-const sanitizeInput = (input) => {
-  if (typeof input !== 'string') return input
-  // Basic sanitization - replaces potentially harmful characters
-  return input.replace(/[<>&"'`=/]/g, '')
-}
-
-// Validate form with enhanced security
-const validateForm = () => {
-  let isValid = true
-
-  // Title validation with sanitization
-  const sanitizedTitle = sanitizeInput(form.title.trim())
-  if (!sanitizedTitle) {
-    validation.title.valid = false
-    validation.title.message = 'Add a name for your event'
-    isValid = false
-  } else if (sanitizedTitle.length < 5) {
-    validation.title.valid = false
-    validation.title.message = 'Name needs at least 5 letters'
-    isValid = false
-  } else if (sanitizedTitle.length > 100) {
-    validation.title.valid = false
-    validation.title.message = 'Name is too long (100 letters max)'
-    isValid = false
-  } else {
-    validation.title.valid = true
-    // Update the form with sanitized value
-    form.title = sanitizedTitle
-  }
-
-  // Description validation with sanitization
-  const sanitizedDescription = sanitizeInput(form.description.trim())
-  if (!sanitizedDescription) {
-    validation.description.valid = false
-    validation.description.message = 'Add a description'
-    isValid = false
-  } else if (sanitizedDescription.length < 20) {
-    validation.description.valid = false
-    validation.description.message = 'Write at least 20 letters'
-    isValid = false
-  } else if (sanitizedDescription.length > 5000) {
-    validation.description.valid = false
-    validation.description.message = 'Too long! Keep it under 5000 letters'
-    isValid = false
-  } else {
-    validation.description.valid = true
-    // Update the form with sanitized value
-    form.description = sanitizedDescription
-  }
-
-  // Category validation
-  if (!form.category) {
-    validation.category.valid = false
-    validation.category.message = 'Pick a category'
-    isValid = false
-  } else {
-    // Validate category ID exists in valid categories
-    const categoryExists = categories.value.some((cat) => cat.id === form.category)
-    if (!categoryExists) {
-      validation.category.valid = false
-      validation.category.message = 'Pick a category from the list'
-      isValid = false
-    } else {
-      validation.category.valid = true
-    }
-  }
-
-  // Sub-categories validation
-  const nonEmptySubCategories = form.subCategories.filter((cat) => cat !== '')
-  const uniqueSubCategories = [...new Set(nonEmptySubCategories)]
-
-  if (nonEmptySubCategories.length !== uniqueSubCategories.length) {
-    validation.subCategories.valid = false
-    validation.subCategories.message = 'You picked the same tag twice'
-    isValid = false
-  } else {
-    // Validate each subcategory ID exists in valid subcategories
-    const invalidSubCat = nonEmptySubCategories.some(
-      (subCat) => !availableSubCategories.value.some((validSubCat) => validSubCat.id === subCat),
-    )
-
-    if (invalidSubCat) {
-      validation.subCategories.valid = false
-      validation.subCategories.message = 'Pick tags from the list'
-      isValid = false
-    } else {
-      validation.subCategories.valid = true
-    }
-  }
-
-  // Date validation
-  if (!form.date) {
-    validation.date.valid = false
-    validation.date.message = 'Pick a date'
-    isValid = false
-  } else {
-    // Validate date format and ensure it's not in the past
-    const selectedDate = new Date(form.date)
-    const currentDate = new Date()
-    currentDate.setHours(0, 0, 0, 0)
-
-    if (isNaN(selectedDate.getTime())) {
-      validation.date.valid = false
-      validation.date.message = "This date won't work"
-      isValid = false
-    } else if (selectedDate < currentDate) {
-      validation.date.valid = false
-      validation.date.message = 'Pick a date in the future'
-      isValid = false
-    } else {
-      validation.date.valid = true
-    }
-  }
-
-  // Time validation
-  if (!form.time) {
-    validation.time.valid = false
-    validation.time.message = 'Add a start time'
-    isValid = false
-  } else {
-    // Validate time format (HH:MM)
-    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/
-    if (!timeRegex.test(form.time)) {
-      validation.time.valid = false
-      validation.time.message = 'Use hours:minutes format'
-      isValid = false
-    } else {
-      validation.time.valid = true
-    }
-  }
-
-  // Location validation with sanitization
-  const sanitizedLocation = sanitizeInput(form.location.trim())
-  if (!sanitizedLocation) {
-    validation.location.valid = false
-    validation.location.message = 'Add a location'
-    isValid = false
-  } else if (sanitizedLocation.length < 5) {
-    validation.location.valid = false
-    validation.location.message = 'Write a longer address'
-    isValid = false
-  } else {
-    validation.location.valid = true
-    // Update the form with sanitized value
-    form.location = sanitizedLocation
-  }
-
-  // Price validation
-  if (isNaN(form.price) || form.price === '') {
-    validation.price.valid = false
-    validation.price.message = 'Price must be a number'
-    isValid = false
-  } else {
-    const price = parseFloat(form.price)
-    if (price < 0) {
-      validation.price.valid = false
-      validation.price.message = "Price can't be negative"
-      isValid = false
-    } else if (price > 100000) {
-      validation.price.valid = false
-      validation.price.message = 'Price too high (max $100,000)'
-      isValid = false
-    } else {
-      validation.price.valid = true
-      // Ensure price is stored as a number with 2 decimal places
-      form.price = parseFloat(price.toFixed(2))
-    }
-  }
-
-  // Tickets validation
-  if (isNaN(form.totalTickets) || form.totalTickets === '') {
-    validation.totalTickets.valid = false
-    validation.totalTickets.message = 'How many tickets?'
-    isValid = false
-  } else {
-    const tickets = parseInt(form.totalTickets)
-    if (tickets <= 0) {
-      validation.totalTickets.valid = false
-      validation.totalTickets.message = 'You need at least 1 ticket'
-      isValid = false
-    } else if (tickets > 100000) {
-      validation.totalTickets.valid = false
-      validation.totalTickets.message = 'Too many tickets (max 100,000)'
-      isValid = false
-    } else {
-      validation.totalTickets.valid = true
-      // Ensure tickets is stored as an integer
-      form.totalTickets = tickets
-    }
-  }
-
-  // Organizer validation with sanitization
-  const sanitizedOrganizer = sanitizeInput(form.organizer.trim())
-  if (!sanitizedOrganizer) {
-    validation.organizer.valid = false
-    validation.organizer.message = 'Add your name or group name'
-    isValid = false
-  } else {
-    validation.organizer.valid = true
-    // Update the form with sanitized value
-    form.organizer = sanitizedOrganizer
-  }
-
-  // Ticket types validation
-  if (form.ticketTypes.length === 0) {
-    validation.ticketTypes.valid = false
-    validation.ticketTypes.message = 'Add at least one ticket type'
-    isValid = false
-  } else {
-    let ticketTypeValid = true
-    form.ticketTypes.forEach((ticket, index) => {
-      const sanitizedName = sanitizeInput(ticket.name.trim())
-      if (!sanitizedName) {
-        validation.ticketTypes.valid = false
-        validation.ticketTypes.message = `Ticket #${index + 1} needs a name`
-        ticketTypeValid = false
-        isValid = false
-      }
-
-      if (ticket.quantity <= 0) {
-        validation.ticketTypes.valid = false
-        validation.ticketTypes.message = `Ticket #${index + 1} needs at least 1`
-        ticketTypeValid = false
-        isValid = false
-      }
-
-      if (ticket.salesEndDate) {
-        const endDate = new Date(ticket.salesEndDate)
-        const eventDate = new Date(form.date)
-
-        if (isNaN(endDate.getTime())) {
-          validation.ticketTypes.valid = false
-          validation.ticketTypes.message = `Ticket #${index + 1} has a bad date`
-          ticketTypeValid = false
-          isValid = false
-        } else if (endDate > eventDate) {
-          validation.ticketTypes.valid = false
-          validation.ticketTypes.message = `Ticket #${index + 1} must stop selling before event starts`
-          ticketTypeValid = false
-          isValid = false
-        }
-      }
-    })
-
-    if (ticketTypeValid) {
-      validation.ticketTypes.valid = true
-    }
-  }
-
-  // Main image validation
-  if (!form.mainImage) {
-    validation.mainImage.valid = false
-    validation.mainImage.message = 'Upload a main image'
-    isValid = false
-  }
-
-  // Banner image validation
-  if (!form.bannerImage) {
-    validation.bannerImage.valid = false
-    validation.bannerImage.message = 'Upload a banner image'
-    isValid = false
-  }
-
-  return isValid
-}
-
-// Handle form submission
-const handleSubmit = async () => {
-  if (!validateForm()) {
-    // Scroll to first error
-    const firstError = Object.keys(validation).find((key) => !validation[key].valid)
-    if (firstError) {
-      const element = document.getElementById(firstError)
-      if (element) element.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    }
-    return
-  }
-
-  isSubmitting.value = true
-  error.value = null
-  success.value = false
-
-  try {
-    // Filter out empty sub-categories and combine with custom subcategories
-    const validSubCategories = [
-      ...form.subCategories.filter((cat) => cat !== ''),
-      ...customSubCategories.value,
-    ]
-
-    // Process ticket types
-    const processedTickets = form.ticketTypes.map((ticket) => ({
-      ...ticket,
-      price: parseFloat(ticket.price),
-      quantity: parseInt(ticket.quantity),
-      name: sanitizeInput(ticket.name.trim()),
-      description: sanitizeInput(ticket.description.trim()),
-    }))
-
-    // Get the selected event options
-    const selectedEventOptions = [...form.selectedEventOptions, ...form.customEventOptions].filter(
-      Boolean,
-    ) // Remove any falsy values
-
-    // Prepare the event data for Laravel backend format
-    const eventData = {
-      title: form.title,
-      description: form.description,
-      category: form.category, // This will be category_id in the Laravel backend
-      subCategories: validSubCategories,
-      date: fullDateTime.value, // Make sure this is in YYYY-MM-DD format for Laravel
-      location: form.location,
-      price: parseFloat(form.price),
-      totalTickets: parseInt(form.totalTickets),
-      organizer: form.organizer,
-      duration: form.duration,
-      featured: form.featured,
-      imageIndex: form.imageIndex,
-      mainImage: mainImagePreview.value ? mainImagePreview.value : null,
-      bannerImage: bannerImagePreview.value ? bannerImagePreview.value : null,
-      eventOptions: selectedEventOptions,
-      selectedEventOptions: form.selectedEventOptions,
-      customEventOptions: form.customEventOptions,
-      ticketTypes: processedTickets,
-      faqs: form.faqs.filter((faq) => faq.question.trim() && faq.answer.trim()),
-    }
-
-    console.log('Submitting event data to database:', eventData)
-
-    // Create the event using the event service - the API will save to database
-    const newEvent = await eventStore.createEvent(eventData)
-
-    // If we reach this point, it means the API call was successful and the event was saved to the database
-    console.log('Event successfully saved to database:', newEvent)
-
-    // Show success message
-    success.value = true
-
-    // Redirect to the event page after a brief delay
-    setTimeout(() => {
-      router.push({ path: `/event/${newEvent.id}` })
-    }, 2000)
-  } catch (err) {
-    // API call failed, show error message and don't update frontend state
-    error.value = err.message || 'Failed to save event to database. Please check your inputs.'
-    console.error('Failed to save event to database:', err)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  } finally {
-    isSubmitting.value = false
-  }
-}
-
-// Reset form
-const resetForm = () => {
-  Object.keys(form).forEach((key) => {
-    if (key === 'price') {
-      form[key] = 0
-    } else if (key === 'totalTickets') {
-      form[key] = 100
-    } else if (key === 'featured') {
-      form[key] = false
-    } else if (key === 'imageIndex') {
-      form[key] = Math.floor(Math.random() * 4)
-    } else if (key === 'time') {
-      form[key] = '19:00'
-    } else if (key === 'subCategories') {
-      form[key] = []
-    } else if (key === 'ticketTypes') {
-      form[key] = [
-        {
-          name: 'General Admission',
-          price: 0,
-          quantity: 100,
-          description: '',
-          salesEndDate: '',
-          salesEndTime: '23:59',
-          isFeatured: false,
-        },
-      ]
-    } else {
-      form[key] = ''
-    }
-  })
-
-  Object.keys(validation).forEach((key) => {
-    validation[key].valid = true
-    validation[key].message = ''
-  })
-
-  error.value = null
-  success.value = false
-
-  // Also reset custom subcategories
-  customSubCategories.value = []
-
-  // Reset custom event options
-  form.customEventOptions = []
-
-  // Reset event options to defaults
-  form.selectedEventOptions = ['Live performance', 'Food & drinks available', 'Indoor event']
-
-  // Reset FAQs to defaults
-  form.faqs = [
-    {
-      question: "What's included in the ticket price?",
-      answer:
-        'Your ticket includes entry to the event, access to all scheduled activities, and any materials needed for workshops. Food and drinks may be available for purchase separately.',
-    },
-    {
-      question: "What's the refund policy?",
-      answer:
-        'Tickets can be refunded up to 7 days before the event. After that, no refunds will be issued, but tickets are transferable to another person.',
-    },
-    {
-      question: 'Is there parking available?',
-      answer:
-        'Limited parking is available at the venue. We recommend using public transportation or rideshare services if possible.',
-    },
-    {
-      question: 'What should I bring with me?',
-      answer:
-        'Please bring your ticket (digital or printed), a valid ID, and any personal items you might need. Comfortable attire is recommended.',
-    },
-    {
-      question: 'Are there age restrictions for this event?',
-      answer:
-        'This event is open to attendees of all ages. Children under 12 must be accompanied by an adult.',
-    },
-  ]
-}
-
-// Set min date to today for date picker
-// const today = new Date().toISOString().split('T')[0]
-
-// Open template modal for a specific ticket
-const openTemplateModal = (index) => {
-  activeTicketIndex.value = index
-  showTemplateModal.value = true
-  document.body.style.overflow = 'hidden' // Prevent background scrolling
-}
-
-// Close template modal
-const closeTemplateModal = () => {
-  showTemplateModal.value = false
-  document.body.style.overflow = '' // Re-enable scrolling
-}
-
-// Apply template from modal and close the modal
-const applyTemplateFromModal = (index, template) => {
-  applyTemplate(index, template)
-  closeTemplateModal()
-}
-
-// Add FAQ
-const addFaq = () => {
-  form.faqs.push({
-    question: '',
-    answer: '',
-  })
-}
-
-// Remove FAQ
-const removeFaq = (index) => {
-  form.faqs.splice(index, 1)
-}
-
-// Handle main image upload
-const handleMainImageUpload = (event) => {
-  let file
-
-  // Check if it's a drop event
-  if (event.dataTransfer) {
-    file = event.dataTransfer.files[0]
-  } else if (event.target.files) {
-    file = event.target.files[0]
-  }
-
-  if (file) {
-    form.mainImage = file
-    validation.mainImage.valid = true
-
-    // Create a preview URL
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      mainImagePreview.value = e.target.result
-    }
-    reader.readAsDataURL(file)
-  }
-}
-
-// Handle banner image upload
-const handleBannerImageUpload = (event) => {
-  let file
-
-  // Check if it's a drop event
-  if (event.dataTransfer) {
-    file = event.dataTransfer.files[0]
-  } else if (event.target.files) {
-    file = event.target.files[0]
-  }
-
-  if (file) {
-    form.bannerImage = file
-    validation.bannerImage.valid = true
-
-    // Create a preview URL
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      bannerImagePreview.value = e.target.result
-    }
-    reader.readAsDataURL(file)
-  }
-}
-
-// Remove main image - could be added to the UI if needed
-const removeMainImage = () => {
-  form.mainImage = null
-  mainImagePreview.value = null
-  validation.mainImage.valid = false
-  validation.mainImage.message = 'Please upload a main image'
-}
-
-// Remove banner image - could be added to the UI if needed
-const removeBannerImage = () => {
-  form.bannerImage = null
-  bannerImagePreview.value = null
-  validation.bannerImage.valid = false
-  validation.bannerImage.message = 'Please upload a banner image'
-}
-
-// Trigger main image upload
-const triggerMainImageUpload = () => {
-  const input = document.getElementById('mainImage')
-  input.click()
-}
-
-// Trigger banner image upload
-const triggerBannerImageUpload = () => {
-  const input = document.getElementById('bannerImage')
-  input.click()
-}
-
-// Add custom subcategory
-const addCustomSubCategory = () => {
-  const trimmed = newCustomSubCategory.value.trim()
-  if (
-    trimmed &&
-    customSubCategories.value.length < 5 &&
-    !customSubCategories.value.includes(trimmed)
-  ) {
-    customSubCategories.value.push(trimmed)
-    newCustomSubCategory.value = ''
-  }
-}
-
-// Remove custom subcategory
-const removeCustomSubCategory = (index) => {
-  customSubCategories.value.splice(index, 1)
-}
-
-// Get all displayed subcategories (selected + custom)
-const displayedSubCategories = computed(() => {
-  return [...form.subCategories, ...customSubCategories.value]
-})
-
-// Get subcategory name by id
-const getSubCategoryName = (subCatId) => {
-  // If it's a predefined subcategory
-  if (typeof subCatId === 'string' && subCatId.startsWith('sub')) {
-    const subCat = availableSubCategories.value.find((sc) => sc.id === subCatId)
-    return subCat ? subCat.name : subCatId
-  }
-  // If it's a custom subcategory
-  return subCatId
-}
-
-// Filter subcategories based on search term
-const filteredSubCategories = computed(() => {
-  if (!subCategorySearchTerm.value) return availableSubCategories.value
-
-  const searchTerm = subCategorySearchTerm.value.toLowerCase()
-  return availableSubCategories.value.filter((sc) => sc.name.toLowerCase().includes(searchTerm))
-})
-
-// Count selected subcategories
-const selectedSubCategoriesCount = computed(() => {
-  return tempSelectedSubCategories.value.length + customSubCategories.value.length
-})
-
-// Remove a subcategory from the form
-const removeSubCategoryById = (subCat) => {
-  if (typeof subCat === 'string' && subCat.startsWith('sub')) {
-    // If it's a predefined subcategory
-    form.subCategories = form.subCategories.filter((sc) => sc !== subCat)
-  } else {
-    // If it's a custom subcategory
-    customSubCategories.value = customSubCategories.value.filter((sc) => sc !== subCat)
-  }
-}
-
-// Toggle subcategory selection
-const toggleSubCategory = (id) => {
-  if (isSubCategorySelected(id)) {
-    tempSelectedSubCategories.value = tempSelectedSubCategories.value.filter(
-      (subCatId) => subCatId !== id,
-    )
-  } else {
-    if (selectedSubCategoriesCount.value < 5) {
-      tempSelectedSubCategories.value.push(id)
-    }
-  }
-}
-
-// Check if subcategory is selected
-const isSubCategorySelected = (id) => {
-  return tempSelectedSubCategories.value.includes(id)
-}
-
-// Open subcategory modal
-const openSubCategoryModal = () => {
-  if (form.category === '') {
-    validation.category.valid = false
-    validation.category.message = 'Select a category first'
-    // Focus category dropdown
-    const categoryElement = document.getElementById('category')
-    if (categoryElement) categoryElement.focus()
-    return
-  }
-
-  // Initialize the temp selection with current selection
-  tempSelectedSubCategories.value = [...form.subCategories]
-  showSubCategoryModal.value = true
-  document.body.style.overflow = 'hidden' // Prevent background scrolling
-}
-
-// Close subcategory modal
-const closeSubCategoryModal = () => {
-  showSubCategoryModal.value = false
-  document.body.style.overflow = '' // Re-enable scrolling
-  subCategorySearchTerm.value = ''
-  newCustomSubCategory.value = ''
-}
-
-// Confirm subcategory selections
-const confirmSubCategories = () => {
-  form.subCategories = [...tempSelectedSubCategories.value]
-  closeSubCategoryModal()
-}
-
-// Handle main image drop
-const handleMainImageDrop = (event) => {
-  event.preventDefault()
-  handleMainImageUpload(event)
-}
-
-// Handle banner image drop
-const handleBannerImageDrop = (event) => {
-  event.preventDefault()
-  handleBannerImageUpload(event)
-}
-
-// Add custom event option
-const addCustomEventOption = () => {
-  const trimmed = newCustomEventOption.value.trim()
-  if (trimmed && form.customEventOptions.length < 5 && !form.customEventOptions.includes(trimmed)) {
-    form.customEventOptions.push(trimmed)
-    newCustomEventOption.value = ''
-  }
-}
-
-// Remove custom event option
-const removeCustomEventOption = (index) => {
-  form.customEventOptions.splice(index, 1)
-}
-
-// Toggle event option
-const toggleEventOption = (option) => {
-  if (form.selectedEventOptions.includes(option)) {
-    form.selectedEventOptions = form.selectedEventOptions.filter((opt) => opt !== option)
-  } else {
-    // Allow selecting more options - remove limit
-    form.selectedEventOptions.push(option)
-  }
-}
-
-// Check if event option is selected
-const isEventOptionSelected = (option) => {
-  return form.selectedEventOptions.includes(option)
-}
-
-// Predefined event options
-const predefinedEventOptions = [
-  'Live performance',
-  'Food & drinks available',
-  'Indoor event',
-  'Outdoor event',
-  'Accessible venue',
-  'Family friendly',
-  'Free parking',
-  'VIP access',
-  'Professional networking',
-  'Photo opportunities',
-  'Live streaming',
-  'Q&A session',
-  'Merchandise available',
-  'Meet & greet',
-  'Seating provided',
-]
-
-const showDateTip = ref(false)
-const showTimeTip = ref(false)
-
-// Time picker variables
-const isTimePickerOpen = ref(false)
-const selectedTime = ref('07:00')
-const selectedPeriod = ref('AM')
-
-const timeOptions = [
-  '01:00',
-  '01:30',
-  '02:00',
-  '02:30',
-  '03:00',
-  '03:30',
-  '04:00',
-  '04:30',
-  '05:00',
-  '05:30',
-  '06:00',
-  '06:30',
-  '07:00',
-  '07:30',
-  '08:00',
-  '08:30',
-  '09:00',
-  '09:30',
-  '10:00',
-  '10:30',
-  '11:00',
-  '11:30',
-  '12:00',
-  '12:30',
-]
-
-const openTimePicker = () => {
-  // If there's already a time, parse it to 12-hour format for the picker
-  if (form.time) {
-    const [hours, minutes] = form.time.split(':')
-    const hour = parseInt(hours)
-
-    if (hour > 12) {
-      // Convert from 24-hour to 12-hour format for PM
-      selectedTime.value = `${(hour - 12).toString().padStart(2, '0')}:${minutes}`
-      selectedPeriod.value = 'PM'
-    } else if (hour === 12) {
-      // 12 PM
-      selectedTime.value = `12:${minutes}`
-      selectedPeriod.value = 'PM'
-    } else if (hour === 0) {
-      // 12 AM
-      selectedTime.value = `12:${minutes}`
-      selectedPeriod.value = 'AM'
-    } else {
-      // Regular AM hours
-      selectedTime.value = `${hour.toString().padStart(2, '0')}:${minutes}`
-      selectedPeriod.value = 'AM'
-    }
-  } else {
-    // Default to 7:00 AM if no time selected
-    selectedTime.value = '07:00'
-    selectedPeriod.value = 'AM'
-  }
-
-  isTimePickerOpen.value = true
-}
-
-const closeTimePicker = () => {
-  isTimePickerOpen.value = false
-}
-
-const selectTime = (time) => {
-  selectedTime.value = time
-}
-
-const selectPeriod = (period) => {
-  selectedPeriod.value = period
-}
-
-const applyTimeSelection = () => {
-  // Convert to 24-hour format if PM is selected
-  if (selectedPeriod.value === 'PM') {
-    const [hours, minutes] = selectedTime.value.split(':')
-    const hour = parseInt(hours)
-
-    // Only adjust hours that aren't already in PM format (12 PM stays as 12)
-    const adjustedHour = hour === 12 ? 12 : hour + 12
-    form.time = `${adjustedHour.toString().padStart(2, '0')}:${minutes}`
-  } else {
-    // For AM, make sure 12 AM becomes 00:00
-    const [hours, minutes] = selectedTime.value.split(':')
-    const hour = parseInt(hours)
-    const adjustedHour = hour === 12 ? 0 : hour
-    form.time = `${adjustedHour.toString().padStart(2, '0')}:${minutes}`
-  }
-
-  closeTimePicker()
-}
-
-// Date picker variables
-const isDatePickerOpen = ref(false)
-const currentYear = ref(new Date().getFullYear())
-const currentMonth = ref(new Date().getMonth())
-const selectedDate = ref(new Date())
-const tempSelectedDate = ref(null)
-
-// Custom time input variables
-const customHours = ref('07')
-const customMinutes = ref('00')
-
-// Define weekdays and month names for the calendar
-const weekdays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
-const monthNames = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-]
-
-// Format time inputs when focus is lost
-const formatTimeInputs = () => {
-  // Validate and format hours
-  let formattedHours = parseInt(customHours.value) || 1
-  if (formattedHours < 1) formattedHours = 1
-  if (formattedHours > 12) formattedHours = 12
-
-  // Validate and format minutes
-  let formattedMinutes = parseInt(customMinutes.value) || 0
-  if (formattedMinutes < 0) formattedMinutes = 0
-  if (formattedMinutes > 59) formattedMinutes = 59
-
-  // Update the ref values with formatted strings
-  customHours.value = formattedHours.toString().padStart(2, '0')
-  customMinutes.value = formattedMinutes.toString().padStart(2, '0')
-
-  // Update selectedTime with formatted values
-  selectedTime.value = `${formattedHours.toString().padStart(2, '0')}:${formattedMinutes.toString().padStart(2, '0')}`
-}
-
-// Handle keydown in time inputs
-const handleTimeInput = (event) => {
-  // Allow normal typing, backspace, arrows, etc
-  const allowedKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab']
-  if (allowedKeys.includes(event.key)) return
-
-  // If Enter key is pressed, format the inputs
-  if (event.key === 'Enter') {
-    event.preventDefault()
-    formatTimeInputs()
-    return
-  }
-
-  // Check if the user is typing a colon (:) to move to the minutes field
-  if (event.key === ':' && event.target === document.querySelector('.time-input-field')) {
-    event.preventDefault()
-    // Focus the minutes input
-    document.querySelectorAll('.time-input-field')[1].focus()
-    return
-  }
-}
-
-// Update custom time input fields when selectedTime changes
-watch(selectedTime, (newTime) => {
-  const [hours, minutes] = newTime.split(':')
-  // Only update if the input field is not currently focused
-  if (document.activeElement !== document.querySelector('.time-input-field')) {
-    customHours.value = hours
-    customMinutes.value = minutes
-  }
-})
-
-// Open date picker
-const openDatePicker = () => {
-  // If there's already a date, use it as the selected date
-  if (form.date) {
-    const [year, month, day] = form.date.split('-').map(Number)
-    selectedDate.value = new Date(year, month - 1, day)
-    currentYear.value = year
-    currentMonth.value = month - 1
-  } else {
-    // Default to today
-    selectedDate.value = new Date()
-    currentYear.value = selectedDate.value.getFullYear()
-    currentMonth.value = selectedDate.value.getMonth()
-  }
-
-  tempSelectedDate.value = new Date(selectedDate.value)
-  isDatePickerOpen.value = true
-}
-
-// Close date picker
-const closeDatePicker = () => {
-  isDatePickerOpen.value = false
-}
-
-// Navigate to previous month
-const previousMonth = () => {
-  if (currentMonth.value === 0) {
-    currentYear.value--
-    currentMonth.value = 11
-  } else {
-    currentMonth.value--
-  }
-}
-
-// Navigate to next month
-const nextMonth = () => {
-  if (currentMonth.value === 11) {
-    currentYear.value++
-    currentMonth.value = 0
-  } else {
-    currentMonth.value++
-  }
-}
-
-// Select a date from the calendar
-const selectDate = (date) => {
-  tempSelectedDate.value = new Date(date)
-}
-
-// Apply the selected date
-const applyDateSelection = () => {
-  selectedDate.value = new Date(tempSelectedDate.value)
-
-  // Format date as YYYY-MM-DD
-  const year = selectedDate.value.getFullYear()
-  const month = (selectedDate.value.getMonth() + 1).toString().padStart(2, '0')
-  const day = selectedDate.value.getDate().toString().padStart(2, '0')
-
-  form.date = `${year}-${month}-${day}`
-
-  closeDatePicker()
-}
-
-// Generate calendar days for the current month view
-const calendarDays = computed(() => {
-  const days = []
-  const firstDayOfMonth = new Date(currentYear.value, currentMonth.value, 1)
-  const lastDayOfMonth = new Date(currentYear.value, currentMonth.value + 1, 0)
-
-  // Get the day of the week of the first day (0-6, where 0 is Sunday)
-  const firstDayWeekday = firstDayOfMonth.getDay()
-
-  // Add days from previous month to fill the first row
-  const prevMonthLastDay = new Date(currentYear.value, currentMonth.value, 0).getDate()
-  for (let i = firstDayWeekday - 1; i >= 0; i--) {
-    const prevMonthDay = prevMonthLastDay - i
-    const date = new Date(currentYear.value, currentMonth.value - 1, prevMonthDay)
-    days.push({
-      day: prevMonthDay,
-      date: date,
-      inCurrentMonth: false,
-      isToday: isSameDay(date, new Date()),
-      isSelected: tempSelectedDate.value && isSameDay(date, tempSelectedDate.value),
-      isDisabled: date < new Date(today.value),
-    })
-  }
-
-  // Add days of current month
-  for (let day = 1; day <= lastDayOfMonth.getDate(); day++) {
-    const date = new Date(currentYear.value, currentMonth.value, day)
-    days.push({
-      day,
-      date,
-      inCurrentMonth: true,
-      isToday: isSameDay(date, new Date()),
-      isSelected: tempSelectedDate.value && isSameDay(date, tempSelectedDate.value),
-      isDisabled: date < new Date(today.value),
-    })
-  }
-
-  // Add days from next month to complete the calendar grid (up to 6 rows x 7 columns = 42 cells)
-  const remainingDays = 42 - days.length
-  for (let day = 1; day <= remainingDays; day++) {
-    const date = new Date(currentYear.value, currentMonth.value + 1, day)
-    days.push({
-      day,
-      date,
-      inCurrentMonth: false,
-      isToday: isSameDay(date, new Date()),
-      isSelected: tempSelectedDate.value && isSameDay(date, tempSelectedDate.value),
-      isDisabled: date < new Date(today.value),
-    })
-  }
-
-  return days
-})
-
-// Helper function to check if two dates are the same day
-const isSameDay = (date1, date2) => {
-  return (
-    date1.getFullYear() === date2.getFullYear() &&
-    date1.getMonth() === date2.getMonth() &&
-    date1.getDate() === date2.getDate()
-  )
-}
-</script>
-
 <style scoped>
-.event-options-container {
-  margin-bottom: 2rem;
-}
-
-.event-options-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 12px;
-  margin-bottom: 2rem;
-}
-
-.event-option-item {
-  flex: 0 0 auto;
-}
-
-.add-event-option {
-  margin-top: 1.5rem;
-}
-
-.custom-event-option-input {
-  display: flex;
-  gap: 10px;
-  margin-top: 2rem;
-  margin-bottom: 1.5rem;
-}
-
-.custom-option-input {
-  height: 46px;
-  font-size: 14px;
-}
-
-.add-custom-option-btn {
-  padding: 0 20px;
-  background-color: rgba(233, 75, 159, 0.15);
-  border: 1px solid rgba(233, 75, 159, 0.3);
-  border-radius: 8px;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-  height: 46px;
-}
-
-.add-custom-option-btn:hover:not(:disabled) {
-  background-color: rgba(233, 75, 159, 0.25);
-  transform: translateY(-1px);
-}
-
-.add-custom-option-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.remove-option-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  background: none;
-  border: none;
-  padding: 0;
-  color: rgba(255, 255, 255, 0.7);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.remove-option-btn:hover {
-  color: white;
-  transform: scale(1.1);
-}
-
-.event-option-checkbox {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
-  padding: 10px 15px;
-  border-radius: 8px;
-  transition: all 0.25s ease;
-  background-color: rgba(25, 24, 30, 0.5);
-  border: 1px solid rgba(67, 67, 70, 0.25);
-  margin-bottom: 0.5rem;
-}
-
-.event-option-checkbox:hover {
-  background-color: rgba(37, 36, 42, 0.7);
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-.event-option-checkbox--selected {
-  background-color: rgba(233, 75, 159, 0.15);
-  border-color: rgba(233, 75, 159, 0.3);
-  color: white;
-}
-
-.event-option-label {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.9);
-  user-select: none;
-  cursor: pointer;
-  line-height: 1.5;
-  font-weight: 400;
-}
-
-.event-option-checkmark {
-  color: rgba(233, 75, 159, 1);
-}
-
-.mt-4 {
-  margin-top: 1.5rem;
-}
-
-.create-event {
+.create-event-page {
+  --ce-ink: #0d0d0d;
+  --ce-ink2: #3d3935;
+  --ce-ink3: #7a746e;
+  --ce-ink4: #b0aaa4;
+  --ce-ink5: #d8d3ce;
+  --ce-paper: #fdfcfa;
+  --ce-p2: #f5f2ee;
+  --ce-p3: #ede9e3;
+  --ce-p4: #e4ded7;
+  --ce-acc: #e8470a;
+  --ce-green: #1a7a4a;
+  --ce-greenbg: #e8f7ef;
+  --ce-goldbg: #fdf8e8;
+  --ce-goldbdr: #edd98a;
+  --ce-red: #c0392b;
+  background: var(--ce-p2);
+  color: var(--ce-ink);
   min-height: 100vh;
-  background-color: #111014;
-  background-image: none;
-  padding: 0 0 8rem;
-  color: #fff;
-  position: relative;
-  overflow: hidden;
+  font-family: 'Figtree', sans-serif;
 }
 
-.create-event::before {
-  display: none;
+:global(:root:not(.light)) .create-event-page {
+  --ce-ink: #ffffff;
+  --ce-ink2: rgba(255, 255, 255, 0.86);
+  --ce-ink3: rgba(255, 255, 255, 0.68);
+  --ce-ink4: rgba(255, 255, 255, 0.48);
+  --ce-ink5: rgba(255, 255, 255, 0.18);
+  --ce-paper: #131319;
+  --ce-p2: #0b0f19;
+  --ce-p3: #1b1b24;
+  --ce-p4: rgba(255, 255, 255, 0.1);
+  --ce-greenbg: rgba(26, 122, 74, 0.18);
+  --ce-goldbg: rgba(200, 150, 10, 0.12);
+  --ce-goldbdr: rgba(200, 150, 10, 0.35);
 }
 
-.create-event::after {
-  display: none;
-}
-
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 3rem;
-  position: relative;
-  z-index: 1;
-}
-
-.back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: rgba(255, 255, 255, 0.7);
-  text-decoration: none;
-  font-size: 15px;
-  font-weight: 600;
-  margin: 2.5rem 0;
-  transition: all 0.3s ease;
-  letter-spacing: 0.5px;
-  position: relative;
-  padding-bottom: 2px;
-}
-
-.back-link::after {
-  content: '';
-  position: absolute;
-  width: 0;
-  height: 1px;
-  bottom: 0;
-  left: 0;
-  background-color: white;
-  transition: width 0.3s ease;
-}
-
-.back-link:hover {
-  color: white;
-  transform: translateX(-3px);
-}
-
-.back-link:hover svg {
-  transform: translateX(-3px);
-}
-
-.back-link:hover::after {
-  width: 100%;
-}
-
-.back-link svg {
-  width: 20px;
-  height: 20px;
-  transition: transform 0.3s ease;
-}
-
-.create-event__header {
-  margin-bottom: 5rem;
-  text-align: center;
-  position: relative;
-}
-
-.create-event__header::after {
-  content: '';
-  position: absolute;
-  width: 80px;
-  height: 2px;
-  background: linear-gradient(90deg, rgba(170, 170, 170, 0.3), rgba(170, 170, 170, 0.1));
-  bottom: -20px;
-  left: 50%;
-  transform: translateX(-50%);
-  border-radius: 2px;
-}
-
-.create-event__title {
-  font-size: 32px;
-  font-weight: 500;
-  color: white;
-  margin: 0;
-  display: inline-block;
-  background: linear-gradient(90deg, #fff, rgba(255, 255, 255, 0.7));
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  letter-spacing: 0.6px;
-}
-
-.create-event__subtitle {
-  font-size: 16px;
-  color: rgba(255, 255, 255, 0.6);
-  margin: 1rem 0 0;
-  font-weight: 400;
-  max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
-  letter-spacing: 0.2px;
-  line-height: 1.5;
-}
-
-.create-event__form {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.form-section {
-  margin-bottom: 4.5rem;
-  position: relative;
-  opacity: 0;
-  transform: translateY(10px);
-  animation: fadeIn 0.5s forwards;
-  background-color: rgba(25, 24, 30, 0.2);
-  border-radius: 16px;
-  padding: 2.5rem;
-  border: 1px solid rgba(67, 67, 70, 0.15);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-  width: 94%;
-  margin-left: auto;
-  margin-right: auto;
-  backdrop-filter: blur(10px);
-}
-
-.form-section:hover {
-  background-color: rgba(25, 24, 30, 0.25);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
-  border-color: rgba(67, 67, 70, 0.2);
-  transform: translateY(-1px);
-}
-
-.form-section:nth-child(1) {
-  animation-delay: 0.15s;
-}
-.form-section:nth-child(2) {
-  animation-delay: 0.3s;
-}
-.form-section:nth-child(3) {
-  animation-delay: 0.45s;
-}
-.form-section:nth-child(4) {
-  animation-delay: 0.6s;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.form-section .section-title {
-  opacity: 0;
-  transform: translateY(10px);
-  animation: fadeInUp 0.5s forwards;
-  animation-delay: 0.2s;
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.section-title {
+.ce-header {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  height: 58px;
+  background: color-mix(in srgb, var(--ce-paper) 94%, transparent);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--ce-p4);
   display: flex;
   align-items: center;
-  font-size: 18px;
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.85);
-  margin-bottom: 2.25rem;
-  letter-spacing: 0.3px;
-  position: relative;
+  gap: 12px;
+  padding: 0 1.5rem;
 }
 
-.section-title::before {
-  content: '';
-  position: absolute;
-  width: 30px;
-  height: 1px;
-  background-color: rgba(170, 170, 170, 0.5);
-  bottom: -8px;
-  left: 0;
-  border-radius: 1px;
+.ce-logo {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
 }
 
-.diamond {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  margin-right: 12px;
-  background-color: rgba(170, 170, 170, 0.7);
-  transform: rotate(45deg);
-  box-shadow: 0 0 8px rgba(170, 170, 170, 0.4);
+.ce-logo:hover {
+  background: transparent;
 }
 
-.form-group {
-  margin-bottom: 2.5rem;
-  position: relative;
-  transition: transform 0.2s ease;
-}
-
-.form-group:last-child {
-  margin-bottom: 0;
-}
-
-.form-group:focus-within {
-  transform: translateX(5px);
-}
-
-.form-label {
+.ce-logo img {
+  height: 40px;
+  width: auto;
   display: block;
-  font-size: 14px;
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.7);
-  margin-bottom: 0.75rem;
-  transition: color 0.15s ease;
-  letter-spacing: 0.3px;
 }
 
-.form-group:focus-within .form-label {
-  color: #aaaaaa;
-  font-weight: 600;
-  transform: translateX(2px);
-}
-
-.form-input {
-  width: 100%;
-  height: 52px;
-  background-color: rgba(25, 24, 30, 0.5);
-  border: 1px solid rgba(67, 67, 70, 0.25);
-  border-radius: 10px;
-  color: white;
-  font-size: 15px;
-  padding: 0 18px;
-  transition: all 0.25s ease;
-  font-weight: 400;
-  letter-spacing: 0.2px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
-}
-
-.form-input::placeholder {
-  color: rgba(111, 110, 123, 0.7);
-  font-weight: 300;
-}
-
-.form-input:hover {
-  border-color: rgba(255, 255, 255, 0.3);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: #aaaaaa;
-  background-color: #19181e;
-  box-shadow:
-    0 0 0 4px rgba(170, 170, 170, 0.2),
-    0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.form-input--error {
-  border-color: #ef4444;
-}
-
-.form-input--error:focus {
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
-  border-color: #ef4444;
-}
-
-.form-select {
-  width: 100%;
-  height: 52px;
-  background-color: rgba(25, 24, 30, 0.5);
-  border: 1px solid rgba(67, 67, 70, 0.25);
-  border-radius: 10px;
-  color: white;
-  font-size: 15px;
-  padding: 0 18px;
-  transition: all 0.25s ease;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236F6E7B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 16px center;
-  background-size: 14px;
-  padding-right: 45px;
-  font-weight: 400;
-  letter-spacing: 0.2px;
-}
-
-.form-select:hover {
-  border-color: rgba(255, 255, 255, 0.3);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.form-select:focus {
-  outline: none;
-  border-color: #aaaaaa;
-  background-color: #19181e;
-  box-shadow:
-    0 0 0 4px rgba(170, 170, 170, 0.2),
-    0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.form-textarea {
-  width: 100%;
-  min-height: 120px;
-  background-color: rgba(25, 24, 30, 0.5);
-  border: 1px solid rgba(67, 67, 70, 0.25);
-  border-radius: 10px;
-  color: white;
-  font-size: 15px;
-  padding: 14px 18px;
-  transition: all 0.25s ease;
-  resize: vertical;
-  font-weight: 400;
-  line-height: 1.6;
-  letter-spacing: 0.2px;
-}
-
-.form-textarea::placeholder {
-  color: rgba(111, 110, 123, 0.7);
-  font-weight: 300;
-}
-
-.form-textarea:hover {
-  border-color: rgba(255, 255, 255, 0.3);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.form-textarea:focus {
-  outline: none;
-  border-color: #aaaaaa;
-  background-color: #19181e;
-  box-shadow:
-    0 0 0 4px rgba(170, 170, 170, 0.2),
-    0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.form-row {
-  display: flex;
-  gap: 32px;
-  margin-bottom: 2.5rem;
-}
-
-.form-row:last-child {
-  margin-bottom: 0;
-}
-
-.form-row .form-group {
-  flex: 1;
-  margin-bottom: 0;
-}
-
-.form-helper {
-  font-size: 13px;
-  color: rgba(138, 137, 150, 0.7);
-  margin-top: 0.75rem;
-  line-height: 1.5;
-  transition: opacity 0.2s ease;
-}
-
-.form-group:focus-within .form-helper {
-  color: #a3a1b1;
-}
-
-.form-error {
-  color: #ef4444;
-  font-size: 14px;
-  margin-top: 0.75rem;
-  display: flex;
-  align-items: center;
-  font-weight: 400;
-  animation: errorShake 0.5s forwards;
-}
-
-@keyframes errorShake {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-  20%,
-  60% {
-    transform: translateX(-4px);
-  }
-  40%,
-  80% {
-    transform: translateX(4px);
-  }
-}
-
-.form-error::before {
-  content: '!';
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.ce-header-chevron {
   width: 18px;
-  height: 18px;
-  background-color: #ef4444;
-  border-radius: 50%;
-  margin-right: 10px;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.form-checkbox-wrapper {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  cursor: pointer;
-  padding: 8px 10px;
-  border-radius: 8px;
-  transition: background-color 0.25s ease;
-  margin-left: -10px;
-}
-
-.form-checkbox-wrapper:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-}
-
-.form-checkbox {
-  appearance: none;
-  width: 24px;
-  height: 24px;
-  background-color: #19181e;
-  border: 1px solid #434346;
-  border-radius: 6px;
-  cursor: pointer;
-  position: relative;
-  transition: all 0.25s ease;
-  flex-shrink: 0;
-  margin-top: 1px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-}
-
-.form-checkbox:checked {
-  background-color: #aaaaaa;
-  border-color: #aaaaaa;
-  box-shadow: 0 0 12px rgba(170, 170, 170, 0.3);
-}
-
-.form-checkbox:checked::after {
-  content: '';
-  position: absolute;
-  left: 8px;
-  top: 4px;
-  width: 6px;
-  height: 12px;
-  border: solid white;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-  animation: checkmark 0.2s ease-in-out forwards;
-}
-
-@keyframes checkmark {
-  0% {
-    opacity: 0;
-    transform: rotate(45deg) scale(0.5);
-  }
-  100% {
-    opacity: 1;
-    transform: rotate(45deg) scale(1);
-  }
-}
-
-.form-checkbox:focus {
-  outline: none;
-  box-shadow:
-    0 0 0 3px rgba(170, 170, 170, 0.2),
-    0 2px 5px rgba(0, 0, 0, 0.1);
-}
-
-.form-checkbox:hover {
-  border-color: rgba(255, 255, 255, 0.4);
-  transform: scale(1.05);
-}
-
-.form-checkbox-label {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.8);
-  user-select: none;
-  cursor: pointer;
-  line-height: 1.5;
-  padding-top: 1px;
-  font-weight: 400;
-}
-
-.location-map-placeholder {
-  background-color: rgba(25, 24, 30, 0.5);
-  border: 1px dashed #434346;
-  border-radius: 12px;
-  height: 160px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: 1.25rem;
-  transition: all 0.25s ease;
-  overflow: hidden;
-  position: relative;
-}
-
-.location-map-placeholder::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, rgba(25, 24, 30, 0.8), rgba(25, 24, 30, 0.5));
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.location-map-placeholder:hover {
-  border-color: rgba(255, 255, 255, 0.4);
-  transform: translateY(-3px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-}
-
-.location-map-placeholder:hover::before {
-  opacity: 1;
-}
-
-.location-map-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  color: #8a8996;
-  z-index: 1;
-}
-
-.location-map-content svg {
-  margin-bottom: 1rem;
-  opacity: 0.7;
-  transition: all 0.25s ease;
-  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.2));
-}
-
-.location-map-placeholder:hover .location-map-content svg {
-  opacity: 1;
-  transform: scale(1.2);
-  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.3));
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 24px;
-  margin-top: 4rem;
-}
-
-.btn-primary {
-  height: 50px;
-  padding: 0 32px;
-  background-color: rgba(170, 170, 170, 0.9);
-  color: white;
-  border: none;
-  border-radius: 10px;
-  font-size: 15px;
-  font-weight: 400;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 160px;
-  letter-spacing: 0.4px;
-}
-
-.btn-primary::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, #cccccc, #999999);
-  transition: opacity 0.3s ease;
-  opacity: 0;
-  z-index: -1;
-}
-
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 20px rgba(170, 170, 170, 0.3);
-}
-
-.btn-primary:hover::before {
-  opacity: 1;
-}
-
-.btn-primary:active {
-  transform: translateY(0);
-  box-shadow: 0 4px 12px rgba(170, 170, 170, 0.25);
-}
-
-.btn-secondary {
-  height: 50px;
-  padding: 0 32px;
-  background-color: rgba(255, 255, 255, 0.05);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
-  font-size: 15px;
-  font-weight: 400;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 140px;
-  letter-spacing: 0.3px;
-  backdrop-filter: blur(4px);
-}
-
-.btn-secondary:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.3);
-  transform: translateY(-2px);
-}
-
-.btn-secondary:active {
-  background-color: rgba(255, 255, 255, 0.08);
-  transform: translateY(0);
-}
-
-.create-event__alert {
-  padding: 18px;
-  border-radius: 12px;
-  margin-bottom: 2.5rem;
-  font-size: 16px;
-  display: flex;
-  align-items: center;
-  background-color: #19181e;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-  border: 1px solid #434346;
-  animation: alertSlideIn 0.5s forwards;
-  opacity: 0;
-  transform: translateY(-20px);
-}
-
-@keyframes alertSlideIn {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.create-event__alert::before {
-  content: '';
-  width: 24px;
-  height: 24px;
-  margin-right: 16px;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: contain;
+  color: var(--ce-ink4);
   flex-shrink: 0;
 }
 
-.create-event__alert--error {
-  background-color: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.2);
-}
-
-.create-event__alert--error::before {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23ef4444' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'%3E%3C/circle%3E%3Cline x1='12' y1='8' x2='12' y2='12'%3E%3C/line%3E%3Cline x1='12' y1='16' x2='12.01' y2='16'%3E%3C/line%3E%3C/svg%3E");
-}
-
-.create-event__alert--success {
-  background-color: rgba(34, 197, 94, 0.1);
-  color: #22c55e;
-  border: 1px solid rgba(34, 197, 94, 0.2);
-}
-
-.create-event__alert--success::before {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2322c55e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 11.08V12a10 10 0 1 1-5.93-9.14'%3E%3C/path%3E%3Cpolyline points='22 4 12 14.01 9 11.01'%3E%3C/polyline%3E%3C/svg%3E");
-}
-
-.spinner {
-  animation: rotate 1.2s linear infinite;
-  margin-right: 12px;
-  width: 20px;
-  height: 20px;
-}
-
-.spinner circle {
-  stroke: currentColor;
-  stroke-linecap: round;
-  animation: dash 1.5s ease-in-out infinite;
-}
-
-@keyframes rotate {
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes dash {
-  0% {
-    stroke-dasharray: 1, 150;
-    stroke-dashoffset: 0;
-  }
-  50% {
-    stroke-dasharray: 90, 150;
-    stroke-dashoffset: -35;
-  }
-  100% {
-    stroke-dasharray: 90, 150;
-    stroke-dashoffset: -124;
-  }
-}
-
-@media (max-width: 768px) {
-  .container {
-    padding: 0 1.5rem;
-  }
-
-  .form-section {
-    padding: 2rem 1.5rem;
-    width: 100%;
-  }
-
-  .form-row {
-    flex-direction: column;
-    gap: 1.75rem;
-  }
-
-  .form-actions {
-    flex-direction: column-reverse;
-    gap: 16px;
-  }
-
-  .btn-primary,
-  .btn-secondary {
-    width: 100%;
-  }
-
-  .create-event__title {
-    font-size: 32px;
-  }
-}
-
-@media (max-width: 480px) {
-  .create-event__title {
-    font-size: 28px;
-  }
-
-  .create-event__subtitle {
-    font-size: 16px;
-  }
-
-  .section-title {
-    font-size: 20px;
-  }
-
-  .form-label {
-    font-size: 15px;
-  }
-}
-
-.sub-categories-container {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin-top: 0.5rem;
-}
-
-.sub-category-item {
+.ce-progress {
   display: flex;
   align-items: center;
-  gap: 16px;
-  background-color: rgba(25, 24, 30, 0.5);
-  border-radius: 10px;
-  padding: 12px;
-  border: 1px solid rgba(67, 67, 70, 0.2);
-  transition: all 0.25s ease;
-  position: relative;
-  animation: slideIn 0.3s forwards;
+  background: var(--ce-p3);
+  border: 1px solid var(--ce-p4);
+  border-radius: 100px;
+  padding: 4px 5px;
+  gap: 2px;
+  margin: 0 auto;
 }
 
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateX(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-.sub-category-item:hover {
-  background-color: rgba(25, 24, 30, 0.7);
-  border-color: rgba(67, 67, 70, 0.3);
-  transform: translateX(3px);
-}
-
-.sub-category-select {
-  flex: 1;
-}
-
-.sub-category-remove {
+.ce-step {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  background-color: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  border-radius: 8px;
-  color: #ef4444;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  flex-shrink: 0;
-}
-
-.sub-category-remove:hover {
-  background-color: rgba(239, 68, 68, 0.2);
-  border-color: rgba(239, 68, 68, 0.3);
-  transform: scale(1.1);
-}
-
-.sub-category-remove:active {
-  transform: scale(0.95);
-}
-
-.add-sub-category-btn {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 20px;
-  background-color: rgba(170, 170, 170, 0.1);
-  border: 1px solid rgba(170, 170, 170, 0.2);
-  border-radius: 10px;
-  color: #cccccc;
-  font-size: 15px;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 100px;
+  background: transparent;
+  color: var(--ce-ink4);
+  border: 0;
+  font-size: 11px;
   font-weight: 500;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  margin-top: 12px;
-  width: fit-content;
-  position: relative;
-  overflow: hidden;
+  text-transform: none;
+  letter-spacing: 0;
+  min-height: 0;
+  min-width: 0;
 }
 
-.add-sub-category-btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, rgba(170, 170, 170, 0.15), rgba(170, 170, 170, 0.05));
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  z-index: -1;
-}
-
-.add-sub-category-btn:hover {
-  background-color: rgba(170, 170, 170, 0.15);
-  border-color: rgba(170, 170, 170, 0.3);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(170, 170, 170, 0.1);
-}
-
-.add-sub-category-btn:active {
-  transform: translateY(0);
-}
-
-.add-sub-category-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.ce-step:hover {
   transform: none;
   box-shadow: none;
 }
 
-.add-sub-category-btn svg {
-  transition: transform 0.3s ease;
-}
-
-.add-sub-category-btn:hover svg {
-  transform: rotate(90deg);
-}
-
-.create-event__note {
-  margin-top: 4rem;
-  padding: 20px;
-  background-color: rgba(25, 24, 30, 0.3);
-  border-radius: 12px;
-  border: 1px solid rgba(67, 67, 70, 0.2);
-  backdrop-filter: blur(10px);
-  width: 90%;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.create-event__note p {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.7);
-  margin: 0;
-}
-
-.create-event__note strong {
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.ticket-types-container {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.ticket-type-card {
-  background-color: rgba(25, 24, 30, 0.4);
-  border-radius: 12px;
-  padding: 24px;
-  border: 1px solid rgba(67, 67, 70, 0.3);
-  transition: all 0.25s ease;
-  position: relative;
-  animation: fadeIn 0.4s ease-out;
-}
-
-.ticket-type-card:hover {
-  background-color: rgba(25, 24, 30, 0.5);
-  border-color: rgba(67, 67, 70, 0.4);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-}
-
-.ticket-type-header {
-  display: flex;
-  justify-content: space-between;
+.ce-step-number {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--ce-p4);
+  color: var(--ce-ink3);
+  display: inline-flex;
   align-items: center;
-  margin-bottom: 20px;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
 }
 
-.ticket-type-title {
-  font-size: 16px;
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.9);
-  margin: 0;
+.ce-step.active {
+  background: var(--ce-ink);
+  color: var(--ce-paper);
+}
+
+.ce-step.active .ce-step-number {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.ce-step.done {
+  background: var(--ce-greenbg);
+  color: var(--ce-green);
+}
+
+.ce-step.done .ce-step-number {
+  background: var(--ce-green);
+  color: #ffffff;
+}
+
+.ce-header-actions {
   display: flex;
   align-items: center;
-}
-
-.ticket-type-actions {
-  display: flex;
   gap: 8px;
 }
 
-.ticket-action-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  border: 1px solid rgba(67, 67, 70, 0.3);
-  background-color: rgba(25, 24, 30, 0.7);
-  color: #cccccc;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.ticket-action-duplicate:hover {
-  background-color: rgba(170, 170, 170, 0.15);
-  border-color: rgba(170, 170, 170, 0.3);
-  color: #ffffff;
-  transform: scale(1.05);
-}
-
-.ticket-action-remove:hover {
-  background-color: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.3);
-  color: #ef4444;
-  transform: scale(1.05);
-}
-
-.ticket-action-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.ticket-name-input-wrapper {
-  display: flex;
-  gap: 10px;
-}
-
-.ticket-template-dropdown {
-  position: relative;
-}
-
-.ticket-template-btn {
-  height: 58px;
-  padding: 0 16px;
-  background-color: rgba(25, 24, 30, 0.7);
-  border: 1px solid rgba(67, 67, 70, 0.3);
-  border-radius: 12px;
-  color: #cccccc;
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  white-space: nowrap;
-}
-
-.ticket-template-btn:hover {
-  background-color: rgba(25, 24, 30, 0.9);
-  border-color: rgba(67, 67, 70, 0.5);
-  color: #ffffff;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.ticket-template-options {
-  position: absolute;
-  top: calc(100% + 5px);
-  right: 0;
-  background-color: #19181e;
-  border: 1px solid rgba(67, 67, 70, 0.3);
-  border-radius: 10px;
-  padding: 8px;
-  z-index: 10;
-  width: 180px;
-  display: none;
-  flex-direction: column;
-  gap: 2px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-}
-
-/* Remove this hover effect that shows dropdown */
-.ticket-template-dropdown:hover .ticket-template-options {
-  display: none; /* Changed from flex to none to prevent display on hover */
-}
-
-.ticket-template-option {
-  padding: 10px 14px;
-  border-radius: 6px;
-  background-color: transparent;
-  border: none;
-  color: #ffffff;
-  font-size: 14px;
-  text-align: left;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-}
-
-.ticket-template-option:hover {
-  background-color: rgba(170, 170, 170, 0.1);
-}
-
-.ticket-description {
-  min-height: 80px;
-}
-
-.ticket-sales-period {
-  margin-top: 10px;
-  margin-bottom: 20px;
-}
-
-.ticket-section-subtitle {
-  font-size: 15px;
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.8);
-  margin: 0 0 4px 0;
-}
-
-.ticket-section-helper {
-  font-size: 13px;
-  color: rgba(138, 137, 150, 0.7);
-  margin: 0 0 14px 0;
-  line-height: 1.5;
-}
-
-.add-ticket-type-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 16px;
-  background-color: rgba(25, 24, 30, 0.4);
-  border: 1px dashed rgba(67, 67, 70, 0.4);
-  border-radius: 12px;
-  color: #cccccc;
-  font-size: 16px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  width: 100%;
-  margin-top: 12px;
-}
-
-.add-ticket-type-btn:hover {
-  background-color: rgba(25, 24, 30, 0.6);
-  border-color: rgba(170, 170, 170, 0.4);
-  color: #ffffff;
-  transform: translateY(-2px);
-}
-
-.add-ticket-type-btn svg {
-  transition: transform 0.3s ease;
-}
-
-.add-ticket-type-btn:hover svg {
-  transform: rotate(90deg);
-}
-
-.ticket-types-error {
-  margin-bottom: 20px;
-}
-
-/* Modal styles */
-.ticket-template-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.75);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  backdrop-filter: blur(5px);
-  animation: fadeIn 0.3s ease-out forwards;
-}
-
-.ticket-template-modal {
-  width: 90%;
-  max-width: 600px;
-  background-color: #19181e;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  animation: modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  overflow: hidden;
-  transform: translateY(20px);
-  opacity: 0;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes modalSlideIn {
-  from {
-    transform: translateY(40px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-.ticket-template-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.ticket-template-modal-header h3 {
-  font-size: 18px;
-  font-weight: 400;
-  color: #ffffff;
-  margin: 0;
-  letter-spacing: 0.3px;
-}
-
-.modal-close-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: none;
-  background-color: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.modal-close-btn:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-  transform: scale(1.1);
-}
-
-.ticket-template-modal-body {
-  padding: 16px;
-  max-height: 70vh;
-  overflow-y: auto;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 16px;
-}
-
-.template-card {
-  background-color: rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 20px;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  position: relative;
-  overflow: hidden;
-}
-
-.template-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, rgba(170, 170, 170, 0.1), transparent);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.template-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  background-color: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-.template-card:hover::before {
-  opacity: 1;
-}
-
-.template-card-content {
-  flex: 1;
-}
-
-.template-name {
-  font-size: 16px;
-  font-weight: 400;
-  color: #ffffff;
-  margin: 0 0 6px 0;
-}
-
-.template-description {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.7);
-  margin: 0;
-  line-height: 1.4;
-}
-
-.template-card-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background-color: #aaaaaa;
-  color: #19181e;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transform: scale(0.8);
-  transition: all 0.2s ease;
-}
-
-.template-card:hover .template-card-icon {
-  opacity: 1;
-  transform: scale(1);
-}
-
-/* Update existing template dropdown */
-.ticket-template-options {
-  display: none; /* Hide dropdown since we're using modal now */
-}
-
-@media (max-width: 768px) {
-  .ticket-template-modal {
-    width: 95%;
-    max-height: 80vh;
-  }
-
-  .ticket-template-modal-body {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Subcategory modal styles */
-.subcategory-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.75);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  backdrop-filter: blur(5px);
-  animation: fadeIn 0.3s ease-out forwards;
-}
-
-.subcategory-modal {
-  width: 90%;
-  max-width: 600px;
-  background-color: #19181e;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  animation: modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  overflow: hidden;
-  transform: translateY(20px);
-  opacity: 0;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.subcategory-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.subcategory-modal-header h3 {
-  font-size: 18px;
-  font-weight: 400;
-  color: #ffffff;
-  margin: 0;
-  letter-spacing: 0.3px;
-}
-
-.subcategory-modal-body {
-  padding: 20px 24px;
-  overflow-y: auto;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.subcategory-modal-info {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.6);
-  margin: 0;
-}
-
-.subcategory-search {
-  margin-bottom: 16px;
-}
-
-.subcategory-search-input {
-  width: 100%;
-  height: 46px;
-  background-color: rgba(25, 24, 30, 0.5);
-  border: 1px solid rgba(67, 67, 70, 0.25);
-  border-radius: 10px;
-  color: white;
-  font-size: 15px;
-  padding: 0 18px;
-  transition: all 0.25s ease;
-}
-
-.subcategory-search-input:focus {
-  outline: none;
-  border-color: rgba(170, 170, 170, 0.5);
-  box-shadow: 0 0 0 3px rgba(170, 170, 170, 0.15);
-}
-
-.subcategory-options {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.subcategory-section {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.subcategory-section-title {
-  font-size: 15px;
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.7);
-  margin: 0;
-  letter-spacing: 0.2px;
-}
-
-.subcategory-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.subcategory-chip {
+.draft-badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  background-color: rgba(255, 255, 255, 0.08);
-  border-radius: 6px;
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  user-select: none;
-  border: 1px solid transparent;
+  gap: 4px;
+  color: var(--ce-green);
+  background: var(--ce-greenbg);
+  border: 1px solid rgba(26, 122, 74, 0.2);
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-size: 11px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
 
-/* Modified hover style to use the pink color */
-.subcategory-chip:hover {
-  background-color: rgba(233, 75, 159, 0.05);
-  transform: translateY(-1px);
+.draft-badge svg {
+  width: 12px;
 }
 
-.subcategory-chip--selected {
-  background-color: rgba(233, 75, 159, 0.08);
-  border-color: rgba(233, 75, 159, 0.2);
-  color: white;
+.draft-badge.show {
+  opacity: 1;
 }
 
-.subcategory-chip--custom {
-  background-color: rgba(119, 81, 200, 0.15);
-  border-color: rgba(119, 81, 200, 0.3);
+.ghost-btn {
+  border: 1px solid var(--ce-p4);
+  background: transparent;
+  color: var(--ce-ink3);
+  border-radius: 10px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  min-height: 0;
 }
 
-.custom-subcategory-input {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
+.ghost-btn:hover {
+  background: var(--ce-p3);
+  color: var(--ce-ink);
+  transform: none;
+  box-shadow: none;
 }
 
-.custom-input {
-  height: 46px;
+.ce-wrap {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 1.5rem 1.5rem 5rem;
 }
 
-.add-custom-btn {
-  padding: 0 16px;
-  background-color: rgba(170, 170, 170, 0.2);
-  border: 1px solid rgba(170, 170, 170, 0.3);
-  border-radius: 8px;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
-
-.add-custom-btn:hover:not(:disabled) {
-  background-color: rgba(233, 75, 159, 0.15);
-  transform: translateY(-1px);
-}
-
-.add-custom-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.remove-custom-btn {
+.preview-toggle {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  background: none;
-  border: none;
-  padding: 0;
-  color: rgba(255, 255, 255, 0.7);
-  cursor: pointer;
-  transition: all 0.2s ease;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-size: 11.5px;
+  color: var(--ce-ink4);
 }
 
-.remove-custom-btn:hover {
-  color: white;
-  transform: scale(1.1);
-}
-
-.subcategory-modal-footer {
-  display: flex;
-  justify-content: space-between;
+.preview-btn {
+  display: inline-flex;
   align-items: center;
-  padding-top: 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  margin-top: 10px;
+  gap: 7px;
+  padding: 7px 14px;
+  border-radius: 100px;
+  border: 1.5px solid var(--ce-p4);
+  background: var(--ce-paper);
+  color: var(--ce-ink3);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  min-height: 0;
 }
 
-.subcategory-count {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.7);
+.preview-btn svg,
+.text-btn svg,
+.pill svg,
+.inline-btn svg,
+.primary-btn svg,
+.back-btn svg,
+.icon-btn svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
-.subcategory-actions {
-  display: flex;
-  gap: 12px;
+.preview-btn.on {
+  border-color: var(--ce-green);
+  color: var(--ce-green);
+  background: var(--ce-greenbg);
 }
 
-.subcategory-actions .btn-primary,
-.subcategory-actions .btn-secondary {
-  height: 42px;
-  min-width: auto;
-  padding: 0 20px;
-  font-size: 14px;
+.ce-columns {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 1.75rem;
+  align-items: start;
 }
 
-/* Selected subcategories display in the form */
-.subcategories-display {
+.ce-columns.preview-off {
+  grid-template-columns: 1fr;
+}
+
+.screen {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 1.2rem;
 }
 
-.selected-subcategories {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  min-height: 46px;
-  padding: 5px;
-  background-color: rgba(25, 24, 30, 0.3);
-  border: 1px solid rgba(67, 67, 70, 0.25);
-  border-radius: 10px;
+.screen-head h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 1.9rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.15;
+  color: var(--ce-ink);
 }
 
-.no-subcategories {
-  color: rgba(111, 110, 123, 0.7);
-  font-size: 14px;
-  padding: 8px 12px;
+.screen-head h1 em {
+  color: var(--ce-acc);
   font-style: italic;
 }
 
-.selected-subcategory {
+.screen-head p {
+  font-size: 13.5px;
+  color: var(--ce-ink3);
+  margin-top: 6px;
+  line-height: 1.65;
+}
+
+.ce-card,
+.info-card,
+.tip-card {
+  background: var(--ce-paper);
+  border: 1px solid var(--ce-p4);
+  border-radius: 24px;
+  padding: 1.6rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.ce-card.compact {
+  padding: 1.1rem 1.3rem;
+  border-radius: 16px;
+}
+
+.field,
+.paid-block {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 1rem;
+}
+
+.field:last-child,
+.paid-block:last-child {
+  margin-bottom: 0;
+}
+
+label,
+.field-top label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ce-ink3);
+}
+
+label span {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ce-ink4);
+}
+
+.field-input,
+:deep(.datetime-input) {
+  width: 100%;
+  background: var(--ce-p2);
+  border: 1.5px solid var(--ce-p4);
+  border-radius: 12px;
+  padding: 11px 14px;
+  font-family: 'Figtree', sans-serif;
+  font-size: 14px;
+  line-height: 1.3;
+  color: var(--ce-ink);
+  outline: none;
+}
+
+.field-input-xl {
+  font-family: 'Fraunces', serif;
+  font-size: 20px;
+  font-weight: 300;
+  letter-spacing: 0;
+  padding: 14px 18px;
+  border-radius: 16px;
+  background: var(--ce-paper);
+}
+
+.field-input:focus,
+:deep(.datetime-input:focus) {
+  border-color: var(--ce-ink);
+  background: var(--ce-paper);
+  box-shadow: 0 0 0 3px rgba(13, 13, 13, 0.06);
+}
+
+.field-input.error,
+.upload-zone.error,
+:deep(.input-wrapper.has-error .datetime-input) {
+  border-color: var(--ce-red);
+  background: color-mix(in srgb, var(--ce-red) 8%, var(--ce-paper));
+}
+
+.help,
+:deep(.error-message),
+.error-text {
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+.help {
+  color: var(--ce-ink4);
+}
+
+.error-text,
+:deep(.error-message) {
+  color: var(--ce-red);
+  margin: 2px 0 0;
+}
+
+:deep(.input-label) {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ce-ink3);
+}
+
+:deep(.datetime-picker-input) {
+  margin-bottom: 0;
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 1rem;
+}
+
+.divider span {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ce-ink4);
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--ce-p3);
+}
+
+.pill-row,
+.detail-chip-row,
+.quick-chip-row,
+.day-row {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.pill,
+.detail-chip,
+.quick-chip {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 5px 10px;
-  background-color: rgba(233, 75, 159, 0.07);
-  border: 1px solid rgba(233, 75, 159, 0.15);
-  border-radius: 6px;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 14px;
+  gap: 6px;
+  padding: 9px 14px;
+  border: 1.5px solid var(--ce-p4);
+  border-radius: 10px;
+  background: var(--ce-paper);
+  color: var(--ce-ink3);
+  font-size: 12.5px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  min-height: 0;
 }
 
-.remove-subcategory-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  background: none;
-  border: none;
-  padding: 0;
-  color: rgba(255, 255, 255, 0.7);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.remove-subcategory-btn:hover {
-  color: white;
-  transform: scale(1.1);
-}
-
-.manage-subcategories-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background-color: rgba(25, 24, 30, 0.5);
-  border: 1px solid rgba(67, 67, 70, 0.25);
-  border-radius: 8px;
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  align-self: flex-start;
-}
-
-.manage-subcategories-btn:hover:not(:disabled) {
-  background-color: rgba(25, 24, 30, 0.7);
-  border-color: rgba(170, 170, 170, 0.3);
+.pill:hover,
+.detail-chip:hover,
+.quick-chip:hover {
+  border-color: var(--ce-ink5);
+  color: var(--ce-ink);
   transform: translateY(-1px);
+  box-shadow: none;
 }
 
-.manage-subcategories-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.pill.selected {
+  border-color: var(--ce-ink);
+  background: var(--ce-ink);
+  color: var(--ce-paper);
 }
 
-.manage-subcategories-btn svg {
-  transition: transform 0.2s ease;
+.sub-panel {
+  background: var(--ce-p2);
+  border: 1px solid var(--ce-p3);
+  border-radius: 14px;
+  padding: 1rem;
+  margin-bottom: 1rem;
 }
 
-.manage-subcategories-btn:hover:not(:disabled) svg {
-  transform: rotate(90deg);
+.info-card {
+  border-radius: 14px;
+  padding: 0.9rem 1.1rem;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 1rem;
 }
 
-@media (max-width: 768px) {
-  .subcategory-modal {
-    width: 95%;
-    max-height: 80vh;
-  }
-
-  .subcategory-modal-footer {
-    flex-direction: column;
-    gap: 16px;
-    align-items: stretch;
-  }
-
-  .subcategory-actions {
-    flex-direction: column;
-  }
+.info-card svg {
+  width: 18px;
+  color: var(--ce-acc);
+  flex-shrink: 0;
 }
 
-/* Add focus styling for inputs */
-.form-input:focus,
-.form-select:focus,
-.form-textarea:focus,
-.subcategory-search-input:focus {
-  outline: none;
-  border-color: rgba(233, 75, 159, 0.3);
-  box-shadow: 0 0 0 1px rgba(233, 75, 159, 0.15);
-  background-color: rgba(25, 24, 30, 0.5);
+.info-card strong {
+  font-size: 12.5px;
+  color: var(--ce-ink2);
 }
 
-/* Update form group focus style */
-.form-group:focus-within .form-label {
-  color: rgba(233, 75, 159, 0.7);
-  font-weight: 400;
-  transform: translateX(1px);
+.info-card p {
+  font-size: 12px;
+  color: var(--ce-ink3);
+  line-height: 1.6;
+  margin: 3px 0 0;
 }
 
-/* FAQ section styles */
-.section-optional {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.5);
-  font-weight: 300;
-  margin-left: 8px;
+.info-card.amber {
+  background: var(--ce-goldbg);
+  border-color: var(--ce-goldbdr);
 }
 
-.section-intro {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.6);
-  margin: 0 0 24px 0;
+.info-card.green {
+  background: var(--ce-greenbg);
+  border-color: rgba(26, 122, 74, 0.2);
+}
+
+.day-chip {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ce-p4);
+  background: var(--ce-paper);
+  color: var(--ce-ink3);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 0;
+  min-width: 0;
+  min-height: 0;
+}
+
+.day-chip.selected {
+  background: var(--ce-ink);
+  border-color: var(--ce-ink);
+  color: var(--ce-paper);
+}
+
+.recurrence-preview,
+.detail-hint,
+.calc-card {
+  background: var(--ce-goldbg);
+  border: 1px solid var(--ce-goldbdr);
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 12px;
+  color: var(--ce-ink2);
   line-height: 1.5;
 }
 
-.faq-container {
+.input-with-icon {
+  position: relative;
+}
+
+.input-with-icon svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 15px;
+  color: var(--ce-ink4);
+}
+
+.input-with-icon .field-input {
+  padding-left: 36px;
+}
+
+.venue-results {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--ce-paper);
+  border: 1px solid var(--ce-p4);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  overflow: hidden;
+}
+
+.venue-results button {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  align-items: flex-start;
+  width: 100%;
+  padding: 10px 14px;
+  background: transparent;
+  color: var(--ce-ink2);
+  border-radius: 0;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 13px;
+  min-height: 0;
 }
 
-.faq-item {
-  background-color: rgba(25, 24, 30, 0.3);
-  border-radius: 10px;
-  border: 1px solid rgba(67, 67, 70, 0.2);
-  overflow: hidden;
-  transition: all 0.25s ease;
+.venue-results span {
+  color: var(--ce-ink4);
+  font-size: 11px;
 }
 
-.faq-item:hover {
-  background-color: rgba(25, 24, 30, 0.4);
-  border-color: rgba(67, 67, 70, 0.3);
-  transform: translateY(-1px);
-}
-
-.faq-header {
+.field-top {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.text-btn,
+.inline-btn,
+.icon-btn {
+  display: inline-flex;
   align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid rgba(67, 67, 70, 0.15);
+  justify-content: center;
+  gap: 5px;
+  background: transparent;
+  color: var(--ce-ink3);
+  border: 1px solid var(--ce-p4);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  min-height: 0;
 }
 
-.faq-number {
-  font-size: 14px;
-  font-weight: 400;
-  color: rgba(233, 75, 159, 0.7);
-  margin: 0;
-  letter-spacing: 0.5px;
+.text-btn {
+  border: 0;
+  padding: 0;
 }
 
-.faq-actions {
+.upload-tabs {
+  display: flex;
+  background: var(--ce-p3);
+  border: 1px solid var(--ce-p4);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.upload-tabs button {
+  flex: 1;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ce-ink3);
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  min-height: 0;
+}
+
+.upload-tabs button.active {
+  background: var(--ce-paper);
+  color: var(--ce-ink);
+}
+
+.upload-zone {
+  border: 2px dashed var(--ce-p4);
+  border-radius: 16px;
+  padding: 1.8rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+  background: var(--ce-paper);
+  text-align: center;
+  color: var(--ce-ink3);
+}
+
+.upload-ring {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--ce-p3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.upload-ring svg {
+  width: 20px;
+}
+
+.upload-zone strong {
+  font-size: 13px;
+  color: var(--ce-ink2);
+}
+
+.upload-zone span {
+  font-size: 10.5px;
+}
+
+.url-panel {
   display: flex;
   gap: 8px;
-}
-
-.faq-action-btn {
-  display: flex;
   align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
-  background-color: rgba(25, 24, 30, 0.5);
-  border: 1px solid rgba(67, 67, 70, 0.25);
-  color: rgba(255, 255, 255, 0.7);
-  cursor: pointer;
-  transition: all 0.2s ease;
 }
 
-.faq-action-remove:hover {
-  background-color: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.3);
-  color: #ef4444;
-  transform: scale(1.05);
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+  margin-top: 10px;
 }
 
-.faq-content {
-  padding: 16px;
+.template-grid button {
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  padding: 0;
+  min-height: 0;
 }
 
-.faq-answer {
-  min-height: 80px;
-}
-
-.add-faq-btn {
+.image-strip {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 14px;
-  background-color: rgba(25, 24, 30, 0.4);
-  border: 1px dashed rgba(67, 67, 70, 0.4);
-  border-radius: 10px;
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 15px;
-  font-weight: 400;
-  cursor: pointer;
-  transition: all 0.25s ease;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
 }
 
-.add-faq-btn:hover {
-  background-color: rgba(25, 24, 30, 0.6);
-  border-color: rgba(233, 75, 159, 0.25);
-  color: white;
-  transform: translateY(-2px);
-}
-
-.add-faq-btn svg {
-  transition: transform 0.3s ease;
-}
-
-.add-faq-btn:hover svg {
-  transform: rotate(90deg);
-}
-
-@media (max-width: 768px) {
-  .faq-content {
-    padding: 12px;
-  }
-}
-
-.image-upload-container {
-  width: 100%;
-  margin-bottom: 10px;
-}
-
-.image-upload-row {
-  display: flex;
-  gap: 20px;
-  width: 100%;
-}
-
-.image-upload-dropzone {
+.image-thumb {
   position: relative;
-  flex: 1;
-  background-color: rgba(25, 24, 30, 0.4);
-  border: 2px dashed rgba(67, 67, 70, 0.4);
-  border-radius: 10px;
-  height: 160px;
-  cursor: pointer;
+  width: 80px;
+  height: 58px;
+  border-radius: 8px;
   overflow: hidden;
-  transition: all 0.25s ease;
+  border: 1.5px solid var(--ce-p4);
+  flex-shrink: 0;
 }
 
-.image-upload-dropzone:hover {
-  background-color: rgba(25, 24, 30, 0.6);
-  border-color: rgba(170, 170, 170, 0.5);
-  transform: translateY(-2px);
+.image-thumb.primary {
+  border-color: #c8960a;
+  box-shadow: 0 0 0 2px #c8960a;
 }
 
-.banner-dropzone {
-  flex: 2;
-}
-
-.has-image {
-  border-style: solid;
-  border-color: rgba(170, 170, 170, 0.3);
-}
-
-.preview-image {
+.image-thumb img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.upload-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  gap: 10px;
-  padding: 15px;
-}
-
-.upload-icon {
-  color: rgba(170, 170, 170, 0.6);
-  transition: all 0.25s ease;
-}
-
-.image-upload-dropzone:hover .upload-icon {
-  color: rgba(170, 170, 170, 0.9);
-  transform: scale(1.1);
-}
-
-.upload-text {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-
-.primary-text {
-  color: rgba(255, 255, 255, 0.9);
-  font-weight: 500;
-  font-size: 15px;
-  margin-bottom: 3px;
-}
-
-.secondary-text {
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 13px;
-}
-
-.image-inputs {
-  display: none;
-}
-
-.image-input {
-  display: none;
-}
-
-.banner-preview {
-  width: 200px;
-  height: 100px;
-  border-radius: 10px;
-  background-color: #333;
-  background-size: cover;
-  background-position: center;
-  cursor: pointer;
-  position: relative;
-}
-
-.image-overlay {
+.image-thumb > span {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.25s ease;
-}
-
-.image-upload-dropzone:hover .image-overlay {
-  opacity: 1;
-}
-
-.remove-image-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background-color: rgba(239, 68, 68, 0.2);
-  color: white;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.remove-image-btn:hover {
-  background-color: rgba(239, 68, 68, 0.4);
-  transform: scale(1.05);
-}
-
-.remove-image-btn svg {
-  width: 16px;
-  height: 16px;
-}
-
-.event-options-container {
-  margin-bottom: 2rem;
-}
-
-.event-options-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 12px;
-  margin-bottom: 2rem;
-}
-
-.event-option-item {
-  flex: 0 0 auto;
-}
-
-.add-event-option {
-  margin-top: 1.5rem;
-}
-
-.custom-event-option-input {
-  display: flex;
-  gap: 10px;
-  margin-top: 2rem;
-  margin-bottom: 1.5rem;
-}
-
-.date-picker-wrapper {
-  position: relative;
-}
-
-.date-input {
-  padding-right: 30px;
-}
-
-.date-picker-wrapper::after {
-  content: '\25BC';
-  position: absolute;
-  top: 50%;
-  right: 10px;
-  transform: translateY(-50%);
-  pointer-events: none;
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.time-picker-wrapper {
-  position: relative;
-}
-
-.time-input {
-  padding-right: 30px;
-  cursor: pointer;
-}
-
-.time-picker-wrapper::after {
-  content: '\25BC';
-  position: absolute;
-  top: 50%;
-  right: 10px;
-  transform: translateY(-50%);
-  pointer-events: none;
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.picker-tip {
-  position: absolute;
-  top: -54px;
-  left: 50%;
-  transform: translateX(-50%);
-  background-color: rgba(25, 24, 30, 0.95);
-  border: 1px solid rgba(170, 170, 170, 0.2);
-  border-radius: 8px;
-  padding: 8px 12px;
-  z-index: 10;
-  width: 180px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  animation: tipFadeIn 0.3s ease;
-}
-
-@keyframes tipFadeIn {
-  from {
-    opacity: 0;
-    transform: translate(-50%, 10px);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
-}
-
-.picker-tip::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  border-width: 8px;
-  border-style: solid;
-  border-color: rgba(25, 24, 30, 0.95) transparent transparent transparent;
-}
-
-.tip-content p {
-  margin: 0 0 4px;
-  font-size: 14px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.tip-content span {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-/* Time Picker Modal */
-.time-picker-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.75);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  backdrop-filter: blur(5px);
-  animation: fadeIn 0.3s ease-out forwards;
-}
-
-.time-picker-modal {
-  width: 320px;
-  background-color: #19181e;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  animation: modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  overflow: hidden;
-}
-
-.time-picker-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.time-picker-header h3 {
-  font-size: 18px;
-  font-weight: 500;
+  top: 3px;
+  left: 3px;
+  background: #c8960a;
   color: #ffffff;
-  margin: 0;
-  letter-spacing: 0.3px;
+  font-size: 7px;
+  font-weight: 700;
+  padding: 2px 4px;
+  border-radius: 3px;
+  text-transform: uppercase;
 }
 
-.time-picker-close {
-  background: none;
-  border: none;
-  color: rgba(255, 255, 255, 0.6);
-  cursor: pointer;
-  padding: 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-}
-
-.time-picker-close:hover {
-  color: white;
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.time-picker-body {
-  padding: 20px;
-}
-
-.time-picker-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  max-height: 240px;
-  overflow-y: auto;
-  padding-right: 5px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(170, 170, 170, 0.3) transparent;
-  position: relative;
-}
-
-.time-picker-grid::-webkit-scrollbar {
-  width: 4px;
-}
-
-.time-picker-grid::-webkit-scrollbar-track {
-  background: rgba(25, 24, 30, 0.3);
-  border-radius: 2px;
-}
-
-.time-picker-grid::-webkit-scrollbar-thumb {
-  background-color: rgba(233, 75, 159, 0.3);
-  border-radius: 2px;
-}
-
-.time-picker-grid::after {
-  content: 'Scroll for more options';
+.image-thumb > button,
+.thumb-actions {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  text-align: center;
-  padding: 30px 0 5px;
-  background: linear-gradient(to bottom, transparent, #19181e);
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.time-picker-grid:hover::after {
-  opacity: 1;
-}
-
-.time-option {
-  padding: 10px 0;
-  text-align: center;
-  background-color: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.8);
-  border: 1px solid transparent;
-}
-
-.time-option:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  transform: translateY(-2px);
-}
-
-.time-option.selected {
-  background-color: rgba(233, 75, 159, 0.15);
-  border-color: rgba(233, 75, 159, 0.3);
-  color: white;
-  font-weight: 500;
-}
-
-.time-period-selector {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 16px;
-}
-
-.time-period-btn {
-  padding: 8px 20px;
-  background-color: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  color: rgba(255, 255, 255, 0.7);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 14px;
-}
-
-.time-period-btn:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.time-period-btn.selected {
-  background-color: rgba(233, 75, 159, 0.15);
-  border-color: rgba(233, 75, 159, 0.3);
-  color: white;
-}
-
-.time-picker-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 16px 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.time-picker-btn {
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.time-picker-cancel {
-  background-color: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.time-picker-cancel:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: white;
-}
-
-.time-picker-apply {
-  background-color: rgba(233, 75, 159, 0.15);
-  border: 1px solid rgba(233, 75, 159, 0.3);
-  color: white;
-}
-
-.time-picker-apply:hover {
-  background-color: rgba(233, 75, 159, 0.25);
-  transform: translateY(-2px);
-}
-
-@keyframes modalSlideIn {
-  0% {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes fadeIn {
-  0% {
-    opacity: 0;
-  }
-  100% {
-    opacity: 1;
-  }
-}
-
-/* Custom Time Input */
-.custom-time-input {
-  margin-bottom: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.time-input-group {
-  display: flex;
-  align-items: center;
-  background-color: rgba(233, 75, 159, 0.08);
-  border: 1px solid rgba(233, 75, 159, 0.2);
-  border-radius: 10px;
-  padding: 12px 16px;
-  margin-bottom: 24px;
-  position: relative;
-}
-
-.full-time-input {
-  width: 100%;
-  background-color: rgba(233, 75, 159, 0.08);
-  border: 1px solid rgba(233, 75, 159, 0.2);
-  border-radius: 10px;
-  padding: 12px 16px;
-  margin-bottom: 16px;
-  color: white;
-  font-size: 16px;
-  text-align: center;
-  outline: none;
-}
-
-.full-time-input:focus {
-  background-color: rgba(233, 75, 159, 0.15);
-  border-color: rgba(233, 75, 159, 0.4);
-}
-
-.full-time-input::placeholder {
-  color: rgba(255, 255, 255, 0.4);
-}
-
-.time-input-group::after {
-  content: 'Type your custom time';
-  position: absolute;
-  bottom: -20px;
-  left: 0;
-  width: 100%;
-  text-align: center;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.time-input-field {
-  width: 40px;
-  background: transparent;
-  border: none;
-  color: white;
-  font-size: 20px;
-  font-weight: 500;
-  text-align: center;
-  -moz-appearance: textfield;
-  border-radius: 5px;
-  padding: 5px 0;
-  transition: all 0.2s ease;
-}
-
-.time-input-field::-webkit-outer-spin-button,
-.time-input-field::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-.time-input-field:focus {
-  outline: none;
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.time-input-field::placeholder {
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 16px;
-}
-
-.time-divider {
-  color: white;
-  font-size: 20px;
-  margin: 0 5px;
-}
-
-.time-input-note {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
-  margin-top: 4px;
-}
-
-/* Date Picker Styles */
-.date-picker-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.75);
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100;
-  backdrop-filter: blur(5px);
-  animation: fadeIn 0.3s ease-out forwards;
-}
-
-.date-picker-modal {
-  width: 320px;
-  background-color: #19181e;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  animation: modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  overflow: hidden;
-}
-
-.date-picker-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.date-picker-header h3 {
-  font-size: 18px;
-  font-weight: 500;
-  color: #ffffff;
-  margin: 0;
-  letter-spacing: 0.3px;
-}
-
-.date-picker-close {
-  background: none;
-  border: none;
-  color: rgba(255, 255, 255, 0.6);
-  cursor: pointer;
-  padding: 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-}
-
-.date-picker-close:hover {
-  color: white;
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.date-picker-body {
-  padding: 20px;
-}
-
-.date-picker-month-nav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.month-display {
-  font-size: 16px;
-  font-weight: 500;
-  color: white;
-}
-
-.month-nav-btn {
-  background: none;
-  border: none;
-  color: rgba(255, 255, 255, 0.6);
-  cursor: pointer;
-  padding: 6px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.month-nav-btn:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: white;
-}
-
-.date-picker-weekdays {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  text-align: center;
-  margin-bottom: 8px;
-}
-
-.weekday {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
-  padding: 8px 0;
-  font-weight: 500;
-}
-
-.date-picker-days {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
   gap: 4px;
+  opacity: 0;
+  background: rgba(0, 0, 0, 0.62);
+  transition: opacity 0.15s ease;
 }
 
-.calendar-day {
-  height: 36px;
+.image-thumb:hover > button,
+.image-thumb:hover .thumb-actions {
+  opacity: 1;
+}
+
+.image-thumb button {
+  min-height: 0;
+  padding: 5px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.green-check,
+.select-check {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--ce-green);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.green-check svg,
+.select-check svg {
+  width: 12px;
+}
+
+.detail-chip.selected {
+  border-color: var(--ce-green);
+  background: var(--ce-greenbg);
+  color: var(--ce-green);
+}
+
+.detail-fields,
+.ticket-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.detail-field-card,
+.ticket-card {
+  position: relative;
+  background: var(--ce-p2);
+  border: 1px solid var(--ce-p3);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.icon-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+}
+
+.icon-btn.danger {
+  color: var(--ce-red);
+}
+
+.detail-field-card .icon-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
+.ticket-mode-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.ticket-mode-card {
+  position: relative;
+  border: 1.5px solid var(--ce-p4);
+  border-radius: 14px;
+  padding: 1rem;
+  background: var(--ce-paper);
+  color: var(--ce-ink3);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  text-transform: none;
+  letter-spacing: 0;
+  min-height: 0;
+}
+
+.ticket-mode-card > svg {
+  width: 20px;
+}
+
+.ticket-mode-card strong {
+  color: var(--ce-ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ticket-mode-card span:not(.select-check) {
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.ticket-mode-card .select-check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  opacity: 0;
+}
+
+.ticket-mode-card.selected {
+  border-color: var(--ce-green);
+  box-shadow: 0 0 0 3px rgba(26, 122, 74, 0.1);
+}
+
+.ticket-mode-card.selected .select-check {
+  opacity: 1;
+}
+
+.count-badge {
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--ce-p3);
+  color: var(--ce-ink3);
+  padding: 2px 9px;
+  border-radius: 100px;
+  border: 1px solid var(--ce-p4);
+}
+
+.quick-chip.custom {
+  border-style: dashed;
+  border-color: var(--ce-ink5);
+}
+
+.color-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 1.5rem;
+  color: var(--ce-ink4);
+  font-size: 12.5px;
+  border: 1.5px dashed var(--ce-p4);
+  border-radius: 14px;
+  background: var(--ce-p2);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: center;
+}
+
+.empty-state svg {
+  width: 26px;
+}
+
+.ticket-card-head,
+.summary-row,
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ticket-card-head {
+  margin-bottom: 12px;
+}
+
+.ticket-card-head strong {
+  flex: 1;
+  font-family: 'Fraunces', serif;
+  font-weight: 400;
+}
+
+.calc-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.calc-card svg {
+  width: 16px;
+}
+
+.toggle-row {
+  padding: 10px 0;
+  border-top: 1px solid var(--ce-p3);
+}
+
+.toggle-row:first-child {
+  border-top: 0;
+}
+
+.toggle-row strong {
+  display: block;
+  font-size: 13px;
+  color: var(--ce-ink2);
+}
+
+.toggle-row small {
+  display: block;
+  font-size: 11px;
+  color: var(--ce-ink4);
+  line-height: 1.5;
+}
+
+.toggle-row input[type='checkbox'] {
+  width: 38px;
+  height: 22px;
+  accent-color: var(--ce-green);
+  flex-shrink: 0;
+}
+
+.summary-row {
+  background: var(--ce-p2);
+  border: 1px solid var(--ce-p3);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-top: 10px;
+  font-size: 12px;
+}
+
+.summary-row strong {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.required-tag {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ce-acc);
+}
+
+.email-preview {
+  border: 1px solid var(--ce-p4);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.email-head {
+  background: var(--ce-p2);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--ce-p3);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11.5px;
+  color: var(--ce-ink3);
+}
+
+.email-head strong {
+  font-size: 13px;
+  color: var(--ce-ink);
+}
+
+.email-body {
+  padding: 14px;
+  font-size: 13px;
+  color: var(--ce-ink2);
+  line-height: 1.7;
+}
+
+.email-ticket {
+  background: var(--ce-p2);
+  border: 1px solid var(--ce-p3);
+  border-radius: 10px;
+  padding: 12px;
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.nav-actions {
+  display: flex;
+  gap: 9px;
+  align-items: stretch;
+  margin-top: 1.2rem;
+}
+
+.back-btn {
+  width: 46px;
+  height: 50px;
+  background: var(--ce-paper);
+  border: 1px solid var(--ce-p4);
+  color: var(--ce-ink3);
+  border-radius: 14px;
+  padding: 0;
+  min-height: 0;
+}
+
+.primary-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  background: var(--ce-ink);
+  color: var(--ce-paper);
+  border: 0;
+  border-radius: 14px;
+  padding: 14px 22px;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.primary-btn.publish {
+  background: var(--ce-acc);
+  color: #ffffff;
+}
+
+.preview-col {
+  position: sticky;
+  top: 72px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.side-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ce-ink4);
+  padding: 0 4px;
+}
+
+.tip-card {
+  border-radius: 12px;
+  padding: 11px 13px;
+}
+
+.tip-card strong {
+  font-size: 11px;
+  color: var(--ce-ink2);
+}
+
+.tip-card p {
+  font-size: 11px;
+  color: var(--ce-ink4);
+  line-height: 1.6;
+  margin: 4px 0 0;
+}
+
+.ce-toast {
+  position: fixed;
+  bottom: 1.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ce-ink);
+  color: var(--ce-paper);
+  padding: 11px 18px;
+  border-radius: 14px;
+  font-size: 12.5px;
+  font-weight: 500;
+  z-index: 500;
+}
+
+.success-screen {
+  min-height: 100vh;
+  max-width: 540px;
+  margin: 0 auto;
+  padding: 4rem 2rem 6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1.5rem;
+}
+
+.success-ring {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--ce-greenbg);
+  color: var(--ce-green);
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.success-ring svg {
+  width: 34px;
+}
+
+.success-screen h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 2.2rem;
+  font-weight: 400;
+  line-height: 1.1;
+}
+
+.success-screen p {
+  color: var(--ce-ink3);
   font-size: 14px;
-  color: white;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  line-height: 1.65;
 }
 
-.calendar-day:hover:not(.disabled):not(.selected) {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.calendar-day.other-month {
-  color: rgba(255, 255, 255, 0.3);
-}
-
-.calendar-day.today {
-  border: 1px dashed rgba(233, 75, 159, 0.5);
-}
-
-.calendar-day.selected {
-  background-color: rgba(233, 75, 159, 0.15);
-  border: 1px solid rgba(233, 75, 159, 0.3);
-  font-weight: 500;
-}
-
-.calendar-day.disabled {
-  color: rgba(255, 255, 255, 0.2);
-  cursor: not-allowed;
-}
-
-.date-picker-actions {
+.share-box {
+  width: 100%;
+  background: var(--ce-p3);
+  border: 1px solid var(--ce-p4);
+  border-radius: 12px;
+  padding: 12px 14px;
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
   gap: 10px;
-  padding: 16px 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.date-picker-btn {
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
+.share-box span {
+  flex: 1;
+  font-size: 12px;
+  color: var(--ce-ink3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.date-picker-cancel {
-  background-color: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.7);
+.share-box button {
+  background: var(--ce-ink);
+  color: var(--ce-paper);
+  border: 0;
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-size: 11.5px;
+  text-transform: none;
+  letter-spacing: 0;
+  min-height: 0;
 }
 
-.date-picker-cancel:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: white;
+@media (max-width: 900px) {
+  .ce-columns,
+  .ce-columns.preview-off {
+    grid-template-columns: 1fr;
+  }
+
+  .preview-col {
+    display: none;
+  }
+
+  .ce-header {
+    overflow-x: auto;
+    padding: 0 1rem;
+  }
+
+  .ce-header-actions {
+    display: none;
+  }
 }
 
-.date-picker-apply {
-  background-color: rgba(233, 75, 159, 0.15);
-  border: 1px solid rgba(233, 75, 159, 0.3);
-  color: white;
-}
+@media (max-width: 640px) {
+  .ce-wrap {
+    padding: 1rem 1rem 4rem;
+  }
 
-.date-picker-apply:hover {
-  background-color: rgba(233, 75, 159, 0.25);
-  transform: translateY(-2px);
+  .ce-progress {
+    flex-shrink: 0;
+  }
+
+  .ce-step span:last-child {
+    display: none;
+  }
+
+  .two-col,
+  .ticket-mode-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ce-card {
+    border-radius: 18px;
+    padding: 1.2rem;
+  }
+
+  .url-panel,
+  .field-top {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 </style>

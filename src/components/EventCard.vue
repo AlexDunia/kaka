@@ -130,12 +130,31 @@ const viewDetails = () => {
   <div v-else-if="event" class="event-card" @click="viewDetails">
     <div class="event-card__image">
       <SeoImage
+        v-if="eventImage"
         :src="eventImage"
         :alt="eventTitle"
         :title="eventTitle"
         imgClass="event-card-image"
         lazy
       />
+      <div v-else class="event-card__empty-image">
+        <svg
+          width="28"
+          height="28"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <rect x="3" y="4" width="18" height="16" rx="2" />
+          <path d="M7 14l3-3 4 4 2-2 3 3" />
+          <circle cx="9" cy="9" r="1.5" />
+        </svg>
+        <span>Cover photo will appear here</span>
+      </div>
       <div class="event-card__category">{{ categoryDisplayName }}</div>
 
       <!-- Add expired stamp -->
@@ -158,7 +177,18 @@ const viewDetails = () => {
       <div class="event-card__header">
         <h3 class="event-card__title">{{ eventTitle }}</h3>
         <div class="event-card__rating">
-          <span class="star-icon">★</span>
+          <svg
+            class="star-icon"
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              d="m12 2.6 2.9 5.88 6.49.94-4.7 4.58 1.11 6.46L12 17.41l-5.8 3.05L7.31 14l-4.7-4.58 6.49-.94L12 2.6Z"
+            />
+          </svg>
           <span>{{ event?.rating || '4.5' }}</span>
         </div>
       </div>
@@ -314,8 +344,10 @@ const viewDetails = () => {
 }
 
 .event-card__title {
-  font-size: 1.1rem;
-  font-weight: 600;
+  font-family: 'Fraunces', serif;
+  font-size: 1rem;
+  font-style: italic;
+  font-weight: 400;
   margin: 0;
   line-height: 1.4;
   flex: 1;
@@ -340,6 +372,7 @@ const viewDetails = () => {
 .star-icon {
   color: #fcba03;
   margin-right: 4px;
+  flex-shrink: 0;
 }
 
 .event-card__footer {
@@ -564,6 +597,29 @@ const viewDetails = () => {
   background: linear-gradient(135deg, rgba(18, 18, 24, 0.6), rgba(18, 18, 24, 0.8));
   width: 100%;
   height: 100%;
+}
+
+.event-card__empty-image {
+  width: 100%;
+  height: 100%;
+  border: 1.5px dashed var(--color-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--color-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  padding: 16px;
+}
+
+:global(.light) .event-card__empty-image {
+  background: #f5f2ee;
+  border-color: #d8d3ce;
+  color: #7a746e;
 }
 
 .naira-price {
