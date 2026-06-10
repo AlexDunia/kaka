@@ -923,6 +923,15 @@ onUnmounted(() => {
   --color-card-border: #e4ded7;
   --color-shadow: rgba(0, 0, 0, 0.08);
   --color-tab-bg: #ede9e3;
+  --background: #f5f2ee;
+  --card-bg: #fdfcfa;
+  --card-bg-hover: #f5f2ee;
+  --text-color: #0d0d0d;
+  --text-secondary: #7a746e;
+  --primary: #ec4899;
+  --accent: #ec4899;
+  --success: #1a7a4a;
+  --error: #c0392b;
 }
 
 .theme-instant,
@@ -944,6 +953,10 @@ body {
     radial-gradient(circle at 10% 20%, rgba(236, 72, 153, 0.08) 0%, transparent 30%),
     radial-gradient(circle at 90% 80%, rgba(236, 72, 153, 0.08) 0%, transparent 30%);
   min-height: 100vh;
+}
+
+.light body {
+  background-image: none;
 }
 
 /* Responsive styles */

@@ -649,6 +649,59 @@ const formattedTotalSpent = computed(() => {
   background-color: var(--primary);
 }
 
+:global(.light) .dashboard {
+  color: var(--color-text);
+}
+
+:global(.light) .dashboard__greeting,
+:global(.light) .dashboard__loading,
+:global(.light) .dashboard__stat-label,
+:global(.light) .dashboard__empty,
+:global(.light) .ticket-card__info-item,
+:global(.light) .cancel-modal__details,
+:global(.light) .cancel-modal__success p {
+  color: var(--color-muted);
+}
+
+:global(.light) .dashboard__error {
+  color: var(--error);
+}
+
+:global(.light) .dashboard__stat-card,
+:global(.light) .ticket-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: none;
+}
+
+:global(.light) .ticket-card:hover {
+  box-shadow: 0 2px 8px var(--color-shadow);
+}
+
+:global(.light) .dashboard__section-title {
+  border-bottom-color: var(--color-border);
+}
+
+:global(.light) .ticket-card__header {
+  background-color: var(--color-tab-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+:global(.light) .ticket-card__cancel-btn,
+:global(.light) .cancel-modal__cancel {
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+:global(.light) .ticket-card__cancel-btn:hover {
+  background-color: var(--color-tab-bg);
+}
+
+:global(.light) .dashboard__browse-link,
+:global(.light) .cancel-modal__close {
+  color: #ffffff;
+}
+
 @media (max-width: 768px) {
   .dashboard {
     padding: 2rem 0;
