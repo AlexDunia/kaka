@@ -1,32 +1,35 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, inject, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
+  AcademicCapIcon,
   ArrowLeftIcon,
   ArrowRightIcon,
   BanknotesIcon,
   CalendarDaysIcon,
   CheckIcon,
-  ChevronRightIcon,
   ClockIcon,
+  ComputerDesktopIcon,
   DocumentTextIcon,
   EyeIcon,
   EyeSlashIcon,
   GlobeAltIcon,
+  HeartIcon,
   InformationCircleIcon,
   LinkIcon,
   MapPinIcon,
-  MinusIcon,
-  PencilIcon,
+  MoonIcon,
+  MusicalNoteIcon,
+  PaintBrushIcon,
   PhotoIcon,
   PlusIcon,
   QuestionMarkCircleIcon,
   SparklesIcon,
-  TagIcon,
+  SunIcon,
   TicketIcon,
   TrashIcon,
+  TrophyIcon,
   UserIcon,
-  UsersIcon,
   XMarkIcon,
 } from '@heroicons/vue/24/outline'
 import DateTimePickerInput from '@/components/DateTimePickerInput.vue'
@@ -38,24 +41,40 @@ import {
 } from '@/services/createEventService'
 
 const router = useRouter()
+const themeController = inject('themeController', null)
 
 const steps = ['Basics', 'Details', 'Tickets', 'Attendees']
+const repeatRhythmOptions = [
+  { value: 'days', label: 'Every day' },
+  { value: 'weeks', label: 'Every week' },
+  { value: 'months', label: 'Every month' },
+  { value: 'years', label: 'Every year' },
+]
+const repeatDayOptions = [
+  { id: 'Mon', short: 'Mo', name: 'Monday' },
+  { id: 'Tue', short: 'Tu', name: 'Tuesday' },
+  { id: 'Wed', short: 'We', name: 'Wednesday' },
+  { id: 'Thu', short: 'Th', name: 'Thursday' },
+  { id: 'Fri', short: 'Fr', name: 'Friday' },
+  { id: 'Sat', short: 'Sa', name: 'Saturday' },
+  { id: 'Sun', short: 'Su', name: 'Sunday' },
+]
 const today = new Date()
 today.setHours(0, 0, 0, 0)
 
-const categories = [
-  'Conference & Summit',
-  'Music & Concert',
-  'Food & Dining',
-  'Art & Culture',
-  'Business & Networking',
-  'Sports & Fitness',
-  'Workshop & Training',
-  'Party & Social',
-  'Startup & Tech',
-  'Faith & Community',
-  'Theatre & Performing Arts',
-  'Education & Learning',
+const categoryOptions = [
+  { name: 'Conference & Summit', icon: CalendarDaysIcon },
+  { name: 'Music & Concert', icon: MusicalNoteIcon },
+  { name: 'Food & Dining', icon: TicketIcon },
+  { name: 'Art & Culture', icon: PaintBrushIcon },
+  { name: 'Business & Networking', icon: BanknotesIcon },
+  { name: 'Sports & Fitness', icon: TrophyIcon },
+  { name: 'Workshop & Training', icon: DocumentTextIcon },
+  { name: 'Party & Social', icon: SparklesIcon },
+  { name: 'Startup & Tech', icon: ComputerDesktopIcon },
+  { name: 'Faith & Community', icon: HeartIcon },
+  { name: 'Theatre & Performing Arts', icon: UserIcon },
+  { name: 'Education & Learning', icon: AcademicCapIcon },
 ]
 
 const venues = [
@@ -80,8 +99,8 @@ const detailOptions = [
 const ticketTemplates = [
   { name: 'Early Bird', unitType: 'individual', color: '#1a7a4a', price: 5000 },
   { name: 'General Admission', unitType: 'individual', color: '#1a5fa6', price: 10000 },
-  { name: 'VIP', unitType: 'individual', color: '#c8960a', price: 30000 },
-  { name: 'Gold Table', unitType: 'table', color: '#c8960a', price: 250000 },
+  { name: 'VIP', unitType: 'individual', color: '#ec4899', price: 30000 },
+  { name: 'Gold Table', unitType: 'table', color: '#ec4899', price: 250000 },
   { name: 'Silver Table', unitType: 'table', color: '#7a8fa6', price: 150000 },
   { name: 'Student', unitType: 'individual', color: '#302b63', price: 3000 },
 ]
@@ -99,10 +118,10 @@ const attendeeFieldDefaults = [
 
 const coverTemplates = [
   'linear-gradient(135deg,#0f0c29,#302b63,#24243e)',
-  'linear-gradient(135deg,#ff416c,#ff4b2b)',
+  'linear-gradient(135deg,#ec4899,#be185d)',
   'linear-gradient(135deg,#134e5e,#71b280)',
-  'linear-gradient(135deg,#f7971e,#ffd200)',
-  'linear-gradient(135deg,#c850c0,#ffcc70)',
+  'linear-gradient(135deg,#831843,#f9a8d4)',
+  'linear-gradient(135deg,#c850c0,#ec4899)',
   'linear-gradient(135deg,#1a1a1a,#434343)',
 ]
 
@@ -111,9 +130,14 @@ const form = reactive({
   startsAt: tomorrowAt(18),
   endsAt: tomorrowAt(22),
   recurrenceType: 'once',
-  repeatFrequency: 'weekly',
-  repeatDays: ['Sat'],
-  repeatSessions: 8,
+  repeatFrequency: '',
+  repeatInterval: 1,
+  repeatUnit: '',
+  repeatDays: [],
+  repeatStartTime: '',
+  repeatEndTime: '',
+  repeatDayOverrides: {},
+  repeatStopMode: '',
   repeatEndDate: '',
   format: 'in-person',
   venue: '',
@@ -134,12 +158,18 @@ const form = reactive({
   attendeeFields: attendeeFieldDefaults.map((field) => ({ ...field })),
 })
 
+const themePreferenceKey = 'kaka-theme-preference'
+const fallbackTheme = ref('dark')
+const theme = computed(() => themeController?.theme?.value || fallbackTheme.value)
 const currentStep = ref(1)
+const maxStepReached = ref(1)
 const previewOn = ref(window.localStorage?.getItem('kaka-create-preview') !== 'false')
 const draftSaved = ref(false)
 const activeUploadTab = ref('files')
 const showTemplates = ref(false)
+const showCategoryMenu = ref(false)
 const showVenueResults = ref(false)
+const dragActive = ref(false)
 const urlImageValue = ref('')
 const tipIndex = ref(0)
 const toast = ref('')
@@ -195,16 +225,43 @@ const previewEvent = computed(() => ({
 
 const recurrenceSummary = computed(() => {
   if (form.recurrenceType === 'once') return 'This event happens once.'
-  const days = form.repeatDays.length ? ` on ${form.repeatDays.join(', ')}` : ''
-  const frequency = {
-    weekly: 'every week',
-    biweekly: 'every 2 weeks',
-    monthly: 'every month',
-  }[form.repeatFrequency]
-  return `This event repeats ${frequency}${form.repeatFrequency === 'monthly' ? '' : days} for ${form.repeatSessions || 1} sessions.`
+  if (!recurrenceReady.value) return ''
+  return `${repeatRhythmLabel.value}. ${repeatSummaryRows.value.join(' ')} ${repeatStopSummary.value}.`
 })
 
 const emailDate = computed(() => formatDateTime(form.startsAt))
+const selectedRepeatDays = computed(() =>
+  repeatDayOptions.filter((day) => form.repeatDays.includes(day.id)),
+)
+const repeatStepOneComplete = computed(
+  () => Boolean(form.repeatUnit) && (form.repeatUnit !== 'weeks' || form.repeatDays.length > 0),
+)
+const repeatStepTwoComplete = computed(() => Boolean(form.repeatStartTime && form.repeatEndTime))
+const repeatStepThreeComplete = computed(
+  () => form.repeatStopMode === 'forever' || (form.repeatStopMode === 'date' && Boolean(form.repeatEndDate)),
+)
+const recurrenceReady = computed(
+  () => repeatStepOneComplete.value && repeatStepTwoComplete.value && repeatStepThreeComplete.value,
+)
+const repeatRhythmLabel = computed(
+  () => repeatRhythmOptions.find((option) => option.value === form.repeatUnit)?.label || 'Repeats',
+)
+const repeatSummaryRows = computed(() => {
+  if (form.repeatUnit === 'weeks') {
+    return selectedRepeatDays.value.map((day) => {
+      const override = form.repeatDayOverrides[day.id]
+      const start = override?.startTime || form.repeatStartTime
+      const end = override?.endTime || form.repeatEndTime
+      return `${day.name}: ${formatTimeLabel(start)} to ${formatTimeLabel(end)}.`
+    })
+  }
+  return [`Time: ${formatTimeLabel(form.repeatStartTime)} to ${formatTimeLabel(form.repeatEndTime)}.`]
+})
+const repeatStopSummary = computed(() =>
+  form.repeatStopMode === 'forever'
+    ? 'It runs forever'
+    : `It stops on ${formatDateOnly(form.repeatEndDate)}`,
+)
 
 function tomorrowAt(hour) {
   const date = new Date()
@@ -222,6 +279,30 @@ function formatDateTime(value) {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+function formatDateOnly(value) {
+  if (!value) return 'the selected end date'
+  return new Date(value).toLocaleDateString('en-NG', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
+function toDateInputValue(value) {
+  const date = value ? new Date(value) : new Date()
+  const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+  return offsetDate.toISOString().slice(0, 10)
+}
+
+function formatTimeLabel(value) {
+  if (!value) return 'time not set'
+  const [hourValue, minute = '00'] = value.split(':')
+  let hour = Number(hourValue)
+  const period = hour >= 12 ? 'PM' : 'AM'
+  hour = hour % 12 || 12
+  return `${hour}:${minute} ${period}`
 }
 
 function showToast(message) {
@@ -250,14 +331,44 @@ function togglePreview() {
   window.localStorage?.setItem('kaka-create-preview', previewOn.value ? 'true' : 'false')
 }
 
+function applyTheme(value) {
+  if (themeController?.applyTheme) {
+    themeController.applyTheme(value)
+    return
+  }
+  fallbackTheme.value = value
+  document.documentElement.classList.toggle('light', value === 'light')
+  window.localStorage?.setItem(themePreferenceKey, value)
+}
+
+function initializeTheme() {
+  if (themeController?.theme) return
+  const stored = window.localStorage?.getItem(themePreferenceKey)
+  if (stored === 'light' || stored === 'dark') {
+    applyTheme(stored)
+    return
+  }
+  const prefersLight =
+    window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches
+  applyTheme(prefersLight ? 'light' : 'dark')
+}
+
+function toggleTheme() {
+  applyTheme(theme.value === 'light' ? 'dark' : 'light')
+}
+
 function setStep(step) {
+  if (step > maxStepReached.value) return
   currentStep.value = step
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 function goNext() {
   if (!validateStep(currentStep.value)) return
-  if (currentStep.value < steps.length) setStep(currentStep.value + 1)
+  if (currentStep.value < steps.length) {
+    maxStepReached.value = Math.max(maxStepReached.value, currentStep.value + 1)
+    setStep(currentStep.value + 1)
+  }
 }
 
 function goBack() {
@@ -292,6 +403,15 @@ function validateStep(step) {
       setError('meetingLink', 'Please add the meeting link for online attendees.')
     }
     if (!form.category) setError('category', 'Please choose a category.')
+    if (form.recurrenceType === 'recur') {
+      if (!repeatStepOneComplete.value) setError('repeatSchedule', 'Choose how often this repeats.')
+      if (repeatStepOneComplete.value && !repeatStepTwoComplete.value) {
+        setError('repeatSchedule', 'Add the default start and end time.')
+      }
+      if (repeatStepTwoComplete.value && !repeatStepThreeComplete.value) {
+        setError('repeatSchedule', 'Choose when the recurrence stops.')
+      }
+    }
   }
 
   if (step === 2 && !form.coverImage) {
@@ -324,15 +444,61 @@ function pickVenue(name) {
   showVenueResults.value = false
 }
 
+function selectCategory(category) {
+  form.category = category.name
+  showCategoryMenu.value = false
+  clearError('category')
+}
+
+function selectRepeatRhythm(unit) {
+  form.repeatUnit = unit
+  form.repeatFrequency = unit
+  form.repeatInterval = 1
+  if (unit !== 'weeks') {
+    form.repeatDays = []
+    form.repeatDayOverrides = {}
+  }
+  clearError('repeatSchedule')
+}
+
 function toggleRepeatDay(day) {
   if (form.repeatDays.includes(day)) {
     form.repeatDays = form.repeatDays.filter((item) => item !== day)
+    delete form.repeatDayOverrides[day]
   } else {
     form.repeatDays.push(day)
   }
+  clearError('repeatSchedule')
+}
+
+function ensureRepeatDayOverride(day) {
+  if (!form.repeatDayOverrides[day]) {
+    form.repeatDayOverrides[day] = {
+      expanded: false,
+      startTime: '',
+      endTime: '',
+    }
+  }
+  return form.repeatDayOverrides[day]
+}
+
+function toggleRepeatDayOverride(day) {
+  const override = ensureRepeatDayOverride(day)
+  override.expanded = !override.expanded
+}
+
+function isRepeatDayCustom(day) {
+  const override = form.repeatDayOverrides[day]
+  return Boolean(override?.startTime && override?.endTime)
+}
+
+function setRepeatStopMode(mode) {
+  form.repeatStopMode = mode
+  clearError('repeatSchedule')
 }
 
 function handleFiles(files) {
+  dragActive.value = false
   Array.from(files)
     .filter((file) => file.type.startsWith('image/'))
     .slice(0, 6 - form.secondaryImages.length - (form.coverImage ? 1 : 0))
@@ -435,9 +601,15 @@ function publishEvent() {
 }
 
 onMounted(() => {
+  document.body.classList.add('create-event-active')
+  initializeTheme()
   setInterval(() => {
     tipIndex.value = (tipIndex.value + 1) % activeTips.value.length
   }, 7000)
+})
+
+onUnmounted(() => {
+  document.body.classList.remove('create-event-active')
 })
 </script>
 
@@ -452,21 +624,37 @@ onMounted(() => {
           alt="Kaka"
         />
       </RouterLink>
-      <ChevronRightIcon class="ce-header-chevron" aria-hidden="true" />
+      <RouterLink to="/" class="ce-header-back" aria-label="Back to home">
+        <ArrowLeftIcon aria-hidden="true" />
+      </RouterLink>
       <nav class="ce-progress" aria-label="Create event progress">
         <button
           v-for="(step, index) in steps"
           :key="step"
           type="button"
           class="ce-step"
-          :class="{ active: currentStep === index + 1, done: currentStep > index + 1 }"
-          @click="currentStep > index + 1 && setStep(index + 1)"
+          :class="{
+            active: currentStep === index + 1,
+            done: maxStepReached > index + 1 && currentStep !== index + 1,
+            future: maxStepReached < index + 1,
+          }"
+          :disabled="maxStepReached < index + 1"
+          @click="setStep(index + 1)"
         >
           <span class="ce-step-number">{{ index + 1 }}</span>
           <span>{{ step }}</span>
         </button>
       </nav>
       <div class="ce-header-actions">
+        <button
+          type="button"
+          class="theme-btn"
+          @click="toggleTheme"
+          :aria-label="theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'"
+        >
+          <MoonIcon v-if="theme === 'light'" aria-hidden="true" />
+          <SunIcon v-else aria-hidden="true" />
+        </button>
         <span class="draft-badge" :class="{ show: draftSaved }">
           <CheckIcon aria-hidden="true" /> Draft saved
         </span>
@@ -563,45 +751,173 @@ onMounted(() => {
                   <InformationCircleIcon aria-hidden="true" />
                   <div>
                     <strong>Recurring events</strong>
-                    <p>Each session can be shown clearly so attendees know what they are choosing.</p>
+                    <p>Set the rhythm, default time, and stop condition for every occurrence.</p>
                   </div>
                 </div>
-                <div class="two-col">
-                  <div class="field">
-                    <label for="repeat-frequency">Repeats</label>
-                    <select id="repeat-frequency" v-model="form.repeatFrequency" class="field-input">
-                      <option value="weekly">Every week</option>
-                      <option value="biweekly">Every 2 weeks</option>
-                      <option value="monthly">Every month</option>
-                    </select>
-                  </div>
-                  <div class="field">
-                    <label for="repeat-sessions">Sessions</label>
-                    <input
-                      id="repeat-sessions"
-                      v-model.number="form.repeatSessions"
-                      min="1"
-                      type="number"
-                      class="field-input"
-                    />
-                  </div>
-                </div>
-                <div v-if="form.repeatFrequency !== 'monthly'" class="field">
-                  <label>Repeat on</label>
-                  <div class="day-row">
-                    <button
-                      v-for="day in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']"
-                      :key="day"
-                      type="button"
-                      class="day-chip"
-                      :class="{ selected: form.repeatDays.includes(day) }"
-                      @click="toggleRepeatDay(day)"
+
+                <div class="recurrence-steps" data-error-key="repeatSchedule">
+                  <section class="recurrence-step" :class="{ complete: repeatStepOneComplete }">
+                    <div class="recurrence-step-head">
+                      <span>1</span>
+                      <div>
+                        <strong>How often does it repeat?</strong>
+                        <p>Choose one rhythm for the schedule.</p>
+                      </div>
+                    </div>
+                    <div class="pill-row">
+                      <button
+                        v-for="option in repeatRhythmOptions"
+                        :key="option.value"
+                        type="button"
+                        class="pill"
+                        :class="{ selected: form.repeatUnit === option.value }"
+                        @click="selectRepeatRhythm(option.value)"
+                      >
+                        {{ option.label }}
+                      </button>
+                    </div>
+                    <div v-if="form.repeatUnit === 'weeks'" class="field recurrence-inline-field">
+                      <label>Repeat on</label>
+                      <div class="day-row">
+                        <button
+                          v-for="day in repeatDayOptions"
+                          :key="day.id"
+                          type="button"
+                          class="day-chip"
+                          :class="{ selected: form.repeatDays.includes(day.id) }"
+                          @click="toggleRepeatDay(day.id)"
+                        >
+                          {{ day.short }}
+                        </button>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section
+                    class="recurrence-step"
+                    :class="{ locked: !repeatStepOneComplete, complete: repeatStepTwoComplete }"
+                    :aria-disabled="!repeatStepOneComplete"
+                  >
+                    <div class="recurrence-step-head">
+                      <span>2</span>
+                      <div>
+                        <strong>What time?</strong>
+                        <p>The default time applies to every occurrence.</p>
+                      </div>
+                    </div>
+                    <div class="two-col">
+                      <div class="field">
+                        <label for="repeat-start-time">Start time</label>
+                        <input
+                          id="repeat-start-time"
+                          v-model="form.repeatStartTime"
+                          type="time"
+                          class="field-input"
+                          @input="clearError('repeatSchedule')"
+                        />
+                      </div>
+                      <div class="field">
+                        <label for="repeat-end-time">End time</label>
+                        <input
+                          id="repeat-end-time"
+                          v-model="form.repeatEndTime"
+                          type="time"
+                          class="field-input"
+                          @input="clearError('repeatSchedule')"
+                        />
+                      </div>
+                    </div>
+                    <div
+                      v-if="form.repeatUnit === 'weeks' && selectedRepeatDays.length > 1"
+                      class="repeat-day-overrides"
                     >
-                      {{ day.slice(0, 1) }}
-                    </button>
+                      <div
+                        v-for="day in selectedRepeatDays"
+                        :key="day.id"
+                        class="repeat-day-row"
+                        :class="{ expanded: form.repeatDayOverrides[day.id]?.expanded }"
+                      >
+                        <button type="button" @click="toggleRepeatDayOverride(day.id)">
+                          <span>{{ day.name }}</span>
+                          <strong>{{ isRepeatDayCustom(day.id) ? 'Custom' : 'Same' }}</strong>
+                        </button>
+                        <div v-if="form.repeatDayOverrides[day.id]?.expanded" class="repeat-day-custom two-col">
+                          <div class="field">
+                            <label :for="`repeat-${day.id}-start`">Start time</label>
+                            <input
+                              :id="`repeat-${day.id}-start`"
+                              v-model="form.repeatDayOverrides[day.id].startTime"
+                              type="time"
+                              class="field-input"
+                            />
+                          </div>
+                          <div class="field">
+                            <label :for="`repeat-${day.id}-end`">End time</label>
+                            <input
+                              :id="`repeat-${day.id}-end`"
+                              v-model="form.repeatDayOverrides[day.id].endTime"
+                              type="time"
+                              class="field-input"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section
+                    class="recurrence-step"
+                    :class="{
+                      locked: !(repeatStepOneComplete && repeatStepTwoComplete),
+                      complete: repeatStepThreeComplete,
+                    }"
+                    :aria-disabled="!(repeatStepOneComplete && repeatStepTwoComplete)"
+                  >
+                    <div class="recurrence-step-head">
+                      <span>3</span>
+                      <div>
+                        <strong>When does it stop?</strong>
+                        <p>Choose whether the schedule ends.</p>
+                      </div>
+                    </div>
+                    <div class="pill-row">
+                      <button
+                        type="button"
+                        class="pill"
+                        :class="{ selected: form.repeatStopMode === 'forever' }"
+                        @click="setRepeatStopMode('forever')"
+                      >
+                        It runs forever
+                      </button>
+                      <button
+                        type="button"
+                        class="pill"
+                        :class="{ selected: form.repeatStopMode === 'date' }"
+                        @click="setRepeatStopMode('date')"
+                      >
+                        On a specific date
+                      </button>
+                    </div>
+                    <div v-if="form.repeatStopMode === 'date'" class="field recurrence-inline-field">
+                      <label for="repeat-end-date">End date</label>
+                      <input
+                        id="repeat-end-date"
+                        v-model="form.repeatEndDate"
+                        type="date"
+                        class="field-input"
+                        :min="toDateInputValue(form.startsAt || today)"
+                        @input="clearError('repeatSchedule')"
+                      />
+                    </div>
+                  </section>
+
+                  <p v-if="errors.repeatSchedule" class="error-text">{{ errors.repeatSchedule }}</p>
+                  <div v-if="recurrenceReady" class="recurrence-preview recurrence-summary">
+                    <strong>{{ repeatRhythmLabel }}</strong>
+                    <span v-for="row in repeatSummaryRows" :key="row">{{ row }}</span>
+                    <span>{{ repeatStopSummary }}.</span>
                   </div>
                 </div>
-                <p class="recurrence-preview">{{ recurrenceSummary }}</p>
               </div>
 
               <div class="divider"><span>Format</span></div>
@@ -670,17 +986,43 @@ onMounted(() => {
 
               <div class="divider"><span>Category</span></div>
               <div class="field" data-error-key="category">
-                <label for="category">What type of event?</label>
-                <select
-                  id="category"
-                  v-model="form.category"
-                  class="field-input"
-                  :class="{ error: errors.category }"
-                  @change="clearError('category')"
+                <label id="category-label">What type of event?</label>
+                <button
+                  type="button"
+                  class="category-trigger"
+                  :class="{ error: errors.category, open: showCategoryMenu }"
+                  aria-haspopup="listbox"
+                  :aria-expanded="showCategoryMenu"
+                  aria-labelledby="category-label"
+                  @click="showCategoryMenu = !showCategoryMenu"
                 >
-                  <option value="">Choose a category...</option>
-                  <option v-for="category in categories" :key="category">{{ category }}</option>
-                </select>
+                  <span class="category-trigger-copy">
+                    <component
+                      :is="
+                        categoryOptions.find((category) => category.name === form.category)?.icon ||
+                        TicketIcon
+                      "
+                      aria-hidden="true"
+                    />
+                    {{ form.category || 'Choose a category...' }}
+                  </span>
+                  <ArrowRightIcon aria-hidden="true" />
+                </button>
+                <div v-if="showCategoryMenu" class="category-menu" role="listbox">
+                  <button
+                    v-for="category in categoryOptions"
+                    :key="category.name"
+                    type="button"
+                    class="category-option"
+                    :class="{ selected: form.category === category.name }"
+                    role="option"
+                    :aria-selected="form.category === category.name"
+                    @click="selectCategory(category)"
+                  >
+                    <component :is="category.icon" aria-hidden="true" />
+                    <span>{{ category.name }}</span>
+                  </button>
+                </div>
                 <p v-if="errors.category" class="error-text">{{ errors.category }}</p>
               </div>
             </div>
@@ -697,7 +1039,7 @@ onMounted(() => {
                 <div class="field-top">
                   <div>
                     <label>Event images <span>Required cover · max 6</span></label>
-                    <p class="help">First image is the cover. Secondary images stay in the gallery.</p>
+                    <p class="help">Upload a cover photo first, then add optional gallery images for the event page.</p>
                   </div>
                   <button type="button" class="text-btn" @click="showTemplates = !showTemplates">
                     <SparklesIcon aria-hidden="true" /> Templates
@@ -724,13 +1066,16 @@ onMounted(() => {
                 <div
                   v-if="activeUploadTab === 'files'"
                   class="upload-zone"
-                  :class="{ error: errors.coverImage }"
+                  :class="{ error: errors.coverImage, dragging: dragActive }"
                   @click="$refs.fileInput.click()"
+                  @dragenter.prevent="dragActive = true"
                   @dragover.prevent
+                  @dragleave.prevent="dragActive = false"
                   @drop.prevent="handleFiles($event.dataTransfer.files)"
                 >
                   <div class="upload-ring"><PhotoIcon aria-hidden="true" /></div>
-                  <strong>Drop images here or browse</strong>
+                  <strong>Drop cover and gallery images here</strong>
+                  <span>Browse files or drag them in. The first image becomes the cover photo.</span>
                   <span>JPG, PNG, or WebP · best 1600x900px · up to 6 images</span>
                   <input ref="fileInput" type="file" hidden multiple accept="image/*" @change="handleFiles($event.target.files)" />
                 </div>
@@ -744,7 +1089,7 @@ onMounted(() => {
                     @keyup.enter="addUrlImage"
                   />
                   <button type="button" class="inline-btn" @click="addUrlImage">
-                    <PlusIcon aria-hidden="true" /> Add image link
+                    <PlusIcon aria-hidden="true" /> Add image
                   </button>
                 </div>
 
@@ -761,25 +1106,33 @@ onMounted(() => {
 
                 <p v-if="errors.coverImage" class="error-text">{{ errors.coverImage }}</p>
 
-                <div v-if="form.coverImage || form.secondaryImages.length" class="image-strip">
-                  <div v-if="form.coverImage" class="image-thumb primary">
-                    <img :src="form.coverImage" alt="Cover preview" />
-                    <span>Cover</span>
-                    <button type="button" @click="removeCover" aria-label="Remove cover">
-                      <XMarkIcon aria-hidden="true" />
-                    </button>
-                  </div>
-                  <div
-                    v-for="(image, index) in form.secondaryImages"
-                    :key="image + index"
-                    class="image-thumb"
-                  >
-                    <img :src="image" alt="Secondary preview" />
-                    <div class="thumb-actions">
-                      <button type="button" @click="setCover(image, index)">Set cover</button>
-                      <button type="button" @click="removeSecondaryImage(index)" aria-label="Remove image">
-                        <TrashIcon aria-hidden="true" />
+                <div v-if="form.coverImage || form.secondaryImages.length" class="image-manager">
+                  <div class="cover-preview">
+                    <span class="image-label">Cover photo</span>
+                    <div v-if="form.coverImage" class="cover-frame">
+                      <img :src="form.coverImage" alt="Cover preview" />
+                      <button type="button" class="cover-remove" @click="removeCover" aria-label="Remove cover">
+                        <XMarkIcon aria-hidden="true" />
                       </button>
+                    </div>
+                    <div v-else class="cover-empty">No cover selected yet</div>
+                  </div>
+                  <div v-if="form.secondaryImages.length" class="gallery-preview">
+                    <span class="image-label">Additional images</span>
+                    <div class="image-strip">
+                      <div
+                        v-for="(image, index) in form.secondaryImages"
+                        :key="image + index"
+                        class="image-thumb"
+                      >
+                        <img :src="image" alt="Gallery preview" />
+                        <div class="thumb-actions">
+                          <button type="button" @click="setCover(image, index)">Set cover</button>
+                          <button type="button" @click="removeSecondaryImage(index)" aria-label="Remove image">
+                            <TrashIcon aria-hidden="true" />
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -820,8 +1173,7 @@ onMounted(() => {
                   :class="{ selected: selectedDetailTypes.has(option.type) }"
                   @click="addDetail(option)"
                 >
-                  <span v-if="selectedDetailTypes.has(option.type)" class="green-check"><CheckIcon aria-hidden="true" /></span>
-                  <component v-else :is="option.icon" aria-hidden="true" />
+                  <component :is="option.icon" aria-hidden="true" />
                   {{ option.label }}
                 </button>
               </div>
@@ -854,7 +1206,7 @@ onMounted(() => {
               <p>Tell us how people will attend and what they will pay.</p>
             </div>
 
-            <div class="info-card amber">
+            <div class="info-card pink">
               <TicketIcon aria-hidden="true" />
               <div>
                 <strong>What are ticket categories?</strong>
@@ -872,7 +1224,6 @@ onMounted(() => {
                     :class="{ selected: form.ticketMode === 'free' }"
                     @click="selectTicketMode('free')"
                   >
-                    <span class="select-check"><CheckIcon aria-hidden="true" /></span>
                     <TicketIcon aria-hidden="true" />
                     <strong>Free admission</strong>
                     <span>Anyone can register at no cost.</span>
@@ -883,7 +1234,6 @@ onMounted(() => {
                     :class="{ selected: form.ticketMode === 'paid' }"
                     @click="selectTicketMode('paid')"
                   >
-                    <span class="select-check"><CheckIcon aria-hidden="true" /></span>
                     <BanknotesIcon aria-hidden="true" />
                     <strong>Paid tickets</strong>
                     <span>Set prices, create tiers, and get paid.</span>
@@ -1029,7 +1379,7 @@ onMounted(() => {
               <p>Choose what information to collect. Fewer fields usually means more sign-ups.</p>
             </div>
 
-            <div class="info-card amber">
+            <div class="info-card pink">
               <DocumentTextIcon aria-hidden="true" />
               <div>
                 <strong>Your registration form</strong>
@@ -1125,16 +1475,26 @@ onMounted(() => {
   --ce-p2: #f5f2ee;
   --ce-p3: #ede9e3;
   --ce-p4: #e4ded7;
-  --ce-acc: #e8470a;
+  --ce-acc: #ec4899;
+  --ce-acc-soft: rgba(236, 72, 153, 0.1);
+  --ce-acc-border: rgba(236, 72, 153, 0.34);
   --ce-green: #1a7a4a;
   --ce-greenbg: #e8f7ef;
-  --ce-goldbg: #fdf8e8;
-  --ce-goldbdr: #edd98a;
+  --ce-pinkbg: rgba(236, 72, 153, 0.08);
+  --ce-pinkbdr: rgba(236, 72, 153, 0.24);
   --ce-red: #c0392b;
   background: var(--ce-p2);
   color: var(--ce-ink);
   min-height: 100vh;
   font-family: 'Figtree', sans-serif;
+}
+
+:global(body.create-event-active),
+:global(body.create-event-active .app-container),
+:global(body.create-event-active .app-content),
+:global(body.create-event-active .app-footer) {
+  background-color: var(--color-bg);
+  color: var(--color-text);
 }
 
 :global(:root:not(.light)) .create-event-page {
@@ -1148,21 +1508,24 @@ onMounted(() => {
   --ce-p3: #1b1b24;
   --ce-p4: rgba(255, 255, 255, 0.1);
   --ce-greenbg: rgba(26, 122, 74, 0.18);
-  --ce-goldbg: rgba(200, 150, 10, 0.12);
-  --ce-goldbdr: rgba(200, 150, 10, 0.35);
+  --ce-acc-soft: rgba(236, 72, 153, 0.14);
+  --ce-acc-border: rgba(236, 72, 153, 0.38);
+  --ce-pinkbg: rgba(236, 72, 153, 0.12);
+  --ce-pinkbdr: rgba(236, 72, 153, 0.34);
 }
 
 .ce-header {
   position: sticky;
   top: 0;
   z-index: 200;
-  height: 58px;
   background: color-mix(in srgb, var(--ce-paper) 94%, transparent);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--ce-p4);
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(44px, auto) minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
+  gap: clamp(14px, 2vw, 28px);
+  height: var(--app-header-height, 96px);
   padding: 0 1.5rem;
 }
 
@@ -1177,15 +1540,39 @@ onMounted(() => {
 }
 
 .ce-logo img {
-  height: 40px;
+  height: var(--app-logo-height, 72px);
   width: auto;
   display: block;
 }
 
-.ce-header-chevron {
-  width: 18px;
-  color: var(--ce-ink4);
-  flex-shrink: 0;
+.ce-header-back,
+.theme-btn {
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--ce-p4);
+  border-radius: 999px;
+  background: var(--ce-paper);
+  color: var(--ce-ink3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  min-height: 0;
+  text-decoration: none;
+}
+
+.ce-header-back:hover,
+.theme-btn:hover {
+  background: var(--ce-p3);
+  color: var(--ce-ink);
+  transform: none;
+  box-shadow: none;
+}
+
+.ce-header-back svg,
+.theme-btn svg {
+  width: 17px;
+  height: 17px;
 }
 
 .ce-progress {
@@ -1196,7 +1583,9 @@ onMounted(() => {
   border-radius: 100px;
   padding: 4px 5px;
   gap: 2px;
-  margin: 0 auto;
+  justify-self: center;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .ce-step {
@@ -1221,6 +1610,15 @@ onMounted(() => {
   box-shadow: none;
 }
 
+.ce-step:not(:disabled) {
+  cursor: pointer;
+}
+
+.ce-step.future {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .ce-step-number {
   width: 17px;
   height: 17px;
@@ -1235,29 +1633,33 @@ onMounted(() => {
 }
 
 .ce-step.active {
-  background: var(--ce-ink);
-  color: var(--ce-paper);
+  background: var(--ce-acc-soft);
+  color: var(--ce-ink);
+  box-shadow: inset 0 0 0 1px var(--ce-acc-border);
 }
 
 .ce-step.active .ce-step-number {
-  background: rgba(255, 255, 255, 0.25);
+  background: var(--ce-acc);
   color: #ffffff;
 }
 
 .ce-step.done {
-  background: var(--ce-greenbg);
-  color: var(--ce-green);
+  background: transparent;
+  color: var(--ce-ink2);
+  border: 1px dashed var(--ce-acc-border);
 }
 
 .ce-step.done .ce-step-number {
-  background: var(--ce-green);
-  color: #ffffff;
+  background: transparent;
+  border: 1px dashed var(--ce-acc-border);
+  color: var(--ce-acc);
 }
 
 .ce-header-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  justify-content: flex-end;
 }
 
 .draft-badge {
@@ -1346,10 +1748,43 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
+.ce-header-back svg,
+.theme-btn svg,
+.pill svg,
+.detail-chip svg,
+.quick-chip svg,
+.preview-btn svg,
+.inline-btn svg,
+.text-btn svg,
+.back-btn svg,
+.icon-btn svg,
+.upload-ring svg,
+.empty-state svg,
+.calc-card svg {
+  color: var(--ce-ink);
+}
+
+:deep(.datetime-picker) {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+:deep(.event-card) {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+:deep(.event-card:hover) {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.075);
+}
+
+:deep(.event-card .star-icon) {
+  color: var(--ce-acc);
+}
+
 .preview-btn.on {
-  border-color: var(--ce-green);
-  color: var(--ce-green);
-  background: var(--ce-greenbg);
+  border-color: var(--ce-acc-border);
+  color: var(--ce-ink);
+  background: var(--ce-acc-soft);
 }
 
 .ce-columns {
@@ -1397,7 +1832,7 @@ onMounted(() => {
   border: 1px solid var(--ce-p4);
   border-radius: 24px;
   padding: 1.6rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.035);
 }
 
 .ce-card.compact {
@@ -1462,9 +1897,9 @@ label span {
 
 .field-input:focus,
 :deep(.datetime-input:focus) {
-  border-color: var(--ce-ink);
+  border-color: var(--ce-acc);
   background: var(--ce-paper);
-  box-shadow: 0 0 0 3px rgba(13, 13, 13, 0.06);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ce-acc) 12%, transparent);
 }
 
 .field-input.error,
@@ -1557,6 +1992,11 @@ label span {
   text-transform: none;
   letter-spacing: 0;
   min-height: 0;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
 }
 
 .pill:hover,
@@ -1564,14 +2004,14 @@ label span {
 .quick-chip:hover {
   border-color: var(--ce-ink5);
   color: var(--ce-ink);
-  transform: translateY(-1px);
+  transform: translateY(-0.5px);
   box-shadow: none;
 }
 
 .pill.selected {
-  border-color: var(--ce-ink);
-  background: var(--ce-ink);
-  color: var(--ce-paper);
+  border-color: var(--ce-acc-border);
+  background: var(--ce-acc-soft);
+  color: var(--ce-ink);
 }
 
 .sub-panel {
@@ -1580,6 +2020,119 @@ label span {
   border-radius: 14px;
   padding: 1rem;
   margin-bottom: 1rem;
+}
+
+.recurrence-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.recurrence-step {
+  border: 1px solid var(--ce-p4);
+  border-radius: 12px;
+  background: var(--ce-paper);
+  padding: 12px;
+  transition:
+    opacity 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.recurrence-step.complete {
+  border-color: var(--ce-acc-border);
+}
+
+.recurrence-step.locked {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.recurrence-step-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.recurrence-step-head > span {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--ce-p3);
+  color: var(--ce-ink2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.recurrence-step-head strong {
+  display: block;
+  font-size: 13px;
+  color: var(--ce-ink);
+}
+
+.recurrence-step-head p {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  color: var(--ce-ink4);
+  line-height: 1.5;
+}
+
+.recurrence-inline-field {
+  margin-top: 10px;
+  margin-bottom: 0;
+}
+
+.repeat-day-overrides {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.repeat-day-row {
+  border: 1px solid var(--ce-p4);
+  border-radius: 10px;
+  background: var(--ce-p2);
+  overflow: hidden;
+}
+
+.repeat-day-row > button {
+  width: 100%;
+  min-height: 0;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ce-ink);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.repeat-day-row > button strong {
+  font-size: 11px;
+  color: var(--ce-acc);
+}
+
+.repeat-day-custom {
+  padding: 0 12px 12px;
+}
+
+.recurrence-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.recurrence-summary strong {
+  color: var(--ce-ink);
 }
 
 .info-card {
@@ -1609,9 +2162,9 @@ label span {
   margin: 3px 0 0;
 }
 
-.info-card.amber {
-  background: var(--ce-goldbg);
-  border-color: var(--ce-goldbdr);
+.info-card.pink {
+  background: var(--ce-pinkbg);
+  border-color: var(--ce-pinkbdr);
 }
 
 .info-card.green {
@@ -1631,19 +2184,24 @@ label span {
   padding: 0;
   min-width: 0;
   min-height: 0;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
 }
 
 .day-chip.selected {
-  background: var(--ce-ink);
-  border-color: var(--ce-ink);
-  color: var(--ce-paper);
+  background: var(--ce-acc-soft);
+  border-color: var(--ce-acc-border);
+  color: var(--ce-ink);
 }
 
 .recurrence-preview,
 .detail-hint,
 .calc-card {
-  background: var(--ce-goldbg);
-  border: 1px solid var(--ce-goldbdr);
+  background: var(--ce-pinkbg);
+  border: 1px solid var(--ce-pinkbdr);
   border-radius: 10px;
   padding: 9px 12px;
   font-size: 12px;
@@ -1668,6 +2226,103 @@ label span {
   padding-left: 36px;
 }
 
+.category-trigger {
+  width: 100%;
+  background: var(--ce-p2);
+  border: 1.5px solid var(--ce-p4);
+  border-radius: 12px;
+  padding: 11px 14px;
+  color: var(--ce-ink);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  min-height: 0;
+}
+
+.category-trigger.open,
+.category-trigger:focus {
+  border-color: var(--ce-acc);
+  background: var(--ce-paper);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ce-acc) 12%, transparent);
+}
+
+.category-trigger.error {
+  border-color: var(--ce-red);
+}
+
+.category-trigger > svg {
+  width: 15px;
+  height: 15px;
+  transform: rotate(90deg);
+  color: var(--ce-ink4);
+  flex-shrink: 0;
+}
+
+.category-trigger-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.category-trigger-copy svg {
+  width: 17px;
+  height: 17px;
+  color: var(--ce-acc);
+  flex-shrink: 0;
+}
+
+.category-menu {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 9px;
+  padding: 10px;
+  background: var(--ce-paper);
+  border: 1px solid var(--ce-p4);
+  border-radius: 14px;
+}
+
+.category-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  border: 1px solid var(--ce-p4);
+  border-radius: 10px;
+  background: var(--ce-p2);
+  color: var(--ce-ink3);
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.category-option svg {
+  width: 16px;
+  height: 16px;
+  color: var(--ce-acc);
+  flex-shrink: 0;
+}
+
+.category-option.selected {
+  border-color: var(--ce-acc-border);
+  background: var(--ce-acc-soft);
+  color: var(--ce-ink);
+}
+
 .venue-results {
   position: absolute;
   top: calc(100% + 4px);
@@ -1676,7 +2331,7 @@ label span {
   background: var(--ce-paper);
   border: 1px solid var(--ce-p4);
   border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.055);
   z-index: 10;
   overflow: hidden;
 }
@@ -1768,7 +2423,7 @@ label span {
 .upload-zone {
   border: 2px dashed var(--ce-p4);
   border-radius: 16px;
-  padding: 1.8rem 1.5rem;
+  padding: 2rem 1.5rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1777,6 +2432,11 @@ label span {
   background: var(--ce-paper);
   text-align: center;
   color: var(--ce-ink3);
+}
+
+.upload-zone.dragging {
+  border-color: color-mix(in srgb, var(--ce-acc) 55%, var(--ce-p4));
+  background: color-mix(in srgb, var(--ce-acc) 7%, var(--ce-paper));
 }
 
 .upload-ring {
@@ -1802,6 +2462,11 @@ label span {
   font-size: 10.5px;
 }
 
+.upload-zone small {
+  font-size: 10px;
+  color: var(--ce-ink4);
+}
+
 .url-panel {
   display: flex;
   gap: 8px;
@@ -1823,11 +2488,80 @@ label span {
   min-height: 0;
 }
 
+.image-manager {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.2fr) 1fr;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.cover-preview,
+.gallery-preview {
+  border: 1px solid var(--ce-p4);
+  border-radius: 12px;
+  background: var(--ce-p2);
+  padding: 10px;
+}
+
+.image-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ce-ink4);
+  margin-bottom: 8px;
+}
+
+.cover-frame {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--ce-acc) 42%, var(--ce-p4));
+}
+
+.cover-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cover-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 0;
+  background: rgba(0, 0, 0, 0.62);
+  color: #ffffff;
+  padding: 0;
+  min-height: 0;
+}
+
+.cover-remove svg {
+  width: 15px;
+  height: 15px;
+}
+
+.cover-empty {
+  min-height: 120px;
+  border: 1.5px dashed var(--ce-p4);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ce-ink4);
+  font-size: 12px;
+}
+
 .image-strip {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  margin-top: 10px;
 }
 
 .image-thumb {
@@ -1840,28 +2574,10 @@ label span {
   flex-shrink: 0;
 }
 
-.image-thumb.primary {
-  border-color: #c8960a;
-  box-shadow: 0 0 0 2px #c8960a;
-}
-
 .image-thumb img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-.image-thumb > span {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  background: #c8960a;
-  color: #ffffff;
-  font-size: 7px;
-  font-weight: 700;
-  padding: 2px 4px;
-  border-radius: 3px;
-  text-transform: uppercase;
 }
 
 .image-thumb > button,
@@ -1891,28 +2607,10 @@ label span {
   letter-spacing: 0;
 }
 
-.green-check,
-.select-check {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--ce-green);
-  color: #ffffff;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.green-check svg,
-.select-check svg {
-  width: 12px;
-}
-
 .detail-chip.selected {
-  border-color: var(--ce-green);
-  background: var(--ce-greenbg);
-  color: var(--ce-green);
+  border-color: var(--ce-acc-border);
+  background: var(--ce-acc-soft);
+  color: var(--ce-ink);
 }
 
 .detail-fields,
@@ -1969,6 +2667,11 @@ label span {
   text-transform: none;
   letter-spacing: 0;
   min-height: 0;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
 }
 
 .ticket-mode-card > svg {
@@ -1981,25 +2684,15 @@ label span {
   font-weight: 600;
 }
 
-.ticket-mode-card span:not(.select-check) {
+.ticket-mode-card span {
   font-size: 11px;
   line-height: 1.5;
 }
 
-.ticket-mode-card .select-check {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  opacity: 0;
-}
-
 .ticket-mode-card.selected {
-  border-color: var(--ce-green);
-  box-shadow: 0 0 0 3px rgba(26, 122, 74, 0.1);
-}
-
-.ticket-mode-card.selected .select-check {
-  opacity: 1;
+  border-color: var(--ce-acc-border);
+  background: var(--ce-acc-soft);
+  box-shadow: none;
 }
 
 .count-badge {
@@ -2097,7 +2790,7 @@ label span {
 .toggle-row input[type='checkbox'] {
   width: 38px;
   height: 22px;
-  accent-color: var(--ce-green);
+  accent-color: var(--ce-acc);
   flex-shrink: 0;
 }
 
@@ -2195,11 +2888,29 @@ label span {
   font-weight: 600;
   text-transform: none;
   letter-spacing: 0;
+  transition:
+    background 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.primary-btn:hover {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.015)),
+    var(--ce-ink);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.075);
 }
 
 .primary-btn.publish {
   background: var(--ce-acc);
   color: #ffffff;
+}
+
+.primary-btn.publish:hover {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)),
+    var(--ce-acc);
 }
 
 .preview-col {
@@ -2335,9 +3046,14 @@ label span {
   .ce-header {
     overflow-x: auto;
     padding: 0 1rem;
+    grid-template-columns: auto auto minmax(220px, 1fr) auto;
   }
 
   .ce-header-actions {
+    gap: 6px;
+  }
+
+  .draft-badge {
     display: none;
   }
 }
@@ -2356,7 +3072,9 @@ label span {
   }
 
   .two-col,
-  .ticket-mode-grid {
+  .ticket-mode-grid,
+  .category-menu,
+  .image-manager {
     grid-template-columns: 1fr;
   }
 

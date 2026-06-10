@@ -34,20 +34,6 @@ const isExpired = computed(() => {
   return props.event.sales_status.is_expired
 })
 
-// Format sales end date if needed
-const formattedSalesEnd = computed(() => {
-  if (!props.event?.sales_status?.sales_end) return ''
-  const salesEnd = new Date(props.event.sales_status.sales_end)
-  return salesEnd.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-})
-
 // Create computed properties from event if available
 const eventTitle = computed(() => props.event?.title || '')
 const eventImage = computed(() => props.event?.main_image || '')
@@ -361,12 +347,14 @@ const viewDetails = () => {
 .event-card__rating {
   display: flex;
   align-items: center;
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--color-tab-bg);
+  color: var(--color-text);
   padding: 3px 8px;
   border-radius: 30px;
   margin-left: 10px;
   font-size: 0.8rem;
   white-space: nowrap;
+  border: 1px solid var(--color-card-border);
 }
 
 .star-icon {

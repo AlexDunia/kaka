@@ -199,21 +199,22 @@ const formatDate = (date) => {
   flex: 1;
   height: 40px;
   padding: 0 40px 0 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--color-border, #ddd);
   border-radius: 6px;
   font-size: 14px;
   cursor: pointer;
-  background-color: #fff;
+  background-color: var(--color-surface, #fff);
+  color: var(--color-text, #333);
 }
 
 .datetime-input:focus {
   outline: none;
-  border-color: #4a6cf7;
-  box-shadow: 0 0 0 2px rgba(74, 108, 247, 0.1);
+  border-color: var(--color-accent, #ec4899);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent, #ec4899) 16%, transparent);
 }
 
 .is-placeholder {
-  color: #999;
+  color: var(--color-muted, #999);
 }
 
 .calendar-icon-btn {
@@ -223,7 +224,7 @@ const formatDate = (date) => {
   transform: translateY(-50%);
   border: none;
   background: none;
-  color: #666;
+  color: var(--color-muted, #666);
   cursor: pointer;
   padding: 0;
   display: flex;
@@ -232,7 +233,7 @@ const formatDate = (date) => {
 }
 
 .calendar-icon-btn:hover {
-  color: #4a6cf7;
+  color: var(--color-accent, #ec4899);
 }
 
 .input-wrapper.has-error .datetime-input {
@@ -251,7 +252,7 @@ const formatDate = (date) => {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.55);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -260,6 +261,7 @@ const formatDate = (date) => {
 
 .datetime-picker-modal {
   animation: modal-fade-in 0.2s ease-out;
+  max-width: calc(100vw - 24px);
 }
 
 @keyframes modal-fade-in {

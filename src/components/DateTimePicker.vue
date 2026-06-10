@@ -7,75 +7,85 @@
       </button>
     </div>
 
-    <div class="datetime-picker-tabs">
-      <button @click="activeTab = 'date'" :class="{ active: activeTab === 'date' }">Date</button>
-      <button @click="activeTab = 'time'" :class="{ active: activeTab === 'time' }">Time</button>
-    </div>
+    <div class="datetime-picker-body">
+      <div class="date-picker-container">
+        <div class="section-label">Choose date</div>
+        <div class="calendar-header">
+          <button type="button" @click="prevMonth" class="nav-btn" aria-label="Previous month">
+            &lt;
+          </button>
+          <span>{{ monthYearDisplay }}</span>
+          <button type="button" @click="nextMonth" class="nav-btn" aria-label="Next month">
+            &gt;
+          </button>
+        </div>
 
-    <div v-if="activeTab === 'date'" class="date-picker-container">
-      <div class="calendar-header">
-        <button @click="prevMonth" class="nav-btn">&lt;</button>
-        <span>{{ monthYearDisplay }}</span>
-        <button @click="nextMonth" class="nav-btn">&gt;</button>
-      </div>
+        <div class="calendar-weekdays">
+          <div v-for="day in weekDays" :key="day" class="weekday">{{ day }}</div>
+        </div>
 
-      <div class="calendar-weekdays">
-        <div v-for="day in weekDays" :key="day" class="weekday">{{ day }}</div>
-      </div>
-
-      <div class="calendar-days">
-        <div
-          v-for="day in calendarDays"
-          :key="day.date"
-          class="day-cell"
-          :class="{
-            empty: !day.inMonth,
-            today: day.isToday,
-            selected: day.isSelected,
-            disabled: day.isDisabled,
-          }"
-          @click="!day.isDisabled && selectDate(day.date)"
-        >
-          <span v-if="day.inMonth">{{ day.day }}</span>
+        <div class="calendar-days">
+          <button
+            v-for="day in calendarDays"
+            :key="day.date"
+            type="button"
+            class="day-cell"
+            :class="{
+              empty: !day.inMonth,
+              today: day.isToday,
+              selected: day.isSelected,
+              disabled: day.isDisabled,
+            }"
+            :disabled="!day.inMonth || day.isDisabled"
+            @click="selectDate(day.date)"
+          >
+            <span v-if="day.inMonth">{{ day.day }}</span>
+          </button>
         </div>
       </div>
-    </div>
 
-    <div v-if="activeTab === 'time'" class="time-picker-container">
-      <div class="time-inputs">
-        <div class="time-input-group">
-          <label>Hours</label>
-          <div class="time-buttons">
-            <button @click="incrementHours" class="time-btn">+</button>
-            <span>{{ formattedHours }}</span>
-            <button @click="decrementHours" class="time-btn">-</button>
+      <div class="time-picker-container">
+        <div class="section-label">Choose time</div>
+        <div class="time-inputs">
+          <div class="time-input-group">
+            <label>Hour</label>
+            <div class="time-buttons">
+              <button type="button" @click="incrementHours" class="time-btn">+</button>
+              <span>{{ formattedHours }}</span>
+              <button type="button" @click="decrementHours" class="time-btn">-</button>
+            </div>
+          </div>
+
+          <div class="time-separator">:</div>
+
+          <div class="time-input-group">
+            <label>Minute</label>
+            <div class="time-buttons">
+              <button type="button" @click="incrementMinutes" class="time-btn">+</button>
+              <span>{{ formattedMinutes }}</span>
+              <button type="button" @click="decrementMinutes" class="time-btn">-</button>
+            </div>
+          </div>
+
+          <div v-if="use12HourFormat" class="time-input-group">
+            <label>Period</label>
+            <div class="ampm-toggle">
+              <button type="button" @click="setPeriod('AM')" :class="{ active: period === 'AM' }">
+                AM
+              </button>
+              <button type="button" @click="setPeriod('PM')" :class="{ active: period === 'PM' }">
+                PM
+              </button>
+            </div>
           </div>
         </div>
-
-        <div class="time-separator">:</div>
-
-        <div class="time-input-group">
-          <label>Minutes</label>
-          <div class="time-buttons">
-            <button @click="incrementMinutes" class="time-btn">+</button>
-            <span>{{ formattedMinutes }}</span>
-            <button @click="decrementMinutes" class="time-btn">-</button>
-          </div>
-        </div>
-
-        <div v-if="use12HourFormat" class="time-input-group">
-          <label>AM/PM</label>
-          <div class="ampm-toggle">
-            <button @click="setPeriod('AM')" :class="{ active: period === 'AM' }">AM</button>
-            <button @click="setPeriod('PM')" :class="{ active: period === 'PM' }">PM</button>
-          </div>
-        </div>
+        <p class="datetime-summary">{{ selectedSummary }}</p>
       </div>
     </div>
 
     <div class="datetime-picker-actions">
       <button @click="$emit('close')" class="cancel-btn">Cancel</button>
-      <button @click="applySelection" class="apply-btn">Apply</button>
+      <button @click="applySelection" class="apply-btn">Set Date & Time</button>
     </div>
   </div>
 </template>
@@ -108,8 +118,6 @@ const props = defineProps({
 
 const emit = defineEmits(['update:dateTime', 'close'])
 
-// State
-const activeTab = ref('date')
 const currentMonth = ref(new Date().getMonth())
 const currentYear = ref(new Date().getFullYear())
 const selectedDate = ref(new Date(props.initialDateTime))
@@ -188,6 +196,16 @@ const formattedMinutes = computed(() => {
   return minutes.value < 10 ? '0' + minutes.value : minutes.value
 })
 
+const selectedSummary = computed(() =>
+  selectedDate.value.toLocaleString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }),
+)
+
 // Methods
 function isSameDay(date1, date2) {
   return (
@@ -233,14 +251,20 @@ function nextMonth() {
 
 function selectDate(date) {
   const newDate = new Date(date)
-  newDate.setHours(hours.value, minutes.value, 0, 0)
   selectedDate.value = newDate
+  updateSelectedDateTime()
 }
 
 function incrementHours() {
   if (props.use12HourFormat) {
-    hours.value = (hours.value + 1) % 12
-    if (hours.value === 0) hours.value = 12
+    if (hours.value === 11) {
+      hours.value = 12
+      period.value = period.value === 'AM' ? 'PM' : 'AM'
+    } else if (hours.value === 12) {
+      hours.value = 1
+    } else {
+      hours.value += 1
+    }
   } else {
     hours.value = (hours.value + 1) % 24
   }
@@ -249,8 +273,14 @@ function incrementHours() {
 
 function decrementHours() {
   if (props.use12HourFormat) {
-    hours.value = (hours.value - 1 + 12) % 12
-    if (hours.value === 0) hours.value = 12
+    if (hours.value === 12) {
+      hours.value = 11
+      period.value = period.value === 'AM' ? 'PM' : 'AM'
+    } else if (hours.value === 1) {
+      hours.value = 12
+    } else {
+      hours.value -= 1
+    }
   } else {
     hours.value = (hours.value - 1 + 24) % 24
   }
@@ -640,5 +670,221 @@ watch(
   background-color: rgba(233, 75, 159, 0.25);
   border-color: rgba(233, 75, 159, 0.4);
   color: #ffffff;
+}
+
+.datetime-picker {
+  width: min(720px, calc(100vw - 32px));
+  border-radius: 16px;
+  background: var(--color-surface, #ffffff);
+  border: 1px solid var(--color-border, #e4ded7);
+  color: var(--color-text, #0d0d0d);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.24);
+}
+
+.datetime-picker-header {
+  background: var(--color-surface, #ffffff);
+  border-bottom: 1px solid var(--color-border, #e4ded7);
+  padding: 16px 18px;
+}
+
+.datetime-picker-header h3 {
+  color: var(--color-text, #0d0d0d);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.close-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  color: var(--color-muted, #7a746e);
+}
+
+.close-btn:hover {
+  background: var(--color-tab-bg, #ede9e3);
+}
+
+.datetime-picker-body {
+  display: grid;
+  grid-template-columns: minmax(300px, 1.25fr) minmax(220px, 0.75fr);
+  gap: 16px;
+  padding: 16px;
+  background: var(--color-bg, #f5f2ee);
+}
+
+.date-picker-container,
+.time-picker-container {
+  padding: 14px;
+  border: 1px solid var(--color-border, #e4ded7);
+  border-radius: 14px;
+  background: var(--color-surface, #ffffff);
+}
+
+.section-label {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-muted, #7a746e);
+  margin-bottom: 12px;
+}
+
+.calendar-header span,
+.time-buttons span,
+.time-separator {
+  color: var(--color-text, #0d0d0d);
+}
+
+.nav-btn,
+.time-btn {
+  border: 1px solid var(--color-border, #e4ded7);
+  background: var(--color-tab-bg, #ede9e3);
+  color: var(--color-text, #0d0d0d);
+}
+
+.nav-btn:hover,
+.time-btn:hover {
+  background: color-mix(in srgb, var(--color-accent, #ec4899) 10%, var(--color-tab-bg, #ede9e3));
+}
+
+.calendar-days {
+  gap: 6px;
+}
+
+.day-cell {
+  width: 100%;
+  height: 38px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-text, #0d0d0d);
+}
+
+.day-cell.empty {
+  background: transparent;
+}
+
+.day-cell:not(.empty):not(.disabled):hover {
+  background: color-mix(in srgb, var(--color-accent, #ec4899) 10%, transparent);
+}
+
+.day-cell.today:not(.selected) {
+  background: #3d3935;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.day-cell.selected {
+  background: var(--color-accent, #ec4899);
+  border-color: var(--color-accent, #ec4899);
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.day-cell.disabled {
+  background: transparent;
+  color: var(--color-muted, #7a746e);
+  cursor: not-allowed;
+  filter: blur(0.5px);
+  opacity: 0.38;
+}
+
+.time-inputs {
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.time-input-group label {
+  color: var(--color-muted, #7a746e);
+  font-weight: 700;
+}
+
+.time-buttons span {
+  width: 46px;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.ampm-toggle button {
+  min-height: 34px;
+  border-color: var(--color-border, #e4ded7);
+  color: var(--color-text, #0d0d0d);
+  background: transparent;
+}
+
+.ampm-toggle button.active {
+  background: var(--color-accent, #ec4899);
+  border-color: var(--color-accent, #ec4899);
+  color: #ffffff;
+}
+
+.datetime-summary {
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--color-tab-bg, #ede9e3);
+  color: var(--color-text, #0d0d0d);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.datetime-picker-actions {
+  background: var(--color-surface, #ffffff);
+  border-top: 1px solid var(--color-border, #e4ded7);
+  padding: 14px 18px;
+}
+
+.cancel-btn,
+.apply-btn {
+  border-radius: 10px;
+  min-height: 38px;
+  padding: 9px 14px;
+}
+
+.cancel-btn {
+  background: var(--color-tab-bg, #ede9e3);
+  color: var(--color-text, #0d0d0d);
+}
+
+.apply-btn {
+  background: var(--color-accent, #ec4899);
+  color: #ffffff;
+}
+
+:global(:root:not(.light)) .datetime-picker,
+:global(:root:not(.light)) .datetime-picker-header,
+:global(:root:not(.light)) .datetime-picker-actions,
+:global(:root:not(.light)) .date-picker-container,
+:global(:root:not(.light)) .time-picker-container {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+:global(:root:not(.light)) .datetime-picker-body {
+  background: var(--color-bg);
+}
+
+:global(:root:not(.light)) .nav-btn,
+:global(:root:not(.light)) .time-btn,
+:global(:root:not(.light)) .cancel-btn,
+:global(:root:not(.light)) .datetime-summary {
+  background: var(--color-tab-bg);
+  color: var(--color-text);
+}
+
+:global(:root:not(.light)) .day-cell {
+  color: var(--color-text);
+}
+
+:global(:root:not(.light)) .day-cell.today:not(.selected) {
+  background: #3d3935;
+  color: #ffffff;
+}
+
+@media (max-width: 680px) {
+  .datetime-picker-body {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

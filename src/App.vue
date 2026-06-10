@@ -1,6 +1,6 @@
 <script setup>
 import { RouterLink, RouterView } from 'vue-router'
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch, provide } from 'vue'
 import { useCartStore } from '@/stores/cart'
 import { useAuthStore } from '@/stores/auth'
 import { useRoute } from 'vue-router'
@@ -43,6 +43,12 @@ const initializeTheme = () => {
 const toggleTheme = () => {
   applyTheme(theme.value === 'light' ? 'dark' : 'light')
 }
+
+provide('themeController', {
+  theme,
+  applyTheme,
+  toggleTheme,
+})
 
 const navigationLinks = [
   { path: '/', name: 'All' },
@@ -431,9 +437,15 @@ onUnmounted(() => {
   width: 100%;
 }
 
+:global(:root) {
+  --app-header-height: 96px;
+  --app-logo-height: 72px;
+}
+
 .app-header {
   background-color: var(--color-surface);
-  padding: 0.75rem 0;
+  height: var(--app-header-height);
+  padding: 0;
   position: sticky;
   top: 0;
   z-index: 1000;
@@ -451,6 +463,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  height: 100%;
 }
 
 .logo {
@@ -459,7 +472,7 @@ onUnmounted(() => {
 }
 
 .logo-img {
-  height: 80px;
+  height: var(--app-logo-height);
   width: auto;
   display: block;
   margin-right: 0.5rem;

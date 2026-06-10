@@ -52,15 +52,33 @@ const sanitizeTicket = (ticket) => ({
   salesEnd: ticket.salesEnd || null,
 })
 
+const sanitizeRepeatDayOverrides = (overrides = {}) =>
+  Object.fromEntries(
+    Object.entries(overrides)
+      .filter(([, override]) => override?.startTime && override?.endTime)
+      .map(([day, override]) => [
+        day,
+        {
+          startTime: override.startTime,
+          endTime: override.endTime,
+        },
+      ]),
+  )
+
 export const buildCreateEventPayload = (form) => ({
   title: stripUnsafeHtml(form.title),
   startsAt: form.startsAt || null,
   endsAt: form.endsAt || null,
   recurrence: {
     type: form.recurrenceType,
-    frequency: form.repeatFrequency,
+    frequency: form.repeatUnit || form.repeatFrequency || null,
+    interval: Number(form.repeatInterval) || 1,
+    unit: form.repeatUnit || null,
     days: [...form.repeatDays],
-    sessions: Number(form.repeatSessions) || 0,
+    startTime: form.repeatStartTime || null,
+    endTime: form.repeatEndTime || null,
+    dayOverrides: sanitizeRepeatDayOverrides(form.repeatDayOverrides),
+    stopMode: form.repeatStopMode || null,
     endDate: form.repeatEndDate || null,
   },
   format: form.format,
