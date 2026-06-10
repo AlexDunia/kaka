@@ -75,6 +75,7 @@ export const buildCreateEventPayload = (form) => ({
     interval: Number(form.repeatInterval) || 1,
     unit: form.repeatUnit || null,
     days: [...form.repeatDays],
+    startDate: form.repeatStartDate || null,
     startTime: form.repeatStartTime || null,
     endTime: form.repeatEndTime || null,
     dayOverrides: sanitizeRepeatDayOverrides(form.repeatDayOverrides),

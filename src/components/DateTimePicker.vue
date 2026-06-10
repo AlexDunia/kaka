@@ -7,8 +7,8 @@
       </button>
     </div>
 
-    <div class="datetime-picker-body">
-      <div class="date-picker-container">
+    <div class="datetime-picker-body" :class="{ 'single-panel': mode !== 'datetime' }">
+      <div v-if="mode !== 'time'" class="date-picker-container">
         <div class="section-label">Choose date</div>
         <div class="calendar-header">
           <button type="button" @click="prevMonth" class="nav-btn" aria-label="Previous month">
@@ -44,7 +44,7 @@
         </div>
       </div>
 
-      <div class="time-picker-container">
+      <div v-if="mode !== 'date'" class="time-picker-container">
         <div class="section-label">Choose time</div>
         <div class="time-inputs">
           <div class="time-input-group">
@@ -85,7 +85,7 @@
 
     <div class="datetime-picker-actions">
       <button @click="$emit('close')" class="cancel-btn">Cancel</button>
-      <button @click="applySelection" class="apply-btn">Set Date & Time</button>
+      <button @click="applySelection" class="apply-btn">{{ applyButtonLabel }}</button>
     </div>
   </div>
 </template>
@@ -113,6 +113,11 @@ const props = defineProps({
   use12HourFormat: {
     type: Boolean,
     default: true,
+  },
+  mode: {
+    type: String,
+    default: 'datetime',
+    validator: (value) => ['datetime', 'date', 'time'].includes(value),
   },
 })
 
@@ -197,14 +202,35 @@ const formattedMinutes = computed(() => {
 })
 
 const selectedSummary = computed(() =>
-  selectedDate.value.toLocaleString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }),
+  selectedDate.value.toLocaleString(
+    undefined,
+    props.mode === 'date'
+      ? {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        }
+      : props.mode === 'time'
+        ? {
+            hour: '2-digit',
+            minute: '2-digit',
+          }
+        : {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          },
+  ),
 )
+
+const applyButtonLabel = computed(() => {
+  if (props.mode === 'date') return 'Set Date'
+  if (props.mode === 'time') return 'Set Time'
+  return 'Set Date & Time'
+})
 
 // Methods
 function isSameDay(date1, date2) {
@@ -712,6 +738,10 @@ watch(
   background: var(--color-bg, #f5f2ee);
 }
 
+.datetime-picker-body.single-panel {
+  grid-template-columns: minmax(260px, 1fr);
+}
+
 .date-picker-container,
 .time-picker-container {
   padding: 14px;
@@ -737,14 +767,24 @@ watch(
 
 .nav-btn,
 .time-btn {
-  border: 1px solid var(--color-border, #e4ded7);
-  background: var(--color-tab-bg, #ede9e3);
-  color: var(--color-text, #0d0d0d);
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 
 .nav-btn:hover,
 .time-btn:hover {
-  background: color-mix(in srgb, var(--color-accent, #ec4899) 10%, var(--color-tab-bg, #ede9e3));
+  background: var(--color-tab-bg);
 }
 
 .calendar-days {
@@ -755,9 +795,10 @@ watch(
   width: 100%;
   height: 38px;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: 50%;
   background: transparent;
   color: var(--color-text, #0d0d0d);
+  flex-direction: column;
 }
 
 .day-cell.empty {
@@ -769,15 +810,26 @@ watch(
 }
 
 .day-cell.today:not(.selected) {
-  background: #3d3935;
-  color: #ffffff;
+  background: transparent;
+  color: var(--color-text);
   font-weight: 800;
 }
 
+.day-cell.today:not(.selected)::after {
+  content: '';
+  display: block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  margin: 2px auto 0;
+  background: var(--color-accent);
+}
+
 .day-cell.selected {
-  background: var(--color-accent, #ec4899);
-  border-color: var(--color-accent, #ec4899);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
   color: #ffffff;
+  border-radius: 50%;
   font-weight: 800;
 }
 
@@ -806,24 +858,29 @@ watch(
 }
 
 .ampm-toggle button {
+  width: 48px;
+  height: 34px;
+  min-width: 48px;
   min-height: 34px;
-  border-color: var(--color-border, #e4ded7);
-  color: var(--color-text, #0d0d0d);
-  background: transparent;
+  border-color: var(--color-border);
+  color: var(--color-muted);
+  background: var(--color-tab-bg);
+  font-weight: 400;
 }
 
 .ampm-toggle button.active {
-  background: var(--color-accent, #ec4899);
-  border-color: var(--color-accent, #ec4899);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
   color: #ffffff;
+  font-weight: 700;
 }
 
 .datetime-summary {
   margin: 16px 0 0;
   padding: 10px 12px;
   border-radius: 10px;
-  background: var(--color-tab-bg, #ede9e3);
-  color: var(--color-text, #0d0d0d);
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+  color: color-mix(in srgb, var(--color-accent) 72%, var(--color-text));
   font-size: 13px;
   font-weight: 700;
   text-align: center;
@@ -867,8 +924,7 @@ watch(
 
 :global(:root:not(.light)) .nav-btn,
 :global(:root:not(.light)) .time-btn,
-:global(:root:not(.light)) .cancel-btn,
-:global(:root:not(.light)) .datetime-summary {
+:global(:root:not(.light)) .cancel-btn {
   background: var(--color-tab-bg);
   color: var(--color-text);
 }
@@ -878,8 +934,8 @@ watch(
 }
 
 :global(:root:not(.light)) .day-cell.today:not(.selected) {
-  background: #3d3935;
-  color: #ffffff;
+  background: transparent;
+  color: var(--color-text);
 }
 
 @media (max-width: 680px) {

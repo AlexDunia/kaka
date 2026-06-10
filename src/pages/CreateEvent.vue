@@ -32,6 +32,7 @@ import {
   UserIcon,
   XMarkIcon,
 } from '@heroicons/vue/24/outline'
+import DateTimePicker from '@/components/DateTimePicker.vue'
 import DateTimePickerInput from '@/components/DateTimePickerInput.vue'
 import EventCard from '@/components/EventCard.vue'
 import {
@@ -134,6 +135,7 @@ const form = reactive({
   repeatInterval: 1,
   repeatUnit: '',
   repeatDays: [],
+  repeatStartDate: '',
   repeatStartTime: '',
   repeatEndTime: '',
   repeatDayOverrides: {},
@@ -177,6 +179,8 @@ const toast = ref('')
 const published = ref(false)
 const errors = reactive({})
 const ticketId = ref(0)
+const activeRepeatDatePicker = ref('')
+const activeRepeatTimePicker = ref(null)
 let toastTimer
 let draftTimer
 
@@ -237,10 +241,12 @@ const selectedRepeatDays = computed(() =>
 const repeatStepOneComplete = computed(
   () => Boolean(form.repeatUnit) && (form.repeatUnit !== 'weeks' || form.repeatDays.length > 0),
 )
-const repeatStepTwoComplete = computed(() => Boolean(form.repeatStartTime && form.repeatEndTime))
-const repeatStepThreeComplete = computed(
-  () => form.repeatStopMode === 'forever' || (form.repeatStopMode === 'date' && Boolean(form.repeatEndDate)),
-)
+const repeatDateRangeValid = computed(() => {
+  if (!form.repeatStartDate || !form.repeatEndDate) return true
+  return new Date(form.repeatEndDate) >= new Date(form.repeatStartDate)
+})
+const repeatStepTwoComplete = computed(() => Boolean(form.repeatStartDate) && repeatDateRangeValid.value)
+const repeatStepThreeComplete = computed(() => Boolean(form.repeatStartTime && form.repeatEndTime))
 const recurrenceReady = computed(
   () => repeatStepOneComplete.value && repeatStepTwoComplete.value && repeatStepThreeComplete.value,
 )
@@ -257,11 +263,31 @@ const repeatSummaryRows = computed(() => {
   return [`Time: ${formatTimeLabel(form.repeatStartTime)} to ${formatTimeLabel(form.repeatEndTime)}.`]
 })
 const repeatStopSummary = computed(() =>
-  form.repeatStopMode === 'forever'
-    ? 'It runs forever'
-    : `It stops on ${formatDateOnly(form.repeatEndDate)}`,
+  form.repeatEndDate
+    ? `It runs from ${formatDateOnly(form.repeatStartDate)} until ${formatDateOnly(form.repeatEndDate)}`
+    : `It starts on ${formatDateOnly(form.repeatStartDate)} and has no end date`,
 )
 const canContinue = computed(() => isStepComplete(currentStep.value))
+const repeatDatePickerInitialDate = computed(() => {
+  const value = activeRepeatDatePicker.value === 'end' ? form.repeatEndDate : form.repeatStartDate
+  return dateOnlyToDate(value) || dateOnlyToDate(form.repeatStartDate) || new Date(form.startsAt || today)
+})
+const repeatDatePickerMinDate = computed(() => {
+  if (activeRepeatDatePicker.value === 'end') {
+    return dateOnlyToDate(form.repeatStartDate) || today
+  }
+  return today
+})
+const repeatDatePickerMaxDate = computed(() => {
+  if (activeRepeatDatePicker.value === 'start' && form.repeatEndDate) {
+    return dateOnlyToDate(form.repeatEndDate)
+  }
+  return null
+})
+const repeatTimePickerInitialDate = computed(() => {
+  const time = getRepeatTimePickerValue() || '09:00'
+  return combineDateAndTime(form.repeatStartDate || toDateInputValue(form.startsAt || today), time)
+})
 
 function tomorrowAt(hour) {
   const date = new Date()
@@ -296,6 +322,13 @@ function toDateInputValue(value) {
   return offsetDate.toISOString().slice(0, 10)
 }
 
+function dateOnlyToDate(value) {
+  if (!value) return null
+  const [year, month, day] = String(value).split('-').map(Number)
+  if (!year || !month || !day) return null
+  return new Date(year, month - 1, day)
+}
+
 function formatTimeLabel(value) {
   if (!value) return 'time not set'
   const [hourValue, minute = '00'] = value.split(':')
@@ -303,6 +336,57 @@ function formatTimeLabel(value) {
   const period = hour >= 12 ? 'PM' : 'AM'
   hour = hour % 12 || 12
   return `${hour}:${minute} ${period}`
+}
+
+function toTimeInputValue(value) {
+  const date = value ? new Date(value) : new Date()
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+function combineDateAndTime(dateValue, timeValue) {
+  const date = dateOnlyToDate(dateValue) || new Date()
+  const [hour = '9', minute = '00'] = String(timeValue || '09:00').split(':')
+  date.setHours(Number(hour) || 0, Number(minute) || 0, 0, 0)
+  return date
+}
+
+function getRepeatTimePickerValue() {
+  const target = activeRepeatTimePicker.value
+  if (!target) return ''
+  if (target.scope === 'default') {
+    return target.field === 'start' ? form.repeatStartTime : form.repeatEndTime
+  }
+  const override = form.repeatDayOverrides[target.day]
+  return target.field === 'start' ? override?.startTime : override?.endTime
+}
+
+function setRepeatTimePickerValue(value) {
+  const target = activeRepeatTimePicker.value
+  if (!target) return
+  if (target.scope === 'default') {
+    if (target.field === 'start') form.repeatStartTime = value
+    else form.repeatEndTime = value
+    syncRecurringPrimaryDates()
+    clearError('repeatSchedule')
+    return
+  }
+  const override = ensureRepeatDayOverride(target.day)
+  if (target.field === 'start') override.startTime = value
+  else override.endTime = value
+  clearError('repeatSchedule')
+}
+
+function syncRecurringPrimaryDates() {
+  if (form.recurrenceType !== 'recur' || !form.repeatStartDate) return
+  if (form.repeatStartTime) {
+    form.startsAt = combineDateAndTime(form.repeatStartDate, form.repeatStartTime)
+  }
+  if (form.repeatStartTime && form.repeatEndTime) {
+    const start = combineDateAndTime(form.repeatStartDate, form.repeatStartTime)
+    const end = combineDateAndTime(form.repeatStartDate, form.repeatEndTime)
+    if (end <= start) end.setDate(end.getDate() + 1)
+    form.endsAt = end
+  }
 }
 
 function showToast(message) {
@@ -457,10 +541,10 @@ function validateStep(step) {
     if (form.recurrenceType === 'recur') {
       if (!repeatStepOneComplete.value) setError('repeatSchedule', 'Choose how often this repeats.')
       if (repeatStepOneComplete.value && !repeatStepTwoComplete.value) {
-        setError('repeatSchedule', 'Add the default start and end time.')
+        setError('repeatSchedule', repeatDateRangeValid.value ? 'Choose when the recurrence starts.' : 'End date cannot be before the start date.')
       }
       if (repeatStepTwoComplete.value && !repeatStepThreeComplete.value) {
-        setError('repeatSchedule', 'Choose when the recurrence stops.')
+        setError('repeatSchedule', 'Add the default start and end time.')
       }
     }
   }
@@ -575,9 +659,48 @@ function resetRepeatDayOverride(day) {
   }
 }
 
-function setRepeatStopMode(mode) {
-  form.repeatStopMode = mode
+function openRepeatDatePicker(target) {
+  activeRepeatDatePicker.value = target
+}
+
+function closeRepeatDatePicker() {
+  activeRepeatDatePicker.value = ''
+}
+
+function applyRepeatDate(date) {
+  const value = toDateInputValue(date)
+  if (activeRepeatDatePicker.value === 'end') {
+    form.repeatEndDate = value
+    form.repeatStopMode = 'date'
+  } else {
+    form.repeatStartDate = value
+    if (form.repeatEndDate && new Date(form.repeatEndDate) < new Date(value)) {
+      form.repeatEndDate = ''
+      form.repeatStopMode = 'forever'
+    }
+  }
+  if (!form.repeatEndDate && !form.repeatStopMode) form.repeatStopMode = 'forever'
+  syncRecurringPrimaryDates()
   clearError('repeatSchedule')
+}
+
+function clearRepeatEndDate() {
+  form.repeatEndDate = ''
+  form.repeatStopMode = 'forever'
+  clearError('repeatSchedule')
+}
+
+function openRepeatTimePicker(target) {
+  activeRepeatTimePicker.value = target
+}
+
+function closeRepeatTimePicker() {
+  activeRepeatTimePicker.value = null
+}
+
+function applyRepeatTime(dateTime) {
+  setRepeatTimePickerValue(toTimeInputValue(dateTime))
+  closeRepeatTimePicker()
 }
 
 function handleFiles(files) {
@@ -888,36 +1011,83 @@ onMounted(() => {
                     <div class="recurrence-step-head">
                       <span>2</span>
                       <div>
-                        <strong>What time?</strong>
-                        <p>The default time applies to every occurrence.</p>
+                        <strong>When should it start?</strong>
+                        <p>Set the first date this schedule can run. End date is optional.</p>
                       </div>
                     </div>
                     <div class="two-col">
-                      <div class="field recurrence-time-control">
-                        <label for="repeat-start-time">Start time</label>
-                        <div class="input-with-icon recurrence-time-input">
-                          <ClockIcon aria-hidden="true" />
-                          <input
-                            id="repeat-start-time"
-                            v-model="form.repeatStartTime"
-                            type="time"
-                            class="field-input recurrence-time-field"
-                            @input="clearError('repeatSchedule')"
-                          />
+                      <div class="field recurrence-picker-control">
+                        <label>Start date</label>
+                        <button
+                          type="button"
+                          class="field-input recurrence-picker-button"
+                          @click="openRepeatDatePicker('start')"
+                        >
+                          <CalendarDaysIcon aria-hidden="true" />
+                          <span>{{ form.repeatStartDate ? formatDateOnly(form.repeatStartDate) : 'Select start date' }}</span>
+                        </button>
+                      </div>
+                      <div class="field recurrence-picker-control">
+                        <label>End date <span>Optional</span></label>
+                        <div class="recurrence-picker-stack">
+                          <button
+                            type="button"
+                            class="field-input recurrence-picker-button"
+                            @click="openRepeatDatePicker('end')"
+                          >
+                            <CalendarDaysIcon aria-hidden="true" />
+                            <span>{{ form.repeatEndDate ? formatDateOnly(form.repeatEndDate) : 'No end date' }}</span>
+                          </button>
+                          <button
+                            v-if="form.repeatEndDate"
+                            type="button"
+                            class="repeat-reset-btn"
+                            @click="clearRepeatEndDate"
+                          >
+                            Clear end date
+                          </button>
                         </div>
                       </div>
-                      <div class="field recurrence-time-control">
-                        <label for="repeat-end-time">End time</label>
-                        <div class="input-with-icon recurrence-time-input">
+                    </div>
+                  </section>
+
+                  <section
+                    class="recurrence-step"
+                    :class="{
+                      locked: !(repeatStepOneComplete && repeatStepTwoComplete),
+                      complete: repeatStepThreeComplete,
+                    }"
+                    :aria-disabled="!(repeatStepOneComplete && repeatStepTwoComplete)"
+                  >
+                    <div class="recurrence-step-head">
+                      <span>3</span>
+                      <div>
+                        <strong>What time?</strong>
+                        <p>The default time applies to every occurrence. You can adjust each selected day later.</p>
+                      </div>
+                    </div>
+                    <div class="two-col">
+                      <div class="field recurrence-picker-control">
+                        <label>Start time</label>
+                        <button
+                          type="button"
+                          class="field-input recurrence-picker-button"
+                          @click="openRepeatTimePicker({ scope: 'default', field: 'start' })"
+                        >
                           <ClockIcon aria-hidden="true" />
-                          <input
-                            id="repeat-end-time"
-                            v-model="form.repeatEndTime"
-                            type="time"
-                            class="field-input recurrence-time-field"
-                            @input="clearError('repeatSchedule')"
-                          />
-                        </div>
+                          <span>{{ form.repeatStartTime ? formatTimeLabel(form.repeatStartTime) : 'Select start time' }}</span>
+                        </button>
+                      </div>
+                      <div class="field recurrence-picker-control">
+                        <label>End time</label>
+                        <button
+                          type="button"
+                          class="field-input recurrence-picker-button"
+                          @click="openRepeatTimePicker({ scope: 'default', field: 'end' })"
+                        >
+                          <ClockIcon aria-hidden="true" />
+                          <span>{{ form.repeatEndTime ? formatTimeLabel(form.repeatEndTime) : 'Select end time' }}</span>
+                        </button>
                       </div>
                     </div>
                     <div
@@ -955,29 +1125,39 @@ onMounted(() => {
                         <div v-if="form.repeatDayOverrides[day.id]?.expanded" class="repeat-day-custom">
                           <p>Set a different time for {{ day.name }} only.</p>
                           <div class="two-col">
-                            <div class="field recurrence-time-control">
-                              <label :for="`repeat-${day.id}-start`">Start time</label>
-                              <div class="input-with-icon recurrence-time-input">
+                            <div class="field recurrence-picker-control">
+                              <label>Start time</label>
+                              <button
+                                type="button"
+                                class="field-input recurrence-picker-button"
+                                @click="openRepeatTimePicker({ scope: 'day', day: day.id, field: 'start' })"
+                              >
                                 <ClockIcon aria-hidden="true" />
-                                <input
-                                  :id="`repeat-${day.id}-start`"
-                                  v-model="form.repeatDayOverrides[day.id].startTime"
-                                  type="time"
-                                  class="field-input recurrence-time-field"
-                                />
-                              </div>
+                                <span>
+                                  {{
+                                    form.repeatDayOverrides[day.id].startTime
+                                      ? formatTimeLabel(form.repeatDayOverrides[day.id].startTime)
+                                      : 'Select start time'
+                                  }}
+                                </span>
+                              </button>
                             </div>
-                            <div class="field recurrence-time-control">
-                              <label :for="`repeat-${day.id}-end`">End time</label>
-                              <div class="input-with-icon recurrence-time-input">
+                            <div class="field recurrence-picker-control">
+                              <label>End time</label>
+                              <button
+                                type="button"
+                                class="field-input recurrence-picker-button"
+                                @click="openRepeatTimePicker({ scope: 'day', day: day.id, field: 'end' })"
+                              >
                                 <ClockIcon aria-hidden="true" />
-                                <input
-                                  :id="`repeat-${day.id}-end`"
-                                  v-model="form.repeatDayOverrides[day.id].endTime"
-                                  type="time"
-                                  class="field-input recurrence-time-field"
-                                />
-                              </div>
+                                <span>
+                                  {{
+                                    form.repeatDayOverrides[day.id].endTime
+                                      ? formatTimeLabel(form.repeatDayOverrides[day.id].endTime)
+                                      : 'Select end time'
+                                  }}
+                                </span>
+                              </button>
                             </div>
                           </div>
                           <button type="button" class="repeat-reset-btn" @click="resetRepeatDayOverride(day.id)">
@@ -985,52 +1165,6 @@ onMounted(() => {
                           </button>
                         </div>
                       </div>
-                    </div>
-                  </section>
-
-                  <section
-                    class="recurrence-step"
-                    :class="{
-                      locked: !(repeatStepOneComplete && repeatStepTwoComplete),
-                      complete: repeatStepThreeComplete,
-                    }"
-                    :aria-disabled="!(repeatStepOneComplete && repeatStepTwoComplete)"
-                  >
-                    <div class="recurrence-step-head">
-                      <span>3</span>
-                      <div>
-                        <strong>When does it stop?</strong>
-                        <p>Choose whether the schedule ends.</p>
-                      </div>
-                    </div>
-                    <div class="pill-row">
-                      <button
-                        type="button"
-                        class="pill"
-                        :class="{ selected: form.repeatStopMode === 'forever' }"
-                        @click="setRepeatStopMode('forever')"
-                      >
-                        It runs forever
-                      </button>
-                      <button
-                        type="button"
-                        class="pill"
-                        :class="{ selected: form.repeatStopMode === 'date' }"
-                        @click="setRepeatStopMode('date')"
-                      >
-                        On a specific date
-                      </button>
-                    </div>
-                    <div v-if="form.repeatStopMode === 'date'" class="field recurrence-inline-field">
-                      <label for="repeat-end-date">End date</label>
-                      <input
-                        id="repeat-end-date"
-                        v-model="form.repeatEndDate"
-                        type="date"
-                        class="field-input"
-                        :min="toDateInputValue(form.startsAt || today)"
-                        @input="clearError('repeatSchedule')"
-                      />
                     </div>
                   </section>
 
@@ -1593,6 +1727,33 @@ onMounted(() => {
       </div>
       <button type="button" class="primary-btn" @click="router.push('/')">Back to events</button>
     </section>
+
+    <Teleport to="body">
+      <div v-if="activeRepeatDatePicker" class="datetime-picker-modal-overlay" @click.self="closeRepeatDatePicker">
+        <div class="datetime-picker-modal">
+          <DateTimePicker
+            mode="date"
+            :title="activeRepeatDatePicker === 'end' ? 'Select recurrence end date' : 'Select recurrence start date'"
+            :initial-date-time="repeatDatePickerInitialDate"
+            :min-date="repeatDatePickerMinDate"
+            :max-date="repeatDatePickerMaxDate"
+            @update:date-time="applyRepeatDate"
+            @close="closeRepeatDatePicker"
+          />
+        </div>
+      </div>
+      <div v-if="activeRepeatTimePicker" class="datetime-picker-modal-overlay" @click.self="closeRepeatTimePicker">
+        <div class="datetime-picker-modal">
+          <DateTimePicker
+            mode="time"
+            title="Select recurrence time"
+            :initial-date-time="repeatTimePickerInitialDate"
+            @update:date-time="applyRepeatTime"
+            @close="closeRepeatTimePicker"
+          />
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -2235,6 +2396,39 @@ label span {
   line-height: 1.55;
   padding: 9px 11px;
   margin: 0;
+}
+
+.recurrence-picker-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.recurrence-picker-button {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 9px;
+  text-align: left;
+  color: var(--ce-ink);
+  cursor: pointer;
+}
+
+.recurrence-picker-button svg {
+  width: 16px;
+  height: 16px;
+  color: var(--ce-ink4);
+  flex-shrink: 0;
+}
+
+.recurrence-picker-button span {
+  min-width: 0;
+}
+
+.create-event-page.is-dark .recurrence-picker-button svg {
+  color: var(--ce-ink);
 }
 
 .repeat-day-row {
@@ -3265,6 +3459,21 @@ label span {
   text-transform: none;
   letter-spacing: 0;
   min-height: 0;
+}
+
+.datetime-picker-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  z-index: 1000;
+}
+
+.datetime-picker-modal {
+  max-width: calc(100vw - 24px);
 }
 
 @media (max-width: 900px) {
