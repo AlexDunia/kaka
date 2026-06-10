@@ -1759,23 +1759,23 @@ onMounted(() => {
 
 <style scoped>
 .create-event-page {
-  --ce-ink: #0d0d0d;
+  --ce-ink: var(--color-text);
   --ce-ink2: #3d3935;
-  --ce-ink3: #7a746e;
+  --ce-ink3: var(--color-muted);
   --ce-ink4: #b0aaa4;
   --ce-ink5: #d8d3ce;
-  --ce-paper: #fdfcfa;
-  --ce-p2: #f5f2ee;
-  --ce-p3: #ede9e3;
-  --ce-p4: #e4ded7;
-  --ce-acc: #ec4899;
+  --ce-paper: var(--color-surface);
+  --ce-p2: var(--color-bg);
+  --ce-p3: var(--color-tab-bg);
+  --ce-p4: var(--color-border);
+  --ce-acc: var(--color-accent);
   --ce-acc-soft: rgba(236, 72, 153, 0.1);
   --ce-acc-border: rgba(236, 72, 153, 0.34);
-  --ce-green: #1a7a4a;
+  --ce-green: var(--success);
   --ce-greenbg: #e8f7ef;
   --ce-pinkbg: rgba(236, 72, 153, 0.08);
   --ce-pinkbdr: rgba(236, 72, 153, 0.24);
-  --ce-red: #c0392b;
+  --ce-red: var(--error);
   background: var(--ce-p2);
   color: var(--ce-ink);
   min-height: 100vh;

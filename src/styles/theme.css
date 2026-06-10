@@ -1,0 +1,108 @@
+/*
+  Kaka theme tokens
+  Edit this file when you want to change the app colors.
+
+  Dark mode is the default. Light mode is applied when App.vue adds
+  the "light" class to the <html> element.
+*/
+
+:root {
+  color-scheme: dark;
+
+  /* Brand */
+  --primary: #e84393;
+  --accent: #f368e0;
+  --success: #1db954;
+  --error: #ff4757;
+
+  /* App surfaces */
+  --background: #0a0a0f;
+  --secondary: #121216;
+  --card-bg: #181820;
+  --card-bg-hover: #1d1d25;
+  --card-highlight: #292933;
+  --input-bg: #292933;
+
+  /* App text */
+  --text-color: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+
+  /* Shared app theme aliases */
+  --color-primary: #22c55e;
+  --color-accent: #ec4899;
+  --color-bg: #101115;
+  --color-surface: #17171b;
+  --color-text: #ffffff;
+  --color-muted: #bcbec3;
+  --color-hero-label: rgba(255, 255, 255, 0.75);
+  --color-hero-subtitle: rgba(255, 255, 255, 0.85);
+  --color-search-field: rgba(37, 35, 45, 0.4);
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-card-border: rgba(255, 255, 255, 0.05);
+  --color-shadow: rgba(0, 0, 0, 0.35);
+  --color-tab-bg: rgba(255, 255, 255, 0.06);
+  --color-tab-border: rgba(255, 255, 255, 0.04);
+  --color-tab-active-gradient: linear-gradient(135deg, var(--color-accent), #b63685);
+  --color-danger: #e74c3c;
+
+  /* Vue starter aliases still used by a few old components */
+  --color-background: var(--background);
+  --color-background-soft: var(--card-bg);
+  --color-background-mute: var(--card-highlight);
+  --color-border-hover: rgba(255, 255, 255, 0.16);
+  --color-heading: var(--color-text);
+
+  /* Shadows */
+  --shadow-subtle: 0 2px 12px rgba(0, 0, 0, 0.4);
+  --shadow-elevated: 0 8px 30px rgba(0, 0, 0, 0.6);
+}
+
+:root.light {
+  color-scheme: light;
+
+  /* Brand */
+  --primary: #ec4899;
+  --accent: #ec4899;
+  --success: #1a7a4a;
+  --error: #c0392b;
+
+  /* App surfaces */
+  --background: #f5f2ee;
+  --secondary: #fdfcfa;
+  --card-bg: #fdfcfa;
+  --card-bg-hover: #f5f2ee;
+  --card-highlight: #ede9e3;
+  --input-bg: #fdfcfa;
+
+  /* App text */
+  --text-color: #0d0d0d;
+  --text-secondary: #7a746e;
+
+  /*
+    Shared app theme aliases
+    Light mode intentionally matches the Create Event flow:
+    bg #f5f2ee, surface/header #fdfcfa, soft surface #ede9e3,
+    border #e4ded7.
+  */
+  --color-bg: #f5f2ee;
+  --color-surface: #fdfcfa;
+  --color-text: #0d0d0d;
+  --color-muted: #7a746e;
+  --color-border: #e4ded7;
+  --color-card-border: #e4ded7;
+  --color-shadow: rgba(0, 0, 0, 0.08);
+  --color-tab-bg: #ede9e3;
+  --color-tab-border: #e4ded7;
+  --color-danger: #c0392b;
+
+  /* Vue starter aliases still used by a few old components */
+  --color-background: var(--background);
+  --color-background-soft: var(--card-bg);
+  --color-background-mute: var(--card-highlight);
+  --color-border-hover: #d8d0c8;
+  --color-heading: var(--color-text);
+
+  /* Shadows */
+  --shadow-subtle: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.12);
+}

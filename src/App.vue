@@ -600,7 +600,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   text-decoration: none;
-  color: #ffffff;
+  color: var(--color-text);
   border-radius: 999px;
   padding: 0.65rem 1rem;
   font-size: 0.9rem;
@@ -611,11 +611,11 @@ onUnmounted(() => {
 }
 
 .auth-link {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--color-tab-bg);
 }
 
 .auth-link:hover {
-  background: rgba(255, 255, 255, 0.16);
+  background: color-mix(in srgb, var(--color-tab-bg) 82%, var(--color-text));
 }
 
 .auth-button {
@@ -628,7 +628,7 @@ onUnmounted(() => {
 }
 
 .cart-icon {
-  color: #ffffff;
+  color: var(--color-text);
   text-decoration: none;
   position: relative;
   display: flex;
@@ -654,7 +654,7 @@ onUnmounted(() => {
   display: none;
   background: transparent;
   border: none;
-  color: #ffffff;
+  color: var(--color-text);
   cursor: pointer;
   padding: 0;
 }
@@ -667,7 +667,8 @@ onUnmounted(() => {
   width: 85%;
   max-width: 400px;
   height: 100vh;
-  background-color: #121212;
+  background-color: var(--color-surface);
+  border-left: 1px solid var(--color-border);
   z-index: 1050;
   display: flex;
   flex-direction: column;
@@ -697,7 +698,7 @@ onUnmounted(() => {
   right: 1rem;
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--color-muted);
   font-size: 1.5rem;
   cursor: pointer;
   padding: 0.5rem;
@@ -715,11 +716,11 @@ onUnmounted(() => {
 .mobile-nav-item {
   font-size: 0.9rem;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--color-muted);
   text-decoration: none;
   padding: 1rem 1.5rem;
   text-align: left;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--color-border);
   opacity: 0;
   transform: translateY(20px);
   transition:
@@ -731,7 +732,7 @@ onUnmounted(() => {
 
 .mobile-nav-item:hover {
   cursor: pointer;
-  color: #ffffff;
+  color: var(--color-text);
 }
 
 .mobile-nav-item:last-of-type {
@@ -744,7 +745,7 @@ onUnmounted(() => {
 }
 
 .mobile-nav-item.active {
-  color: #ffffff;
+  color: var(--color-text);
 }
 
 /* Modal Transition */
@@ -814,7 +815,7 @@ onUnmounted(() => {
 .footer-center-col {
   flex: 1 1 auto;
   text-align: center;
-  color: #fff;
+  color: var(--color-text);
   font-size: 1rem;
   font-weight: 500;
   opacity: 0.85;
@@ -834,16 +835,16 @@ onUnmounted(() => {
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.04);
-  color: #fff;
+  background: var(--color-tab-bg);
+  color: var(--color-text);
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
 }
 
 .footer-social-link:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: color-mix(in srgb, var(--color-tab-bg) 80%, var(--color-text));
+  color: var(--color-text);
   transform: translateY(-2px);
 }
 
@@ -894,46 +895,6 @@ onUnmounted(() => {
 </style>
 
 <style>
-:root {
-  --color-primary: #22c55e;
-  --color-accent: #ec4899;
-  --color-bg: #0b0f19;
-  --color-surface: #131319;
-  --color-text: #ffffff;
-  /* --color-muted: #ffffff; */
-  --color-muted: #bcbec3;
-  --color-hero-label: rgba(255, 255, 255, 0.75);
-  --color-hero-subtitle: rgba(255, 255, 255, 0.85);
-  --color-search-field: rgba(37, 35, 45, 0.4);
-  --color-border: rgba(255, 255, 255, 0.08);
-  --color-card-border: rgba(255, 255, 255, 0.05);
-  --color-shadow: rgba(0, 0, 0, 0.35);
-  --color-tab-bg: rgba(255, 255, 255, 0.06);
-  --color-tab-border: rgba(255, 255, 255, 0.04);
-  --color-tab-active-gradient: linear-gradient(135deg, var(--color-accent), #b63685);
-  --color-danger: #e74c3c;
-}
-
-.light {
-  --color-bg: #f5f2ee;
-  --color-surface: #fdfcfa;
-  --color-text: #0d0d0d;
-  --color-muted: #7a746e;
-  --color-border: #e4ded7;
-  --color-card-border: #e4ded7;
-  --color-shadow: rgba(0, 0, 0, 0.08);
-  --color-tab-bg: #ede9e3;
-  --background: #f5f2ee;
-  --card-bg: #fdfcfa;
-  --card-bg-hover: #f5f2ee;
-  --text-color: #0d0d0d;
-  --text-secondary: #7a746e;
-  --primary: #ec4899;
-  --accent: #ec4899;
-  --success: #1a7a4a;
-  --error: #c0392b;
-}
-
 .theme-instant,
 .theme-instant *,
 .theme-instant *::before,
