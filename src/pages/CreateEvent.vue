@@ -1,5 +1,5 @@
 <script setup>
-import { computed, inject, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, inject, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   AcademicCapIcon,
@@ -161,6 +161,7 @@ const form = reactive({
 const themePreferenceKey = 'kaka-theme-preference'
 const fallbackTheme = ref('dark')
 const theme = computed(() => themeController?.theme?.value || fallbackTheme.value)
+let themeInstantToken = 0
 const currentStep = ref(1)
 const maxStepReached = ref(1)
 const previewOn = ref(window.localStorage?.getItem('kaka-create-preview') !== 'false')
@@ -249,9 +250,7 @@ const repeatRhythmLabel = computed(
 const repeatSummaryRows = computed(() => {
   if (form.repeatUnit === 'weeks') {
     return selectedRepeatDays.value.map((day) => {
-      const override = form.repeatDayOverrides[day.id]
-      const start = override?.startTime || form.repeatStartTime
-      const end = override?.endTime || form.repeatEndTime
+      const { start, end } = repeatDayTimes(day.id)
       return `${day.name}: ${formatTimeLabel(start)} to ${formatTimeLabel(end)}.`
     })
   }
@@ -262,6 +261,7 @@ const repeatStopSummary = computed(() =>
     ? 'It runs forever'
     : `It stops on ${formatDateOnly(form.repeatEndDate)}`,
 )
+const canContinue = computed(() => isStepComplete(currentStep.value))
 
 function tomorrowAt(hour) {
   const date = new Date()
@@ -337,7 +337,19 @@ function applyTheme(value) {
     return
   }
   fallbackTheme.value = value
-  document.documentElement.classList.toggle('light', value === 'light')
+  const root = document.documentElement
+  const token = ++themeInstantToken
+  root.classList.add('theme-instant')
+  void root.offsetHeight
+  root.classList.toggle('light', value === 'light')
+  const releaseInstantTheme = () => {
+    if (themeInstantToken === token) root.classList.remove('theme-instant')
+  }
+  if (window.requestAnimationFrame) {
+    window.requestAnimationFrame(() => window.requestAnimationFrame(releaseInstantTheme))
+  } else {
+    releaseInstantTheme()
+  }
   window.localStorage?.setItem(themePreferenceKey, value)
 }
 
@@ -373,6 +385,45 @@ function goNext() {
 
 function goBack() {
   if (currentStep.value > 1) setStep(currentStep.value - 1)
+}
+
+function handleHeaderBack() {
+  if (currentStep.value > 1) {
+    goBack()
+    return
+  }
+  router.push('/')
+}
+
+function isStepComplete(step) {
+  if (step === 1) {
+    if (!form.title.trim()) return false
+    if (!form.startsAt || !form.endsAt) return false
+    if (form.startsAt && new Date(form.startsAt) < today) return false
+    if (form.endsAt && form.startsAt && new Date(form.endsAt) <= new Date(form.startsAt)) {
+      return false
+    }
+    if (form.format !== 'online' && !form.venue.trim()) return false
+    if ((form.format === 'online' || form.format === 'hybrid') && !form.meetingLink.trim()) {
+      return false
+    }
+    if (!form.category) return false
+    if (form.recurrenceType === 'recur') {
+      return recurrenceReady.value
+    }
+    return true
+  }
+
+  if (step === 2) return Boolean(form.coverImage)
+
+  if (step === 3 && form.ticketMode === 'paid') {
+    return (
+      form.tickets.length > 0 &&
+      form.tickets.every((ticket) => ticket.name.trim() && Number(ticket.price) >= 0)
+    )
+  }
+
+  return true
 }
 
 function setError(key, message) {
@@ -484,12 +535,44 @@ function ensureRepeatDayOverride(day) {
 
 function toggleRepeatDayOverride(day) {
   const override = ensureRepeatDayOverride(day)
+  Object.entries(form.repeatDayOverrides).forEach(([key, item]) => {
+    if (key !== day) item.expanded = false
+  })
   override.expanded = !override.expanded
 }
 
 function isRepeatDayCustom(day) {
   const override = form.repeatDayOverrides[day]
   return Boolean(override?.startTime && override?.endTime)
+}
+
+function repeatDayTimes(day) {
+  const override = form.repeatDayOverrides[day]
+  if (override?.startTime && override?.endTime) {
+    return {
+      start: override.startTime,
+      end: override.endTime,
+      custom: true,
+    }
+  }
+  return {
+    start: form.repeatStartTime,
+    end: form.repeatEndTime,
+    custom: false,
+  }
+}
+
+function repeatDayTimePreview(day) {
+  const { start, end } = repeatDayTimes(day)
+  return `${formatTimeLabel(start)} - ${formatTimeLabel(end)}`
+}
+
+function resetRepeatDayOverride(day) {
+  form.repeatDayOverrides[day] = {
+    expanded: false,
+    startTime: '',
+    endTime: '',
+  }
 }
 
 function setRepeatStopMode(mode) {
@@ -601,20 +684,16 @@ function publishEvent() {
 }
 
 onMounted(() => {
-  document.body.classList.add('create-event-active')
   initializeTheme()
   setInterval(() => {
     tipIndex.value = (tipIndex.value + 1) % activeTips.value.length
   }, 7000)
 })
 
-onUnmounted(() => {
-  document.body.classList.remove('create-event-active')
-})
 </script>
 
 <template>
-  <div class="create-event-page">
+  <div class="create-event-page" :class="theme === 'dark' ? 'is-dark' : 'is-light'">
     <div v-if="toast" class="ce-toast">{{ toast }}</div>
 
     <header v-if="!published" class="ce-header">
@@ -624,9 +703,14 @@ onUnmounted(() => {
           alt="Kaka"
         />
       </RouterLink>
-      <RouterLink to="/" class="ce-header-back" aria-label="Back to home">
+      <button
+        type="button"
+        class="ce-header-back"
+        :aria-label="currentStep > 1 ? 'Back to previous step' : 'Back to home'"
+        @click="handleHeaderBack"
+      >
         <ArrowLeftIcon aria-hidden="true" />
-      </RouterLink>
+      </button>
       <nav class="ce-progress" aria-label="Create event progress">
         <button
           v-for="(step, index) in steps"
@@ -676,7 +760,10 @@ onUnmounted(() => {
         <section class="ce-form">
           <div v-if="currentStep === 1" class="screen">
             <div class="screen-head">
-              <h1>Let's build your<br /><em>event.</em> 🎉</h1>
+              <h1>
+                Let's build your<br /><em>event.</em>
+                <SparklesIcon class="headline-icon" aria-hidden="true" />
+              </h1>
               <p>Start with the basics. Everything can be updated after publishing.</p>
             </div>
 
@@ -761,7 +848,7 @@ onUnmounted(() => {
                       <span>1</span>
                       <div>
                         <strong>How often does it repeat?</strong>
-                        <p>Choose one rhythm for the schedule.</p>
+                        <p>Choose one rhythm. You can adjust times for each selected day later.</p>
                       </div>
                     </div>
                     <div class="pill-row">
@@ -806,60 +893,96 @@ onUnmounted(() => {
                       </div>
                     </div>
                     <div class="two-col">
-                      <div class="field">
+                      <div class="field recurrence-time-control">
                         <label for="repeat-start-time">Start time</label>
-                        <input
-                          id="repeat-start-time"
-                          v-model="form.repeatStartTime"
-                          type="time"
-                          class="field-input"
-                          @input="clearError('repeatSchedule')"
-                        />
+                        <div class="input-with-icon recurrence-time-input">
+                          <ClockIcon aria-hidden="true" />
+                          <input
+                            id="repeat-start-time"
+                            v-model="form.repeatStartTime"
+                            type="time"
+                            class="field-input recurrence-time-field"
+                            @input="clearError('repeatSchedule')"
+                          />
+                        </div>
                       </div>
-                      <div class="field">
+                      <div class="field recurrence-time-control">
                         <label for="repeat-end-time">End time</label>
-                        <input
-                          id="repeat-end-time"
-                          v-model="form.repeatEndTime"
-                          type="time"
-                          class="field-input"
-                          @input="clearError('repeatSchedule')"
-                        />
+                        <div class="input-with-icon recurrence-time-input">
+                          <ClockIcon aria-hidden="true" />
+                          <input
+                            id="repeat-end-time"
+                            v-model="form.repeatEndTime"
+                            type="time"
+                            class="field-input recurrence-time-field"
+                            @input="clearError('repeatSchedule')"
+                          />
+                        </div>
                       </div>
                     </div>
                     <div
-                      v-if="form.repeatUnit === 'weeks' && selectedRepeatDays.length > 1"
+                      v-if="
+                        form.repeatUnit === 'weeks' &&
+                        selectedRepeatDays.length > 0 &&
+                        form.repeatStartTime
+                      "
                       class="repeat-day-overrides"
                     >
+                      <p class="repeat-day-tip">
+                        Default times apply to every selected day. Open a day when that day needs its own time.
+                      </p>
                       <div
                         v-for="day in selectedRepeatDays"
                         :key="day.id"
                         class="repeat-day-row"
-                        :class="{ expanded: form.repeatDayOverrides[day.id]?.expanded }"
+                        :class="{
+                          expanded: form.repeatDayOverrides[day.id]?.expanded,
+                          custom: isRepeatDayCustom(day.id),
+                        }"
                       >
                         <button type="button" @click="toggleRepeatDayOverride(day.id)">
-                          <span>{{ day.name }}</span>
-                          <strong>{{ isRepeatDayCustom(day.id) ? 'Custom' : 'Same' }}</strong>
+                          <span class="repeat-day-name">{{ day.name }}</span>
+                          <span
+                            class="repeat-day-time"
+                            :class="{ inherited: !isRepeatDayCustom(day.id) }"
+                          >
+                            {{ repeatDayTimePreview(day.id) }}
+                          </span>
+                          <span class="repeat-day-toggle" aria-hidden="true">
+                            <ArrowRightIcon />
+                          </span>
                         </button>
-                        <div v-if="form.repeatDayOverrides[day.id]?.expanded" class="repeat-day-custom two-col">
-                          <div class="field">
-                            <label :for="`repeat-${day.id}-start`">Start time</label>
-                            <input
-                              :id="`repeat-${day.id}-start`"
-                              v-model="form.repeatDayOverrides[day.id].startTime"
-                              type="time"
-                              class="field-input"
-                            />
+                        <div v-if="form.repeatDayOverrides[day.id]?.expanded" class="repeat-day-custom">
+                          <p>Set a different time for {{ day.name }} only.</p>
+                          <div class="two-col">
+                            <div class="field recurrence-time-control">
+                              <label :for="`repeat-${day.id}-start`">Start time</label>
+                              <div class="input-with-icon recurrence-time-input">
+                                <ClockIcon aria-hidden="true" />
+                                <input
+                                  :id="`repeat-${day.id}-start`"
+                                  v-model="form.repeatDayOverrides[day.id].startTime"
+                                  type="time"
+                                  class="field-input recurrence-time-field"
+                                />
+                              </div>
+                            </div>
+                            <div class="field recurrence-time-control">
+                              <label :for="`repeat-${day.id}-end`">End time</label>
+                              <div class="input-with-icon recurrence-time-input">
+                                <ClockIcon aria-hidden="true" />
+                                <input
+                                  :id="`repeat-${day.id}-end`"
+                                  v-model="form.repeatDayOverrides[day.id].endTime"
+                                  type="time"
+                                  class="field-input recurrence-time-field"
+                                />
+                              </div>
+                            </div>
                           </div>
-                          <div class="field">
-                            <label :for="`repeat-${day.id}-end`">End time</label>
-                            <input
-                              :id="`repeat-${day.id}-end`"
-                              v-model="form.repeatDayOverrides[day.id].endTime"
-                              type="time"
-                              class="field-input"
-                            />
-                          </div>
+                          <button type="button" class="repeat-reset-btn" @click="resetRepeatDayOverride(day.id)">
+                            Reset to default
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -1430,11 +1553,20 @@ onUnmounted(() => {
               v-if="currentStep < steps.length"
               type="button"
               class="primary-btn"
+              :class="{ disabled: !canContinue }"
+              :disabled="!canContinue"
               @click="goNext"
             >
               Continue <ArrowRightIcon aria-hidden="true" />
             </button>
-            <button v-else type="button" class="primary-btn publish" @click="publishEvent">
+            <button
+              v-else
+              type="button"
+              class="primary-btn publish"
+              :class="{ disabled: !canContinue }"
+              :disabled="!canContinue"
+              @click="publishEvent"
+            >
               Publish Event <ArrowRightIcon aria-hidden="true" />
             </button>
           </div>
@@ -1444,7 +1576,7 @@ onUnmounted(() => {
           <span class="side-label">Live preview</span>
           <EventCard :event="previewEvent" :show-details="false" />
           <div class="tip-card">
-            <strong>💡 Tip</strong>
+            <strong>Tip</strong>
             <p>{{ currentTip }}</p>
           </div>
         </aside>
@@ -1489,24 +1621,16 @@ onUnmounted(() => {
   font-family: 'Figtree', sans-serif;
 }
 
-:global(body.create-event-active),
-:global(body.create-event-active .app-container),
-:global(body.create-event-active .app-content),
-:global(body.create-event-active .app-footer) {
-  background-color: var(--color-bg);
-  color: var(--color-text);
-}
-
-:global(:root:not(.light)) .create-event-page {
-  --ce-ink: #ffffff;
-  --ce-ink2: rgba(255, 255, 255, 0.86);
-  --ce-ink3: rgba(255, 255, 255, 0.68);
-  --ce-ink4: rgba(255, 255, 255, 0.48);
-  --ce-ink5: rgba(255, 255, 255, 0.18);
-  --ce-paper: #131319;
-  --ce-p2: #0b0f19;
-  --ce-p3: #1b1b24;
-  --ce-p4: rgba(255, 255, 255, 0.1);
+.create-event-page.is-dark {
+  --ce-ink: var(--color-text);
+  --ce-ink2: var(--color-text);
+  --ce-ink3: var(--color-muted);
+  --ce-ink4: var(--color-muted);
+  --ce-ink5: var(--color-border);
+  --ce-paper: var(--color-surface);
+  --ce-p2: var(--color-bg);
+  --ce-p3: var(--color-tab-bg);
+  --ce-p4: var(--color-border);
   --ce-greenbg: rgba(26, 122, 74, 0.18);
   --ce-acc-soft: rgba(236, 72, 153, 0.14);
   --ce-acc-border: rgba(236, 72, 153, 0.38);
@@ -1559,6 +1683,7 @@ onUnmounted(() => {
   padding: 0;
   min-height: 0;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .ce-header-back:hover,
@@ -1764,21 +1889,22 @@ onUnmounted(() => {
   color: var(--ce-ink);
 }
 
+.create-event-page.is-dark svg {
+  color: var(--ce-ink);
+}
+
+.create-event-page.is-dark .field-input,
+.create-event-page.is-dark :deep(.datetime-input) {
+  color-scheme: dark;
+}
+
+.create-event-page.is-light .field-input,
+.create-event-page.is-light :deep(.datetime-input) {
+  color-scheme: light;
+}
+
 :deep(.datetime-picker) {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
-}
-
-:deep(.event-card) {
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-}
-
-:deep(.event-card:hover) {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.075);
-}
-
-:deep(.event-card .star-icon) {
-  color: var(--ce-acc);
 }
 
 .preview-btn.on {
@@ -1816,6 +1942,13 @@ onUnmounted(() => {
 .screen-head h1 em {
   color: var(--ce-acc);
   font-style: italic;
+}
+
+.headline-icon {
+  width: 28px;
+  height: 28px;
+  color: var(--ce-ink);
+  vertical-align: -0.22em;
 }
 
 .screen-head p {
@@ -2093,6 +2226,17 @@ label span {
   gap: 8px;
 }
 
+.repeat-day-tip {
+  border: 1px solid var(--ce-pinkbdr);
+  border-radius: 10px;
+  background: var(--ce-pinkbg);
+  color: var(--ce-ink2);
+  font-size: 12px;
+  line-height: 1.55;
+  padding: 9px 11px;
+  margin: 0;
+}
+
 .repeat-day-row {
   border: 1px solid var(--ce-p4);
   border-radius: 10px;
@@ -2100,29 +2244,86 @@ label span {
   overflow: hidden;
 }
 
+.repeat-day-row.custom {
+  border-color: color-mix(in srgb, var(--ce-green) 38%, var(--ce-p4));
+}
+
 .repeat-day-row > button {
   width: 100%;
   min-height: 0;
-  padding: 9px 12px;
+  padding: 11px 12px;
   border: 0;
   border-radius: 0;
   background: transparent;
   color: var(--ce-ink);
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(92px, 0.8fr) minmax(150px, 1fr) 28px;
   align-items: center;
-  justify-content: space-between;
+  gap: 10px;
   text-align: left;
   text-transform: none;
   letter-spacing: 0;
 }
 
-.repeat-day-row > button strong {
-  font-size: 11px;
-  color: var(--ce-acc);
+.repeat-day-name {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--ce-ink);
+}
+
+.repeat-day-time {
+  font-size: 12.5px;
+  color: var(--ce-ink2);
+}
+
+.repeat-day-time.inherited {
+  color: var(--ce-ink4);
+}
+
+.repeat-day-toggle {
+  justify-self: end;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--ce-p4);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ce-ink4);
+}
+
+.repeat-day-toggle svg {
+  width: 13px;
+  height: 13px;
+  transform: rotate(90deg);
+  transition: transform 0.18s ease;
+}
+
+.repeat-day-row.expanded .repeat-day-toggle svg {
+  transform: rotate(-90deg);
 }
 
 .repeat-day-custom {
   padding: 0 12px 12px;
+}
+
+.repeat-day-custom > p {
+  color: var(--ce-ink4);
+  font-size: 11.5px;
+  line-height: 1.5;
+  margin: 0 0 9px;
+}
+
+.repeat-reset-btn {
+  border: 0;
+  background: transparent;
+  color: var(--ce-acc);
+  font-size: 12px;
+  font-weight: 650;
+  min-height: 0;
+  padding: 0;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .recurrence-summary {
@@ -2224,6 +2425,18 @@ label span {
 
 .input-with-icon .field-input {
   padding-left: 36px;
+}
+
+.recurrence-time-input svg {
+  color: var(--ce-ink4);
+}
+
+.create-event-page.is-dark .recurrence-time-input svg {
+  color: var(--ce-ink);
+}
+
+.recurrence-time-field {
+  min-height: 42px;
 }
 
 .category-trigger {
@@ -2902,6 +3115,27 @@ label span {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.075);
 }
 
+.primary-btn:disabled,
+.primary-btn.disabled,
+.primary-btn.publish:disabled,
+.primary-btn.publish.disabled {
+  background: var(--ce-p3);
+  color: var(--ce-ink4);
+  cursor: not-allowed;
+  opacity: 1;
+  box-shadow: none;
+}
+
+.primary-btn:disabled:hover,
+.primary-btn.disabled:hover,
+.primary-btn.publish:disabled:hover,
+.primary-btn.publish.disabled:hover {
+  background: var(--ce-p3);
+  color: var(--ce-ink4);
+  transform: none;
+  box-shadow: none;
+}
+
 .primary-btn.publish {
   background: var(--ce-acc);
   color: #ffffff;
@@ -3069,6 +3303,14 @@ label span {
 
   .ce-step span:last-child {
     display: none;
+  }
+
+  .repeat-day-row > button {
+    grid-template-columns: 1fr auto;
+  }
+
+  .repeat-day-time {
+    grid-column: 1 / -1;
   }
 
   .two-col,

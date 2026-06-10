@@ -17,11 +17,39 @@ const { updateMetaDescription, updateSocialMeta } = useSeo()
 
 const themePreferenceKey = 'kaka-theme-preference'
 const theme = ref('dark')
+let themeInstantToken = 0
+
+const applyThemeInstantly = (callback) => {
+  if (typeof document === 'undefined') {
+    callback()
+    return
+  }
+
+  const root = document.documentElement
+  const token = ++themeInstantToken
+  root.classList.add('theme-instant')
+  void root.offsetHeight
+  callback()
+
+  const releaseInstantTheme = () => {
+    if (themeInstantToken === token) {
+      root.classList.remove('theme-instant')
+    }
+  }
+
+  if (typeof window !== 'undefined' && window.requestAnimationFrame) {
+    window.requestAnimationFrame(() => window.requestAnimationFrame(releaseInstantTheme))
+  } else {
+    releaseInstantTheme()
+  }
+}
 
 const applyTheme = (value) => {
   theme.value = value
   if (typeof document !== 'undefined') {
-    document.documentElement.classList.toggle('light', value === 'light')
+    applyThemeInstantly(() => {
+      document.documentElement.classList.toggle('light', value === 'light')
+    })
   }
   if (typeof window !== 'undefined') {
     window.localStorage?.setItem(themePreferenceKey, value)
@@ -895,6 +923,14 @@ onUnmounted(() => {
   --color-card-border: #e4ded7;
   --color-shadow: rgba(0, 0, 0, 0.08);
   --color-tab-bg: #ede9e3;
+}
+
+.theme-instant,
+.theme-instant *,
+.theme-instant *::before,
+.theme-instant *::after {
+  transition: none !important;
+  animation: none !important;
 }
 
 body {
