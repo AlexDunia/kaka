@@ -65,10 +65,21 @@ const sanitizeRepeatDayOverrides = (overrides = {}) =>
       ]),
   )
 
+const sanitizeRecurringConfig = (recurring = {}) => ({
+  frequency: recurring.frequency || null,
+  selectedDays: Array.isArray(recurring.selectedDays) ? [...recurring.selectedDays] : [],
+  useDefaultTimes: recurring.useDefaultTimes !== false,
+  perDayTimes:
+    recurring.useDefaultTimes === false
+      ? sanitizeRepeatDayOverrides(recurring.perDayTimes)
+      : {},
+})
+
 export const buildCreateEventPayload = (form) => ({
   title: stripUnsafeHtml(form.title),
   startsAt: form.startsAt || null,
   endsAt: form.endsAt || null,
+  recurring: sanitizeRecurringConfig(form.recurring),
   recurrence: {
     type: form.recurrenceType,
     frequency: form.repeatUnit || form.repeatFrequency || null,

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, inject, onMounted, reactive, ref } from 'vue'
+import { computed, inject, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   AcademicCapIcon,
@@ -46,20 +46,25 @@ const themeController = inject('themeController', null)
 
 const steps = ['Basics', 'Details', 'Tickets', 'Attendees']
 const repeatRhythmOptions = [
-  { value: 'days', label: 'Every day' },
-  { value: 'weeks', label: 'Every week' },
-  { value: 'months', label: 'Every month' },
-  { value: 'years', label: 'Every year' },
+  { value: 'every_day', unit: 'days', label: 'Every day' },
+  { value: 'every_week', unit: 'weeks', label: 'Every week' },
+  { value: 'every_month', unit: 'months', label: 'Every month' },
+  { value: 'every_year', unit: 'years', label: 'Every year' },
 ]
 const repeatDayOptions = [
-  { id: 'Mon', short: 'Mo', name: 'Monday' },
-  { id: 'Tue', short: 'Tu', name: 'Tuesday' },
-  { id: 'Wed', short: 'We', name: 'Wednesday' },
-  { id: 'Thu', short: 'Th', name: 'Thursday' },
-  { id: 'Fri', short: 'Fr', name: 'Friday' },
-  { id: 'Sat', short: 'Sa', name: 'Saturday' },
-  { id: 'Sun', short: 'Su', name: 'Sunday' },
+  { id: 'Mon', short: 'Mon', name: 'Monday' },
+  { id: 'Tue', short: 'Tue', name: 'Tuesday' },
+  { id: 'Wed', short: 'Wed', name: 'Wednesday' },
+  { id: 'Thu', short: 'Thu', name: 'Thursday' },
+  { id: 'Fri', short: 'Fri', name: 'Friday' },
+  { id: 'Sat', short: 'Sat', name: 'Saturday' },
+  { id: 'Sun', short: 'Sun', name: 'Sunday' },
 ]
+const repeatMonthDayOptions = Array.from({ length: 28 }, (_, index) => ({
+  id: index + 1,
+  short: String(index + 1),
+  name: `Day ${index + 1}`,
+}))
 const today = new Date()
 today.setHours(0, 0, 0, 0)
 
@@ -141,6 +146,12 @@ const form = reactive({
   repeatDayOverrides: {},
   repeatStopMode: '',
   repeatEndDate: '',
+  recurring: {
+    frequency: null,
+    selectedDays: [],
+    useDefaultTimes: true,
+    perDayTimes: {},
+  },
   format: 'in-person',
   venue: '',
   meetingLink: '',
@@ -179,8 +190,9 @@ const toast = ref('')
 const published = ref(false)
 const errors = reactive({})
 const ticketId = ref(0)
-const activeRepeatDatePicker = ref('')
 const activeRepeatTimePicker = ref(null)
+const showRepeatChangeActions = ref(false)
+const showRepeatDayOverrides = ref(false)
 let toastTimer
 let draftTimer
 
@@ -228,62 +240,49 @@ const previewEvent = computed(() => ({
   rating: '4.5',
 }))
 
-const recurrenceSummary = computed(() => {
-  if (form.recurrenceType === 'once') return 'This event happens once.'
-  if (!recurrenceReady.value) return ''
-  return `${repeatRhythmLabel.value}. ${repeatSummaryRows.value.join(' ')} ${repeatStopSummary.value}.`
-})
-
 const emailDate = computed(() => formatDateTime(form.startsAt))
-const selectedRepeatDays = computed(() =>
-  repeatDayOptions.filter((day) => form.repeatDays.includes(day.id)),
+const activeRepeatOption = computed(() =>
+  repeatRhythmOptions.find((option) => option.value === form.recurring.frequency),
 )
-const repeatStepOneComplete = computed(
-  () => Boolean(form.repeatUnit) && (form.repeatUnit !== 'weeks' || form.repeatDays.length > 0),
+const repeatRequiresDaySelection = computed(() =>
+  ['every_week', 'every_month'].includes(form.recurring.frequency),
+)
+const activeRepeatDayOptions = computed(() => {
+  if (form.recurring.frequency === 'every_week') return repeatDayOptions
+  if (form.recurring.frequency === 'every_month') return repeatMonthDayOptions
+  return []
+})
+const selectedRepeatDays = computed(() =>
+  activeRepeatDayOptions.value.filter((day) => form.recurring.selectedDays.includes(day.id)),
+)
+const repeatTimeRows = computed(() => {
+  if (form.recurring.frequency === 'every_day') return repeatDayOptions
+  if (form.recurring.frequency === 'every_year') {
+    return [{ id: 'event_day', short: 'Event day', name: 'Event day' }]
+  }
+  return selectedRepeatDays.value
+})
+const repeatStepOneComplete = computed(() => Boolean(form.recurring.frequency))
+const repeatStepTwoComplete = computed(
+  () => !repeatRequiresDaySelection.value || form.recurring.selectedDays.length > 0,
 )
 const repeatDateRangeValid = computed(() => {
   if (!form.repeatStartDate || !form.repeatEndDate) return true
   return new Date(form.repeatEndDate) >= new Date(form.repeatStartDate)
 })
-const repeatStepTwoComplete = computed(() => Boolean(form.repeatStartDate) && repeatDateRangeValid.value)
-const repeatStepThreeComplete = computed(() => Boolean(form.repeatStartTime && form.repeatEndTime))
+const repeatStepThreeComplete = computed(
+  () =>
+    Boolean(form.startsAt && form.endsAt && form.repeatStartDate && form.repeatStartTime && form.repeatEndTime) &&
+    new Date(form.endsAt) > new Date(form.startsAt) &&
+    repeatDateRangeValid.value,
+)
 const recurrenceReady = computed(
   () => repeatStepOneComplete.value && repeatStepTwoComplete.value && repeatStepThreeComplete.value,
 )
 const repeatRhythmLabel = computed(
-  () => repeatRhythmOptions.find((option) => option.value === form.repeatUnit)?.label || 'Repeats',
-)
-const repeatSummaryRows = computed(() => {
-  if (form.repeatUnit === 'weeks') {
-    return selectedRepeatDays.value.map((day) => {
-      const { start, end } = repeatDayTimes(day.id)
-      return `${day.name}: ${formatTimeLabel(start)} to ${formatTimeLabel(end)}.`
-    })
-  }
-  return [`Time: ${formatTimeLabel(form.repeatStartTime)} to ${formatTimeLabel(form.repeatEndTime)}.`]
-})
-const repeatStopSummary = computed(() =>
-  form.repeatEndDate
-    ? `It runs from ${formatDateOnly(form.repeatStartDate)} until ${formatDateOnly(form.repeatEndDate)}`
-    : `It starts on ${formatDateOnly(form.repeatStartDate)} and has no end date`,
+  () => activeRepeatOption.value?.label || 'Repeats',
 )
 const canContinue = computed(() => isStepComplete(currentStep.value))
-const repeatDatePickerInitialDate = computed(() => {
-  const value = activeRepeatDatePicker.value === 'end' ? form.repeatEndDate : form.repeatStartDate
-  return dateOnlyToDate(value) || dateOnlyToDate(form.repeatStartDate) || new Date(form.startsAt || today)
-})
-const repeatDatePickerMinDate = computed(() => {
-  if (activeRepeatDatePicker.value === 'end') {
-    return dateOnlyToDate(form.repeatStartDate) || today
-  }
-  return today
-})
-const repeatDatePickerMaxDate = computed(() => {
-  if (activeRepeatDatePicker.value === 'start' && form.repeatEndDate) {
-    return dateOnlyToDate(form.repeatEndDate)
-  }
-  return null
-})
 const repeatTimePickerInitialDate = computed(() => {
   const time = getRepeatTimePickerValue() || '09:00'
   return combineDateAndTime(form.repeatStartDate || toDateInputValue(form.startsAt || today), time)
@@ -357,7 +356,9 @@ function getRepeatTimePickerValue() {
     return target.field === 'start' ? form.repeatStartTime : form.repeatEndTime
   }
   const override = form.repeatDayOverrides[target.day]
-  return target.field === 'start' ? override?.startTime : override?.endTime
+  return target.field === 'start'
+    ? override?.startTime || form.repeatStartTime
+    : override?.endTime || form.repeatEndTime
 }
 
 function setRepeatTimePickerValue(value) {
@@ -373,6 +374,11 @@ function setRepeatTimePickerValue(value) {
   const override = ensureRepeatDayOverride(target.day)
   if (target.field === 'start') override.startTime = value
   else override.endTime = value
+  form.recurring.useDefaultTimes = false
+  form.recurring.perDayTimes[target.day] = {
+    startTime: override.startTime || form.repeatStartTime,
+    endTime: override.endTime || form.repeatEndTime,
+  }
   clearError('repeatSchedule')
 }
 
@@ -387,6 +393,13 @@ function syncRecurringPrimaryDates() {
     if (end <= start) end.setDate(end.getDate() + 1)
     form.endsAt = end
   }
+}
+
+function syncRepeatScheduleFromPrimary() {
+  if (!form.startsAt) return
+  form.repeatStartDate = toDateInputValue(form.startsAt)
+  form.repeatStartTime = toTimeInputValue(form.startsAt)
+  if (form.endsAt) form.repeatEndTime = toTimeInputValue(form.endsAt)
 }
 
 function showToast(message) {
@@ -541,10 +554,10 @@ function validateStep(step) {
     if (form.recurrenceType === 'recur') {
       if (!repeatStepOneComplete.value) setError('repeatSchedule', 'Choose how often this repeats.')
       if (repeatStepOneComplete.value && !repeatStepTwoComplete.value) {
-        setError('repeatSchedule', repeatDateRangeValid.value ? 'Choose when the recurrence starts.' : 'End date cannot be before the start date.')
+        setError('repeatSchedule', 'Pick at least one day for the recurring schedule.')
       }
       if (repeatStepTwoComplete.value && !repeatStepThreeComplete.value) {
-        setError('repeatSchedule', 'Add the default start and end time.')
+        setError('repeatSchedule', 'Review the main start and end date/time above.')
       }
     }
   }
@@ -586,48 +599,85 @@ function selectCategory(category) {
 }
 
 function selectRepeatRhythm(unit) {
-  form.repeatUnit = unit
-  form.repeatFrequency = unit
+  const option = repeatRhythmOptions.find((item) => item.value === unit || item.unit === unit)
+  if (!option) return
+  form.recurring.frequency = option.value
+  form.recurring.selectedDays = []
+  form.recurring.useDefaultTimes = true
+  form.recurring.perDayTimes = {}
+  form.repeatUnit = option.unit
+  form.repeatFrequency = option.value
   form.repeatInterval = 1
-  if (unit !== 'weeks') {
-    form.repeatDays = []
-    form.repeatDayOverrides = {}
-  }
+  form.repeatDays = []
+  form.repeatDayOverrides = {}
+  showRepeatChangeActions.value = false
+  showRepeatDayOverrides.value = false
+  syncRepeatScheduleFromPrimary()
   clearError('repeatSchedule')
 }
 
 function toggleRepeatDay(day) {
-  if (form.repeatDays.includes(day)) {
-    form.repeatDays = form.repeatDays.filter((item) => item !== day)
+  if (form.recurring.selectedDays.includes(day)) {
+    form.recurring.selectedDays = form.recurring.selectedDays.filter((item) => item !== day)
     delete form.repeatDayOverrides[day]
+    delete form.recurring.perDayTimes[day]
   } else {
-    form.repeatDays.push(day)
+    form.recurring.selectedDays.push(day)
+  }
+  form.repeatDays = [...form.recurring.selectedDays]
+  if (!form.recurring.selectedDays.length) {
+    showRepeatChangeActions.value = false
+    showRepeatDayOverrides.value = false
+    form.recurring.useDefaultTimes = true
+    form.recurring.perDayTimes = {}
+  } else if (!form.recurring.useDefaultTimes) {
+    reconcileRepeatDayOverrides()
   }
   clearError('repeatSchedule')
+}
+
+function toggleRepeatChangeActions() {
+  showRepeatChangeActions.value = !showRepeatChangeActions.value
+}
+
+function openRepeatDayOverrides() {
+  showRepeatDayOverrides.value = true
+  showRepeatChangeActions.value = false
+  form.recurring.useDefaultTimes = false
+  reconcileRepeatDayOverrides()
 }
 
 function ensureRepeatDayOverride(day) {
   if (!form.repeatDayOverrides[day]) {
     form.repeatDayOverrides[day] = {
-      expanded: false,
-      startTime: '',
-      endTime: '',
+      startTime: form.repeatStartTime,
+      endTime: form.repeatEndTime,
     }
+  }
+  form.recurring.perDayTimes[day] = {
+    startTime: form.repeatDayOverrides[day].startTime || form.repeatStartTime,
+    endTime: form.repeatDayOverrides[day].endTime || form.repeatEndTime,
   }
   return form.repeatDayOverrides[day]
 }
 
-function toggleRepeatDayOverride(day) {
-  const override = ensureRepeatDayOverride(day)
-  Object.entries(form.repeatDayOverrides).forEach(([key, item]) => {
-    if (key !== day) item.expanded = false
+function reconcileRepeatDayOverrides() {
+  const selectedKeys = new Set(repeatTimeRows.value.map((day) => String(day.id)))
+  Object.keys(form.repeatDayOverrides).forEach((day) => {
+    if (!selectedKeys.has(String(day))) delete form.repeatDayOverrides[day]
   })
-  override.expanded = !override.expanded
-}
-
-function isRepeatDayCustom(day) {
-  const override = form.repeatDayOverrides[day]
-  return Boolean(override?.startTime && override?.endTime)
+  Object.keys(form.recurring.perDayTimes).forEach((day) => {
+    if (!selectedKeys.has(String(day))) delete form.recurring.perDayTimes[day]
+  })
+  repeatTimeRows.value.forEach((day) => {
+    const override = ensureRepeatDayOverride(day.id)
+    if (!override.startTime) override.startTime = form.repeatStartTime
+    if (!override.endTime) override.endTime = form.repeatEndTime
+    form.recurring.perDayTimes[day.id] = {
+      startTime: override.startTime,
+      endTime: override.endTime,
+    }
+  })
 }
 
 function repeatDayTimes(day) {
@@ -646,50 +696,6 @@ function repeatDayTimes(day) {
   }
 }
 
-function repeatDayTimePreview(day) {
-  const { start, end } = repeatDayTimes(day)
-  return `${formatTimeLabel(start)} - ${formatTimeLabel(end)}`
-}
-
-function resetRepeatDayOverride(day) {
-  form.repeatDayOverrides[day] = {
-    expanded: false,
-    startTime: '',
-    endTime: '',
-  }
-}
-
-function openRepeatDatePicker(target) {
-  activeRepeatDatePicker.value = target
-}
-
-function closeRepeatDatePicker() {
-  activeRepeatDatePicker.value = ''
-}
-
-function applyRepeatDate(date) {
-  const value = toDateInputValue(date)
-  if (activeRepeatDatePicker.value === 'end') {
-    form.repeatEndDate = value
-    form.repeatStopMode = 'date'
-  } else {
-    form.repeatStartDate = value
-    if (form.repeatEndDate && new Date(form.repeatEndDate) < new Date(value)) {
-      form.repeatEndDate = ''
-      form.repeatStopMode = 'forever'
-    }
-  }
-  if (!form.repeatEndDate && !form.repeatStopMode) form.repeatStopMode = 'forever'
-  syncRecurringPrimaryDates()
-  clearError('repeatSchedule')
-}
-
-function clearRepeatEndDate() {
-  form.repeatEndDate = ''
-  form.repeatStopMode = 'forever'
-  clearError('repeatSchedule')
-}
-
 function openRepeatTimePicker(target) {
   activeRepeatTimePicker.value = target
 }
@@ -701,6 +707,15 @@ function closeRepeatTimePicker() {
 function applyRepeatTime(dateTime) {
   setRepeatTimePickerValue(toTimeInputValue(dateTime))
   closeRepeatTimePicker()
+}
+
+function scrollToPrimaryDateTime() {
+  showRepeatChangeActions.value = false
+  const target = document.querySelector('[data-error-key="startsAt"]')
+  target?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  requestAnimationFrame(() => {
+    target?.querySelector('input')?.focus({ preventScroll: true })
+  })
 }
 
 function handleFiles(files) {
@@ -808,10 +823,19 @@ function publishEvent() {
 
 onMounted(() => {
   initializeTheme()
+  syncRepeatScheduleFromPrimary()
   setInterval(() => {
     tipIndex.value = (tipIndex.value + 1) % activeTips.value.length
   }, 7000)
 })
+
+watch(
+  () => [form.startsAt, form.endsAt, form.recurrenceType],
+  () => {
+    syncRepeatScheduleFromPrimary()
+  },
+  { immediate: true },
+)
 
 </script>
 
@@ -957,223 +981,137 @@ onMounted(() => {
               </div>
 
               <div v-if="form.recurrenceType === 'recur'" class="sub-panel">
-                <div class="info-card">
-                  <InformationCircleIcon aria-hidden="true" />
-                  <div>
-                    <strong>Recurring events</strong>
-                    <p>Set the rhythm, default time, and stop condition for every occurrence.</p>
-                  </div>
-                </div>
-
                 <div class="recurrence-steps" data-error-key="repeatSchedule">
                   <section class="recurrence-step" :class="{ complete: repeatStepOneComplete }">
                     <div class="recurrence-step-head">
                       <span>1</span>
                       <div>
                         <strong>How often does it repeat?</strong>
-                        <p>Choose one rhythm. You can adjust times for each selected day later.</p>
+                        <p>Choose one rhythm. The next choice appears after this.</p>
                       </div>
                     </div>
-                    <div class="pill-row">
+                    <div class="repeat-frequency-grid">
                       <button
                         v-for="option in repeatRhythmOptions"
                         :key="option.value"
                         type="button"
-                        class="pill"
-                        :class="{ selected: form.repeatUnit === option.value }"
+                        class="repeat-frequency-card"
+                        :class="{ selected: form.recurring.frequency === option.value }"
                         @click="selectRepeatRhythm(option.value)"
                       >
-                        {{ option.label }}
+                        <span>{{ option.label }}</span>
+                        <CheckIcon v-if="form.recurring.frequency === option.value" aria-hidden="true" />
                       </button>
-                    </div>
-                    <div v-if="form.repeatUnit === 'weeks'" class="field recurrence-inline-field">
-                      <label>Repeat on</label>
-                      <div class="day-row">
-                        <button
-                          v-for="day in repeatDayOptions"
-                          :key="day.id"
-                          type="button"
-                          class="day-chip"
-                          :class="{ selected: form.repeatDays.includes(day.id) }"
-                          @click="toggleRepeatDay(day.id)"
-                        >
-                          {{ day.short }}
-                        </button>
-                      </div>
                     </div>
                   </section>
 
                   <section
-                    class="recurrence-step"
-                    :class="{ locked: !repeatStepOneComplete, complete: repeatStepTwoComplete }"
-                    :aria-disabled="!repeatStepOneComplete"
+                    v-if="repeatStepOneComplete && repeatRequiresDaySelection"
+                    class="recurrence-step reveal-step"
+                    :class="{ complete: repeatStepTwoComplete }"
                   >
                     <div class="recurrence-step-head">
                       <span>2</span>
                       <div>
-                        <strong>When should it start?</strong>
-                        <p>Set the first date this schedule can run. End date is optional.</p>
+                        <strong>Which day(s)?</strong>
+                        <p>
+                          {{
+                            form.recurring.frequency === 'every_week'
+                              ? 'Pick the weekly days this event should repeat.'
+                              : 'Pick the monthly dates this event should repeat.'
+                          }}
+                        </p>
                       </div>
                     </div>
-                    <div class="two-col">
-                      <div class="field recurrence-picker-control">
-                        <label>Start date</label>
-                        <button
-                          type="button"
-                          class="field-input recurrence-picker-button"
-                          @click="openRepeatDatePicker('start')"
-                        >
-                          <CalendarDaysIcon aria-hidden="true" />
-                          <span>{{ form.repeatStartDate ? formatDateOnly(form.repeatStartDate) : 'Select start date' }}</span>
-                        </button>
-                      </div>
-                      <div class="field recurrence-picker-control">
-                        <label>End date <span>Optional</span></label>
-                        <div class="recurrence-picker-stack">
-                          <button
-                            type="button"
-                            class="field-input recurrence-picker-button"
-                            @click="openRepeatDatePicker('end')"
-                          >
-                            <CalendarDaysIcon aria-hidden="true" />
-                            <span>{{ form.repeatEndDate ? formatDateOnly(form.repeatEndDate) : 'No end date' }}</span>
-                          </button>
-                          <button
-                            v-if="form.repeatEndDate"
-                            type="button"
-                            class="repeat-reset-btn"
-                            @click="clearRepeatEndDate"
-                          >
-                            Clear end date
-                          </button>
-                        </div>
-                      </div>
+                    <div
+                      class="day-row"
+                      :class="{ monthly: form.recurring.frequency === 'every_month' }"
+                    >
+                      <button
+                        v-for="day in activeRepeatDayOptions"
+                        :key="day.id"
+                        type="button"
+                        class="day-chip"
+                        :class="{ selected: form.recurring.selectedDays.includes(day.id) }"
+                        @click="toggleRepeatDay(day.id)"
+                      >
+                        {{ day.short }}
+                      </button>
                     </div>
                   </section>
 
                   <section
-                    class="recurrence-step"
-                    :class="{
-                      locked: !(repeatStepOneComplete && repeatStepTwoComplete),
-                      complete: repeatStepThreeComplete,
-                    }"
-                    :aria-disabled="!(repeatStepOneComplete && repeatStepTwoComplete)"
+                    v-if="repeatStepOneComplete && repeatStepTwoComplete"
+                    class="recurrence-step reveal-step"
                   >
-                    <div class="recurrence-step-head">
-                      <span>3</span>
-                      <div>
-                        <strong>What time?</strong>
-                        <p>The default time applies to every occurrence. You can adjust each selected day later.</p>
+                    <div class="recurrence-review-card">
+                      <div class="repeat-current-schedule">
+                        <p>Your current date is <strong>{{ formatDateOnly(form.repeatStartDate) }}</strong></p>
+                        <p>
+                          Current time is
+                          <strong>{{ formatTimeLabel(form.repeatStartTime) }} - {{ formatTimeLabel(form.repeatEndTime) }}</strong>
+                        </p>
+                        <button type="button" class="repeat-change-link" @click="toggleRepeatChangeActions">
+                          {{ showRepeatChangeActions ? 'Keep current date and time' : 'Want to change this?' }}
+                        </button>
                       </div>
-                    </div>
-                    <div class="two-col">
-                      <div class="field recurrence-picker-control">
-                        <label>Start time</label>
+
+                      <div v-if="showRepeatChangeActions" class="repeat-change-actions reveal-step">
+                        <button type="button" class="repeat-change-option" @click="openRepeatDayOverrides">
+                          <strong>Per day</strong>
+                          <span>Set different times for each day</span>
+                        </button>
+                        <button type="button" class="repeat-change-option" @click="scrollToPrimaryDateTime">
+                          <strong>Change main date</strong>
+                          <span>Update the event's start date and time</span>
+                        </button>
+                      </div>
+
+                      <div class="repeat-default-block">
+                        <p class="repeat-day-tip">
+                          <CheckIcon aria-hidden="true" />
+                          Default times apply to every selected day
+                        </p>
                         <button
                           type="button"
-                          class="field-input recurrence-picker-button"
-                          @click="openRepeatTimePicker({ scope: 'default', field: 'start' })"
+                          class="repeat-customize-btn"
+                          @click="openRepeatDayOverrides"
                         >
-                          <ClockIcon aria-hidden="true" />
-                          <span>{{ form.repeatStartTime ? formatTimeLabel(form.repeatStartTime) : 'Select start time' }}</span>
+                          Open individual days to customise times
                         </button>
                       </div>
-                      <div class="field recurrence-picker-control">
-                        <label>End time</label>
-                        <button
-                          type="button"
-                          class="field-input recurrence-picker-button"
-                          @click="openRepeatTimePicker({ scope: 'default', field: 'end' })"
+
+                      <div v-if="showRepeatDayOverrides" class="repeat-day-overrides reveal-step">
+                        <div
+                          v-for="day in repeatTimeRows"
+                          :key="day.id"
+                          class="repeat-day-row"
                         >
-                          <ClockIcon aria-hidden="true" />
-                          <span>{{ form.repeatEndTime ? formatTimeLabel(form.repeatEndTime) : 'Select end time' }}</span>
-                        </button>
-                      </div>
-                    </div>
-                    <div
-                      v-if="
-                        form.repeatUnit === 'weeks' &&
-                        selectedRepeatDays.length > 0 &&
-                        form.repeatStartTime
-                      "
-                      class="repeat-day-overrides"
-                    >
-                      <p class="repeat-day-tip">
-                        Default times apply to every selected day. Open a day when that day needs its own time.
-                      </p>
-                      <div
-                        v-for="day in selectedRepeatDays"
-                        :key="day.id"
-                        class="repeat-day-row"
-                        :class="{
-                          expanded: form.repeatDayOverrides[day.id]?.expanded,
-                          custom: isRepeatDayCustom(day.id),
-                        }"
-                      >
-                        <button type="button" @click="toggleRepeatDayOverride(day.id)">
-                          <span class="repeat-day-name">{{ day.name }}</span>
-                          <span
-                            class="repeat-day-time"
-                            :class="{ inherited: !isRepeatDayCustom(day.id) }"
-                          >
-                            {{ repeatDayTimePreview(day.id) }}
-                          </span>
-                          <span class="repeat-day-toggle" aria-hidden="true">
-                            <ArrowRightIcon />
-                          </span>
-                        </button>
-                        <div v-if="form.repeatDayOverrides[day.id]?.expanded" class="repeat-day-custom">
-                          <p>Set a different time for {{ day.name }} only.</p>
-                          <div class="two-col">
-                            <div class="field recurrence-picker-control">
-                              <label>Start time</label>
-                              <button
-                                type="button"
-                                class="field-input recurrence-picker-button"
-                                @click="openRepeatTimePicker({ scope: 'day', day: day.id, field: 'start' })"
-                              >
-                                <ClockIcon aria-hidden="true" />
-                                <span>
-                                  {{
-                                    form.repeatDayOverrides[day.id].startTime
-                                      ? formatTimeLabel(form.repeatDayOverrides[day.id].startTime)
-                                      : 'Select start time'
-                                  }}
-                                </span>
-                              </button>
-                            </div>
-                            <div class="field recurrence-picker-control">
-                              <label>End time</label>
-                              <button
-                                type="button"
-                                class="field-input recurrence-picker-button"
-                                @click="openRepeatTimePicker({ scope: 'day', day: day.id, field: 'end' })"
-                              >
-                                <ClockIcon aria-hidden="true" />
-                                <span>
-                                  {{
-                                    form.repeatDayOverrides[day.id].endTime
-                                      ? formatTimeLabel(form.repeatDayOverrides[day.id].endTime)
-                                      : 'Select end time'
-                                  }}
-                                </span>
-                              </button>
-                            </div>
+                          <span class="repeat-day-name">{{ day.short }}</span>
+                          <div class="repeat-day-time-controls">
+                            <button
+                              type="button"
+                              class="field-input recurrence-picker-button"
+                              @click="openRepeatTimePicker({ scope: 'day', day: day.id, field: 'start' })"
+                            >
+                              <ClockIcon aria-hidden="true" />
+                              <span>{{ formatTimeLabel(repeatDayTimes(day.id).start) }}</span>
+                            </button>
+                            <button
+                              type="button"
+                              class="field-input recurrence-picker-button"
+                              @click="openRepeatTimePicker({ scope: 'day', day: day.id, field: 'end' })"
+                            >
+                              <ClockIcon aria-hidden="true" />
+                              <span>{{ formatTimeLabel(repeatDayTimes(day.id).end) }}</span>
+                            </button>
                           </div>
-                          <button type="button" class="repeat-reset-btn" @click="resetRepeatDayOverride(day.id)">
-                            Reset to default
-                          </button>
                         </div>
                       </div>
                     </div>
                   </section>
 
                   <p v-if="errors.repeatSchedule" class="error-text">{{ errors.repeatSchedule }}</p>
-                  <div v-if="recurrenceReady" class="recurrence-preview recurrence-summary">
-                    <strong>{{ repeatRhythmLabel }}</strong>
-                    <span v-for="row in repeatSummaryRows" :key="row">{{ row }}</span>
-                    <span>{{ repeatStopSummary }}.</span>
-                  </div>
                 </div>
               </div>
 
@@ -1729,19 +1667,6 @@ onMounted(() => {
     </section>
 
     <Teleport to="body">
-      <div v-if="activeRepeatDatePicker" class="datetime-picker-modal-overlay" @click.self="closeRepeatDatePicker">
-        <div class="datetime-picker-modal">
-          <DateTimePicker
-            mode="date"
-            :title="activeRepeatDatePicker === 'end' ? 'Select recurrence end date' : 'Select recurrence start date'"
-            :initial-date-time="repeatDatePickerInitialDate"
-            :min-date="repeatDatePickerMinDate"
-            :max-date="repeatDatePickerMaxDate"
-            @update:date-time="applyRepeatDate"
-            @close="closeRepeatDatePicker"
-          />
-        </div>
-      </div>
       <div v-if="activeRepeatTimePicker" class="datetime-picker-modal-overlay" @click.self="closeRepeatTimePicker">
         <div class="datetime-picker-modal">
           <DateTimePicker
@@ -2289,16 +2214,15 @@ label span {
   transition:
     background 0.18s ease,
     border-color 0.18s ease,
-    color 0.18s ease,
-    transform 0.18s ease;
+    color 0.18s ease;
 }
 
 .pill:hover,
 .detail-chip:hover,
 .quick-chip:hover {
-  border-color: var(--ce-ink5);
-  color: var(--ce-ink);
-  transform: translateY(-0.5px);
+  border-color: color-mix(in srgb, var(--ce-ink5) 45%, var(--ce-p4));
+  color: var(--ce-ink2);
+  transform: none;
   box-shadow: none;
 }
 
@@ -2319,14 +2243,16 @@ label span {
 .recurrence-steps {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
+  font-family: var(--font-family-base, 'Figtree', sans-serif);
 }
 
 .recurrence-step {
-  border: 1px solid var(--ce-p4);
-  border-radius: 12px;
-  background: var(--ce-paper);
-  padding: 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
   transition:
     opacity 0.18s ease,
     background 0.18s ease,
@@ -2334,7 +2260,7 @@ label span {
 }
 
 .recurrence-step.complete {
-  border-color: var(--ce-acc-border);
+  border-color: transparent;
 }
 
 .recurrence-step.locked {
@@ -2376,6 +2302,175 @@ label span {
   line-height: 1.5;
 }
 
+.reveal-step {
+  animation: recurrenceReveal 200ms ease both;
+}
+
+@keyframes recurrenceReveal {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.repeat-frequency-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.repeat-frequency-card {
+  min-height: 44px;
+  border: 1px solid color-mix(in srgb, var(--ce-p4) 20%, transparent);
+  border-radius: 10px;
+  background: var(--ce-p2);
+  color: var(--ce-ink3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  font-weight: 650;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0;
+  box-shadow: none;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.repeat-frequency-card.selected {
+  background: color-mix(in srgb, var(--ce-green) 12%, var(--ce-paper));
+  border-color: color-mix(in srgb, var(--ce-green) 70%, var(--ce-p4));
+  border-width: 1.5px;
+  color: var(--ce-ink);
+}
+
+.repeat-frequency-card:hover {
+  background: color-mix(in srgb, var(--ce-green) 4%, var(--ce-p2));
+  border-color: color-mix(in srgb, var(--ce-green) 22%, var(--ce-p4));
+  color: var(--ce-ink2);
+  transform: none;
+  box-shadow: none;
+}
+
+.repeat-frequency-card svg {
+  width: 15px;
+  height: 15px;
+  color: var(--ce-green);
+  flex-shrink: 0;
+}
+
+.recurrence-steps .day-row {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.recurrence-steps .day-row.monthly {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.recurrence-review-card {
+  border: 1px solid color-mix(in srgb, var(--ce-p4) 55%, transparent);
+  border-radius: 12px;
+  background: var(--ce-p3);
+  padding: 12px;
+  box-shadow: none;
+}
+
+.create-event-page.is-dark .recurrence-review-card {
+  background: color-mix(in srgb, var(--ce-paper) 72%, var(--ce-p2));
+}
+
+.repeat-current-schedule {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: var(--ce-ink3);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.repeat-current-schedule p {
+  margin: 0;
+}
+
+.repeat-current-schedule strong {
+  color: var(--ce-ink);
+}
+
+.repeat-change-link,
+.repeat-customize-btn,
+.repeat-change-actions button {
+  border: 0;
+  background: transparent;
+  color: var(--ce-green);
+  font-size: 12px;
+  font-weight: 650;
+  min-height: 0;
+  padding: 0;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.repeat-change-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.repeat-change-actions button {
+  border: 1px solid color-mix(in srgb, var(--ce-p4) 45%, transparent);
+  border-radius: 9px;
+  background: var(--ce-p2);
+  padding: 9px 10px;
+  color: var(--ce-ink2);
+}
+
+.repeat-change-option {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.repeat-change-option strong {
+  font-size: 12px;
+  color: var(--ce-ink);
+}
+
+.repeat-change-option span {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--ce-ink4);
+}
+
+.repeat-change-link:hover,
+.repeat-customize-btn:hover,
+.repeat-change-actions button:hover {
+  background: color-mix(in srgb, var(--ce-green) 4%, transparent);
+  color: var(--ce-green);
+  transform: none;
+  box-shadow: none;
+}
+
+.repeat-default-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
 .recurrence-inline-field {
   margin-top: 10px;
   margin-bottom: 0;
@@ -2388,14 +2483,24 @@ label span {
 }
 
 .repeat-day-tip {
-  border: 1px solid var(--ce-pinkbdr);
+  border: 1px solid color-mix(in srgb, var(--ce-green) 24%, var(--ce-p4));
   border-radius: 10px;
-  background: var(--ce-pinkbg);
+  background: color-mix(in srgb, var(--ce-green) 8%, transparent);
   color: var(--ce-ink2);
+  display: flex;
+  align-items: center;
+  gap: 7px;
   font-size: 12px;
   line-height: 1.55;
   padding: 9px 11px;
   margin: 0;
+}
+
+.repeat-day-tip svg {
+  width: 14px;
+  height: 14px;
+  color: var(--ce-green);
+  flex-shrink: 0;
 }
 
 .recurrence-picker-stack {
@@ -2432,31 +2537,15 @@ label span {
 }
 
 .repeat-day-row {
-  border: 1px solid var(--ce-p4);
+  border: 1px solid color-mix(in srgb, var(--ce-p4) 55%, transparent);
   border-radius: 10px;
   background: var(--ce-p2);
-  overflow: hidden;
-}
-
-.repeat-day-row.custom {
-  border-color: color-mix(in srgb, var(--ce-green) 38%, var(--ce-p4));
-}
-
-.repeat-day-row > button {
-  width: 100%;
-  min-height: 0;
-  padding: 11px 12px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: var(--ce-ink);
   display: grid;
-  grid-template-columns: minmax(92px, 0.8fr) minmax(150px, 1fr) 28px;
+  grid-template-columns: minmax(54px, 0.45fr) minmax(0, 1fr);
   align-items: center;
   gap: 10px;
-  text-align: left;
-  text-transform: none;
-  letter-spacing: 0;
+  box-shadow: none;
+  padding: 10px;
 }
 
 .repeat-day-name {
@@ -2465,69 +2554,16 @@ label span {
   color: var(--ce-ink);
 }
 
-.repeat-day-time {
-  font-size: 12.5px;
-  color: var(--ce-ink2);
+.repeat-day-time-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
-.repeat-day-time.inherited {
-  color: var(--ce-ink4);
-}
-
-.repeat-day-toggle {
-  justify-self: end;
-  width: 26px;
-  height: 26px;
-  border: 1px solid var(--ce-p4);
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--ce-ink4);
-}
-
-.repeat-day-toggle svg {
-  width: 13px;
-  height: 13px;
-  transform: rotate(90deg);
-  transition: transform 0.18s ease;
-}
-
-.repeat-day-row.expanded .repeat-day-toggle svg {
-  transform: rotate(-90deg);
-}
-
-.repeat-day-custom {
-  padding: 0 12px 12px;
-}
-
-.repeat-day-custom > p {
-  color: var(--ce-ink4);
-  font-size: 11.5px;
-  line-height: 1.5;
-  margin: 0 0 9px;
-}
-
-.repeat-reset-btn {
-  border: 0;
-  background: transparent;
-  color: var(--ce-acc);
-  font-size: 12px;
-  font-weight: 650;
-  min-height: 0;
-  padding: 0;
-  text-transform: none;
-  letter-spacing: 0;
-}
-
-.recurrence-summary {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.recurrence-summary strong {
-  color: var(--ce-ink);
+.repeat-number-card,
+.repeat-interval-card,
+.frequency-number-card {
+  border-color: color-mix(in srgb, var(--ce-p4) 18%, transparent);
 }
 
 .info-card {
@@ -2568,10 +2604,10 @@ label span {
 }
 
 .day-chip {
-  width: 34px;
+  width: 100%;
   height: 34px;
-  border-radius: 50%;
-  border: 1.5px solid var(--ce-p4);
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--ce-p4) 20%, transparent);
   background: var(--ce-paper);
   color: var(--ce-ink3);
   font-size: 11px;
@@ -2582,13 +2618,21 @@ label span {
   transition:
     background 0.18s ease,
     border-color 0.18s ease,
-    color 0.18s ease,
-    transform 0.18s ease;
+    color 0.18s ease;
+}
+
+.day-chip:hover {
+  border-color: color-mix(in srgb, var(--ce-green) 22%, var(--ce-p4));
+  background: color-mix(in srgb, var(--ce-green) 4%, var(--ce-paper));
+  color: var(--ce-ink2);
+  transform: none;
+  box-shadow: none;
 }
 
 .day-chip.selected {
-  background: var(--ce-acc-soft);
-  border-color: var(--ce-acc-border);
+  background: color-mix(in srgb, var(--ce-green) 12%, var(--ce-paper));
+  border-color: color-mix(in srgb, var(--ce-green) 70%, var(--ce-p4));
+  border-width: 1.5px;
   color: var(--ce-ink);
 }
 
@@ -2658,6 +2702,13 @@ label span {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--ce-acc) 12%, transparent);
 }
 
+.category-trigger:hover {
+  background: color-mix(in srgb, var(--ce-acc) 3%, var(--ce-p2));
+  border-color: color-mix(in srgb, var(--ce-ink5) 34%, var(--ce-p4));
+  transform: none;
+  box-shadow: none;
+}
+
 .category-trigger.error {
   border-color: var(--ce-red);
 }
@@ -2713,8 +2764,14 @@ label span {
   transition:
     background 0.18s ease,
     border-color 0.18s ease,
-    color 0.18s ease,
-    transform 0.18s ease;
+    color 0.18s ease;
+}
+
+.category-option:hover {
+  border-color: color-mix(in srgb, var(--ce-ink5) 38%, var(--ce-p4));
+  color: var(--ce-ink2);
+  transform: none;
+  box-shadow: none;
 }
 
 .category-option svg {
@@ -2825,6 +2882,13 @@ label span {
 .upload-tabs button.active {
   background: var(--ce-paper);
   color: var(--ce-ink);
+}
+
+.upload-tabs button:hover {
+  background: color-mix(in srgb, var(--ce-acc) 3%, transparent);
+  color: var(--ce-ink2);
+  transform: none;
+  box-shadow: none;
 }
 
 .upload-zone {
@@ -3077,8 +3141,14 @@ label span {
   transition:
     background 0.18s ease,
     border-color 0.18s ease,
-    color 0.18s ease,
-    transform 0.18s ease;
+    color 0.18s ease;
+}
+
+.ticket-mode-card:hover {
+  border-color: color-mix(in srgb, var(--ce-ink5) 38%, var(--ce-p4));
+  color: var(--ce-ink2);
+  transform: none;
+  box-shadow: none;
 }
 
 .ticket-mode-card > svg {
@@ -3514,12 +3584,14 @@ label span {
     display: none;
   }
 
-  .repeat-day-row > button {
-    grid-template-columns: 1fr auto;
+  .repeat-day-row,
+  .repeat-day-time-controls {
+    grid-template-columns: 1fr;
   }
 
-  .repeat-day-time {
-    grid-column: 1 / -1;
+  .repeat-frequency-grid,
+  .repeat-change-actions {
+    grid-template-columns: 1fr;
   }
 
   .two-col,
