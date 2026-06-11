@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { usePurchaseStore } from '@/stores/purchases'
 import Modal from '@/components/Modal.vue'
+import PageSkeleton from '@/components/PageSkeleton.vue'
 
 const authStore = useAuthStore()
 const purchaseStore = usePurchaseStore()
@@ -109,7 +110,7 @@ const formattedTotalSpent = computed(() => {
         <p class="dashboard__greeting">Welcome back, {{ authStore.user?.name }}</p>
       </header>
 
-      <div v-if="loading" class="dashboard__loading">Loading your purchases...</div>
+      <PageSkeleton v-if="loading" variant="dashboard" :rows="5" />
 
       <div v-else-if="error" class="dashboard__error">
         {{ error }}

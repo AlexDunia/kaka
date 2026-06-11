@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useEventStore } from '@/stores/events'
 import { usePurchaseStore } from '@/stores/purchases'
 import { useReportStore } from '@/stores/reports'
+import PageSkeleton from '@/components/PageSkeleton.vue'
 
 const authStore = useAuthStore()
 const eventStore = useEventStore()
@@ -63,7 +64,7 @@ const formatDate = (dateString) => {
         <p class="admin-page__subtitle">Manage events, sales, and reports</p>
       </div>
 
-      <div v-if="loading" class="admin-page__loading">Loading admin data...</div>
+      <PageSkeleton v-if="loading" variant="dashboard" :rows="6" />
 
       <div v-else-if="error" class="admin-page__error">
         {{ error }}

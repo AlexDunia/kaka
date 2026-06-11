@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
+import PageSkeleton from '@/components/PageSkeleton.vue'
 
 // Set multi-word component name for linting
 defineOptions({ name: 'EventCheckout' })
@@ -384,7 +385,7 @@ const continueShopping = () => {
         </div>
       </div>
 
-      <div v-if="loading" class="checkout__loading">Loading payment gateway...</div>
+      <PageSkeleton v-if="loading" variant="form" :rows="4" />
       <div v-else-if="error" class="checkout__error">
         <p>{{ error }}</p>
         <button @click="router.push('/')" class="checkout__back-button">Return Home</button>

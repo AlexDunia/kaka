@@ -9,6 +9,7 @@ import { useSeo } from '@/composables/useSeo'
 import { useSlug } from '@/composables/useSlug'
 import SeoImage from '@/components/SeoImage.vue'
 import { useAuthStore } from '@/stores/auth'
+import PageSkeleton from '@/components/PageSkeleton.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -507,9 +508,7 @@ onBeforeUnmount(() => {
   <div class="event-details">
     <div class="container">
       <!-- Loading state -->
-      <div v-if="loading || isLoadingEvent" class="event-details__loading">
-        Loading event details...
-      </div>
+      <PageSkeleton v-if="loading || isLoadingEvent" variant="detail" :rows="5" />
 
       <!-- Error state -->
       <div v-else-if="error" class="event-details__error">

@@ -16,7 +16,7 @@ defineProps({
   },
   color: {
     type: String,
-    default: 'rgba(255, 255, 255, 0.08)',
+    default: 'var(--color-skeleton-base)',
   },
   rounded: {
     type: Boolean,
@@ -116,20 +116,20 @@ defineProps({
 
 <style scoped>
 .skeleton-container {
-  --skeleton-color: rgba(255, 255, 255, 0.08);
+  --skeleton-color: var(--color-skeleton-base);
   --skeleton-animation-duration: 1.5s;
   width: 100%;
 }
 
 @keyframes skeletonPulse {
   0% {
-    opacity: 0.06;
+    opacity: 0.72;
   }
   50% {
-    opacity: 0.09;
+    opacity: 1;
   }
   100% {
-    opacity: 0.06;
+    opacity: 0.72;
   }
 }
 
@@ -181,13 +181,13 @@ defineProps({
   flex-direction: column;
   border-radius: 12px;
   overflow: hidden;
-  background-color: rgba(18, 18, 24, 0.4);
+  background-color: var(--color-skeleton-surface);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   height: 100%;
   min-height: 350px;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-skeleton-border);
 }
 
 .skeleton-card-image {
@@ -299,9 +299,9 @@ defineProps({
   display: flex;
   gap: 1rem;
   padding: 1rem;
-  background-color: rgba(18, 18, 24, 0.4);
+  background-color: var(--color-skeleton-surface);
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-skeleton-border);
 }
 
 .skeleton-list-image {

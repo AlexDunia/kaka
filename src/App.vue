@@ -1,19 +1,86 @@
 <script setup>
-import { RouterLink, RouterView } from 'vue-router'
+import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { ref, onMounted, onUnmounted, computed, watch, provide } from 'vue'
 import { useCartStore } from '@/stores/cart'
 import { useAuthStore } from '@/stores/auth'
-import { useRoute } from 'vue-router'
 import { useSeo } from '@/composables/useSeo'
 import HeroSection from '@/components/HeroSection.vue'
+import PageSkeleton from '@/components/PageSkeleton.vue'
 import throttle from 'lodash.throttle' // ✅ use throttling to reduce scroll event calls
 
 const isMobileMenuOpen = ref(false)
 const currentYear = ref(new Date().getFullYear())
 const route = useRoute()
-const showHero = computed(() => route.name === 'home' || route.path === '/')
-const isCreateEventRoute = computed(() => route.name === 'CreateEvent')
+const router = useRouter()
 const { updateMetaDescription, updateSocialMeta } = useSeo()
+const isRouteLoading = ref(true)
+const skeletonRoute = ref(route)
+const routeSkeletonMinimumMs = 360
+let routeLoadingStartedAt = Date.now()
+let routeLoadingReleaseTimer = null
+const chromeRoute = computed(() => (isRouteLoading.value ? skeletonRoute.value : route))
+const showHero = computed(
+  () => !isRouteLoading.value && (chromeRoute.value.name === 'home' || chromeRoute.value.path === '/'),
+)
+const isCreateEventRoute = computed(() => chromeRoute.value.name === 'CreateEvent')
+
+const routeSkeletonVariant = computed(() => {
+  const targetRoute = skeletonRoute.value || route
+  if (targetRoute.name === 'CreateEvent') return 'create-event'
+  if (['event-details', 'event-details-legacy'].includes(targetRoute.name)) return 'detail'
+  if (['admin', 'dashboard', 'transactions'].includes(targetRoute.name)) return 'dashboard'
+  if (['checkout', 'contact', 'login', 'register', 'forgot-password'].includes(targetRoute.name)) {
+    return 'form'
+  }
+  if (['blog', 'blog-post'].includes(targetRoute.name)) return 'blog'
+  return 'grid'
+})
+
+const clearRouteLoadingTimers = () => {
+  if (routeLoadingReleaseTimer) {
+    clearTimeout(routeLoadingReleaseTimer)
+    routeLoadingReleaseTimer = null
+  }
+}
+
+const showRouteSkeleton = () => {
+  clearRouteLoadingTimers()
+  routeLoadingStartedAt = Date.now()
+  isRouteLoading.value = true
+}
+
+const hideRouteSkeleton = () => {
+  const elapsed = Date.now() - routeLoadingStartedAt
+  const remaining = Math.max(routeSkeletonMinimumMs - elapsed, 0)
+
+  routeLoadingReleaseTimer = setTimeout(() => {
+    isRouteLoading.value = false
+    routeLoadingReleaseTimer = null
+  }, remaining)
+}
+
+const removeRouteBeforeEach = router.beforeEach((to, from) => {
+  if (to.fullPath !== from.fullPath) {
+    skeletonRoute.value = to
+    showRouteSkeleton()
+  }
+  return true
+})
+
+const removeRouteAfterEach = router.afterEach(() => {
+  hideRouteSkeleton()
+})
+
+router.onError(() => {
+  hideRouteSkeleton()
+})
+
+watch(
+  () => route.fullPath,
+  () => {
+    skeletonRoute.value = route
+  },
+)
 
 const themePreferenceKey = 'kaka-theme-preference'
 const theme = ref('dark')
@@ -146,10 +213,14 @@ onMounted(() => {
   handleScroll()
   authStore.initialize()
   initializeTheme()
+  hideRouteSkeleton()
 })
 
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll)
+  clearRouteLoadingTimers()
+  removeRouteBeforeEach()
+  removeRouteAfterEach()
 })
 </script>
 
@@ -357,7 +428,12 @@ onUnmounted(() => {
     <main class="app-content">
       <RouterView v-slot="{ Component }">
         <transition name="fade" mode="out-in">
-          <component :is="Component" />
+          <PageSkeleton
+            v-if="isRouteLoading"
+            :key="`route-skeleton-${skeletonRoute.fullPath || route.fullPath}`"
+            :variant="routeSkeletonVariant"
+          />
+          <component v-else :is="Component" />
         </transition>
       </RouterView>
     </main>

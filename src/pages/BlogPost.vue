@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import blogService from '@/services/blogService'
 import { useSeo } from '@/composables/useSeo'
+import PageSkeleton from '@/components/PageSkeleton.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -206,15 +207,7 @@ const estimatedReadingTime = computed(() => {
       <button @click="goBack" class="back-button">← Back to Blog</button>
 
       <!-- Loading State -->
-      <div v-if="loading" class="loading">
-        <div class="skeleton-header">
-          <div class="skeleton-title"></div>
-          <div class="skeleton-meta"></div>
-        </div>
-        <div class="skeleton-content">
-          <div class="skeleton-block" v-for="i in 3" :key="i"></div>
-        </div>
-      </div>
+      <PageSkeleton v-if="loading" variant="detail" :rows="5" />
 
       <!-- Content -->
       <article v-else-if="post" class="blog-content">

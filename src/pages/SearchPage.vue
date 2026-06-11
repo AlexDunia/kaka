@@ -3,7 +3,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useEventStore } from '@/stores/events'
 import EventCard from '@/components/EventCard.vue'
-import LoadingIndicator from '@/components/LoadingIndicator.vue'
+import PageSkeleton from '@/components/PageSkeleton.vue'
 import debug from '@/services/debug'
 
 // Name of component is SearchPage (satisfies multi-word linting rule)
@@ -623,10 +623,7 @@ const categoryOptions = [
         </div>
 
         <!-- Loading State -->
-        <div v-if="loading" class="loading-container">
-          <LoadingIndicator size="large" />
-          <p>Searching for events...</p>
-        </div>
+        <PageSkeleton v-if="loading" variant="grid" :cards="6" />
 
         <!-- Error State -->
         <div v-else-if="error" class="error-container">

@@ -31,7 +31,7 @@ const { events, featuredEvents, error, searchQuery: storeSearchQuery } = storeTo
 
 // Local state
 const viewAll = ref(false)
-const skeletonColor = ref('rgba(255, 255, 255, 0.08)') // Subtle gray skeleton color
+const skeletonColor = ref('var(--color-skeleton-base)')
 const safetyTimer = ref(null)
 
 // Use our loading composables

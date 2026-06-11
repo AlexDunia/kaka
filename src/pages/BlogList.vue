@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import blogService from '@/services/blogService'
 import { useSeo } from '@/composables/useSeo'
+import PageSkeleton from '@/components/PageSkeleton.vue'
 
 const router = useRouter()
 const { updatePageTitle, updateMetaDescription, updateSocialMeta } = useSeo()
@@ -69,15 +70,7 @@ const navigateToPost = (slug) => {
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" class="loading">
-      <div class="skeleton" v-for="i in 3" :key="i" :style="{ '--index': i }">
-        <div class="skeleton-content">
-          <div class="skeleton-title"></div>
-          <div class="skeleton-meta"></div>
-          <div class="skeleton-content-line"></div>
-        </div>
-      </div>
-    </div>
+    <PageSkeleton v-if="loading" variant="blog" :rows="4" />
 
     <!-- Error State -->
     <div v-else-if="error" class="error">

@@ -45,6 +45,10 @@
   --color-tab-border: rgba(255, 255, 255, 0.04);
   --color-tab-active-gradient: linear-gradient(135deg, var(--color-accent), #b63685);
   --color-danger: #e74c3c;
+  --color-skeleton-surface: rgba(255, 255, 255, 0.035);
+  --color-skeleton-base: rgba(255, 255, 255, 0.075);
+  --color-skeleton-highlight: rgba(255, 255, 255, 0.16);
+  --color-skeleton-border: rgba(255, 255, 255, 0.055);
 
   /* Vue starter aliases still used by a few old components */
   --color-background: var(--background);
@@ -95,6 +99,10 @@
   --color-tab-bg: #ede9e3;
   --color-tab-border: #e4ded7;
   --color-danger: #c0392b;
+  --color-skeleton-surface: #f8f6f2;
+  --color-skeleton-base: #dedbd6;
+  --color-skeleton-highlight: #f4f1ec;
+  --color-skeleton-border: #e8e2dc;
 
   /* Vue starter aliases still used by a few old components */
   --color-background: var(--background);

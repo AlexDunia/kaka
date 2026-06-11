@@ -38,9 +38,25 @@
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
-          <tr v-if="loading">
-            <td colspan="5" class="px-6 py-4 text-center">Loading transactions...</td>
-          </tr>
+          <template v-if="loading">
+            <tr v-for="row in 5" :key="`transaction-skeleton-${row}`">
+              <td class="px-6 py-4">
+                <span class="transaction-skeleton transaction-skeleton--id"></span>
+              </td>
+              <td class="px-6 py-4">
+                <span class="transaction-skeleton transaction-skeleton--event"></span>
+              </td>
+              <td class="px-6 py-4">
+                <span class="transaction-skeleton transaction-skeleton--date"></span>
+              </td>
+              <td class="px-6 py-4">
+                <span class="transaction-skeleton transaction-skeleton--amount"></span>
+              </td>
+              <td class="px-6 py-4">
+                <span class="transaction-skeleton transaction-skeleton--status"></span>
+              </td>
+            </tr>
+          </template>
           <tr v-else-if="error">
             <td colspan="5" class="px-6 py-4 text-center text-red-600">
               {{ error }}
@@ -138,5 +154,57 @@ onMounted(async () => {
   padding: 2rem;
   max-width: 1200px;
   margin: 0 auto;
+}
+
+.transaction-skeleton {
+  display: block;
+  height: 16px;
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      var(--color-skeleton-highlight),
+      transparent
+    ),
+    var(--color-skeleton-base);
+  background-size: 220% 100%;
+  animation: transactionSkeletonShimmer 1.35s ease-in-out infinite;
+}
+
+.transaction-skeleton--id {
+  width: 96px;
+}
+
+.transaction-skeleton--event {
+  width: min(180px, 80%);
+}
+
+.transaction-skeleton--date {
+  width: 120px;
+}
+
+.transaction-skeleton--amount {
+  width: 76px;
+}
+
+.transaction-skeleton--status {
+  width: 88px;
+  height: 26px;
+}
+
+@keyframes transactionSkeletonShimmer {
+  0% {
+    background-position: 180% 0;
+  }
+  100% {
+    background-position: -60% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .transaction-skeleton {
+    animation: none;
+  }
 }
 </style>
