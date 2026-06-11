@@ -49,7 +49,6 @@ const repeatRhythmOptions = [
   { value: 'every_day', unit: 'days', label: 'Every day' },
   { value: 'every_week', unit: 'weeks', label: 'Every week' },
   { value: 'every_month', unit: 'months', label: 'Every month' },
-  { value: 'every_year', unit: 'years', label: 'Every year' },
 ]
 const repeatDayOptions = [
   { id: 'Mon', short: 'Mon', name: 'Monday' },
@@ -60,11 +59,6 @@ const repeatDayOptions = [
   { id: 'Sat', short: 'Sat', name: 'Saturday' },
   { id: 'Sun', short: 'Sun', name: 'Sunday' },
 ]
-const repeatMonthDayOptions = Array.from({ length: 28 }, (_, index) => ({
-  id: index + 1,
-  short: String(index + 1),
-  name: `Day ${index + 1}`,
-}))
 const today = new Date()
 today.setHours(0, 0, 0, 0)
 
@@ -249,17 +243,14 @@ const repeatRequiresDaySelection = computed(() =>
 )
 const activeRepeatDayOptions = computed(() => {
   if (form.recurring.frequency === 'every_week') return repeatDayOptions
-  if (form.recurring.frequency === 'every_month') return repeatMonthDayOptions
+  if (form.recurring.frequency === 'every_month') return buildRepeatMonthDayOptions()
   return []
 })
 const selectedRepeatDays = computed(() =>
   activeRepeatDayOptions.value.filter((day) => form.recurring.selectedDays.includes(day.id)),
 )
 const repeatTimeRows = computed(() => {
-  if (form.recurring.frequency === 'every_day') return repeatDayOptions
-  if (form.recurring.frequency === 'every_year') {
-    return [{ id: 'event_day', short: 'Event day', name: 'Event day' }]
-  }
+  if (!form.recurring.selectedDays.length) return [{ id: 'all_days', short: 'All days', name: 'All days' }]
   return selectedRepeatDays.value
 })
 const repeatStepOneComplete = computed(() => Boolean(form.recurring.frequency))
@@ -312,6 +303,49 @@ function formatDateOnly(value) {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
+  })
+}
+
+function formatReviewDate(value) {
+  if (!value) return 'Date not set'
+  const parts = new Intl.DateTimeFormat('en-NG', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).formatToParts(new Date(value))
+  const byType = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+  return `${byType.day} ${byType.month} ${byType.year}`
+}
+
+function formatRepeatDateLabel(value) {
+  if (!value) return ''
+  const parts = new Intl.DateTimeFormat('en-NG', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  }).formatToParts(new Date(value))
+  const byType = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+  return `${byType.weekday}, ${byType.month} ${byType.day}`
+}
+
+function buildRepeatMonthDayOptions() {
+  const source = dateOnlyToDate(form.repeatStartDate) || new Date(form.startsAt || today)
+  const year = source.getFullYear()
+  const month = source.getMonth()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const minDate = new Date(Math.max(today.getTime(), dateOnlyToDate(form.repeatStartDate)?.getTime() || today.getTime()))
+  minDate.setHours(0, 0, 0, 0)
+
+  return Array.from({ length: daysInMonth }, (_, index) => {
+    const day = index + 1
+    const date = new Date(year, month, day)
+    date.setHours(0, 0, 0, 0)
+    return {
+      id: day,
+      short: String(day),
+      name: formatRepeatDateLabel(date),
+      disabled: date < minDate,
+    }
   })
 }
 
@@ -617,6 +651,8 @@ function selectRepeatRhythm(unit) {
 }
 
 function toggleRepeatDay(day) {
+  const option = activeRepeatDayOptions.value.find((item) => item.id === day)
+  if (option?.disabled) return
   if (form.recurring.selectedDays.includes(day)) {
     form.recurring.selectedDays = form.recurring.selectedDays.filter((item) => item !== day)
     delete form.repeatDayOverrides[day]
@@ -636,8 +672,46 @@ function toggleRepeatDay(day) {
   clearError('repeatSchedule')
 }
 
-function toggleRepeatChangeActions() {
-  showRepeatChangeActions.value = !showRepeatChangeActions.value
+function removeRepeatTimeRow(day) {
+  if (day === 'all_days') {
+    delete form.repeatDayOverrides[day]
+    delete form.recurring.perDayTimes[day]
+    form.recurring.useDefaultTimes = true
+    showRepeatDayOverrides.value = false
+    showRepeatChangeActions.value = true
+    return
+  }
+  if (form.recurring.selectedDays.includes(day)) {
+    toggleRepeatDay(day)
+    return
+  }
+  delete form.repeatDayOverrides[day]
+  delete form.recurring.perDayTimes[day]
+}
+
+function syncMonthlyRepeatSelections() {
+  if (form.recurring.frequency !== 'every_month') return
+  const allowedDays = new Set(activeRepeatDayOptions.value.filter((day) => !day.disabled).map((day) => day.id))
+  const nextDays = form.recurring.selectedDays.filter((day) => allowedDays.has(day))
+  if (nextDays.length !== form.recurring.selectedDays.length) {
+    form.recurring.selectedDays = nextDays
+    form.repeatDays = [...nextDays]
+    reconcileRepeatDayOverrides()
+  }
+}
+
+function handleRepeatChangeLink() {
+  if (showRepeatChangeActions.value) {
+    showRepeatChangeActions.value = false
+    showRepeatDayOverrides.value = false
+    return
+  }
+  if (showRepeatDayOverrides.value) {
+    showRepeatDayOverrides.value = false
+    showRepeatChangeActions.value = true
+    return
+  }
+  showRepeatChangeActions.value = true
 }
 
 function openRepeatDayOverrides() {
@@ -833,6 +907,7 @@ watch(
   () => [form.startsAt, form.endsAt, form.recurrenceType],
   () => {
     syncRepeatScheduleFromPrimary()
+    syncMonthlyRepeatSelections()
   },
   { immediate: true },
 )
@@ -983,24 +1058,17 @@ watch(
               <div v-if="form.recurrenceType === 'recur'" class="sub-panel">
                 <div class="recurrence-steps" data-error-key="repeatSchedule">
                   <section class="recurrence-step" :class="{ complete: repeatStepOneComplete }">
-                    <div class="recurrence-step-head">
-                      <span>1</span>
-                      <div>
-                        <strong>How often does it repeat?</strong>
-                        <p>Choose one rhythm. The next choice appears after this.</p>
-                      </div>
-                    </div>
-                    <div class="repeat-frequency-grid">
+                    <span class="recurrence-label">Repeats</span>
+                    <div class="repeat-frequency-row">
                       <button
                         v-for="option in repeatRhythmOptions"
                         :key="option.value"
                         type="button"
-                        class="repeat-frequency-card"
+                        class="repeat-frequency-pill"
                         :class="{ selected: form.recurring.frequency === option.value }"
                         @click="selectRepeatRhythm(option.value)"
                       >
-                        <span>{{ option.label }}</span>
-                        <CheckIcon v-if="form.recurring.frequency === option.value" aria-hidden="true" />
+                        {{ option.label }}
                       </button>
                     </div>
                   </section>
@@ -1010,19 +1078,9 @@ watch(
                     class="recurrence-step reveal-step"
                     :class="{ complete: repeatStepTwoComplete }"
                   >
-                    <div class="recurrence-step-head">
-                      <span>2</span>
-                      <div>
-                        <strong>Which day(s)?</strong>
-                        <p>
-                          {{
-                            form.recurring.frequency === 'every_week'
-                              ? 'Pick the weekly days this event should repeat.'
-                              : 'Pick the monthly dates this event should repeat.'
-                          }}
-                        </p>
-                      </div>
-                    </div>
+                    <span class="recurrence-label">
+                      {{ form.recurring.frequency === 'every_week' ? 'Days' : 'Day of month' }}
+                    </span>
                     <div
                       class="day-row"
                       :class="{ monthly: form.recurring.frequency === 'every_month' }"
@@ -1032,10 +1090,18 @@ watch(
                         :key="day.id"
                         type="button"
                         class="day-chip"
-                        :class="{ selected: form.recurring.selectedDays.includes(day.id) }"
+                        :class="{
+                          selected: form.recurring.selectedDays.includes(day.id),
+                          disabled: day.disabled,
+                          monthly: form.recurring.frequency === 'every_month',
+                        }"
+                        :disabled="day.disabled"
+                        :title="day.name"
+                        :aria-label="day.name"
                         @click="toggleRepeatDay(day.id)"
                       >
-                        {{ day.short }}
+                        <span>{{ day.short }}</span>
+                        <small v-if="form.recurring.frequency === 'every_month'">{{ day.name.split(',')[0] }}</small>
                       </button>
                     </div>
                   </section>
@@ -1044,68 +1110,73 @@ watch(
                     v-if="repeatStepOneComplete && repeatStepTwoComplete"
                     class="recurrence-step reveal-step"
                   >
-                    <div class="recurrence-review-card">
-                      <div class="repeat-current-schedule">
-                        <p>Your current date is <strong>{{ formatDateOnly(form.repeatStartDate) }}</strong></p>
-                        <p>
-                          Current time is
-                          <strong>{{ formatTimeLabel(form.repeatStartTime) }} - {{ formatTimeLabel(form.repeatEndTime) }}</strong>
-                        </p>
-                        <button type="button" class="repeat-change-link" @click="toggleRepeatChangeActions">
-                          {{ showRepeatChangeActions ? 'Keep current date and time' : 'Want to change this?' }}
-                        </button>
-                      </div>
+                    <div class="repeat-current-schedule">
+                      <p>
+                        <span>Date</span>
+                        <strong>{{ formatReviewDate(form.repeatStartDate) }}</strong>
+                      </p>
+                      <p>
+                        <span>Time</span>
+                        <strong>{{ formatTimeLabel(form.repeatStartTime) }} &ndash; {{ formatTimeLabel(form.repeatEndTime) }}</strong>
+                      </p>
+                      <button type="button" class="repeat-change-link" @click="handleRepeatChangeLink">
+                        {{
+                          showRepeatDayOverrides
+                            ? 'Done'
+                            : showRepeatChangeActions
+                              ? 'Never mind'
+                              : 'Change this'
+                        }}
+                      </button>
+                    </div>
 
-                      <div v-if="showRepeatChangeActions" class="repeat-change-actions reveal-step">
-                        <button type="button" class="repeat-change-option" @click="openRepeatDayOverrides">
-                          <strong>Per day</strong>
-                          <span>Set different times for each day</span>
-                        </button>
-                        <button type="button" class="repeat-change-option" @click="scrollToPrimaryDateTime">
-                          <strong>Change main date</strong>
-                          <span>Update the event's start date and time</span>
-                        </button>
-                      </div>
+                    <div v-if="showRepeatChangeActions" class="repeat-change-actions reveal-step">
+                      <button type="button" class="repeat-change-option" @click="openRepeatDayOverrides">
+                        <strong>Per day</strong>
+                        <span>Different times for each day</span>
+                      </button>
+                      <button type="button" class="repeat-change-option" @click="scrollToPrimaryDateTime">
+                        <strong>Main date</strong>
+                        <span>Edit the event's start date</span>
+                      </button>
+                    </div>
 
-                      <div class="repeat-default-block">
-                        <p class="repeat-day-tip">
-                          <CheckIcon aria-hidden="true" />
-                          Default times apply to every selected day
-                        </p>
-                        <button
-                          type="button"
-                          class="repeat-customize-btn"
-                          @click="openRepeatDayOverrides"
-                        >
-                          Open individual days to customise times
-                        </button>
-                      </div>
-
-                      <div v-if="showRepeatDayOverrides" class="repeat-day-overrides reveal-step">
-                        <div
-                          v-for="day in repeatTimeRows"
-                          :key="day.id"
-                          class="repeat-day-row"
-                        >
-                          <span class="repeat-day-name">{{ day.short }}</span>
-                          <div class="repeat-day-time-controls">
-                            <button
-                              type="button"
-                              class="field-input recurrence-picker-button"
-                              @click="openRepeatTimePicker({ scope: 'day', day: day.id, field: 'start' })"
-                            >
-                              <ClockIcon aria-hidden="true" />
-                              <span>{{ formatTimeLabel(repeatDayTimes(day.id).start) }}</span>
-                            </button>
-                            <button
-                              type="button"
-                              class="field-input recurrence-picker-button"
-                              @click="openRepeatTimePicker({ scope: 'day', day: day.id, field: 'end' })"
-                            >
-                              <ClockIcon aria-hidden="true" />
-                              <span>{{ formatTimeLabel(repeatDayTimes(day.id).end) }}</span>
-                            </button>
-                          </div>
+                    <div v-if="showRepeatDayOverrides" class="repeat-day-overrides reveal-step">
+                      <div
+                        v-for="day in repeatTimeRows"
+                        :key="day.id"
+                        class="repeat-day-row"
+                        :class="{ monthly: form.recurring.frequency === 'every_month' }"
+                      >
+                        <span class="repeat-day-name">
+                          {{ form.recurring.frequency === 'every_month' ? day.name : day.short }}
+                        </span>
+                        <div class="repeat-day-time-controls">
+                          <button
+                            type="button"
+                            class="field-input recurrence-picker-button"
+                            @click="openRepeatTimePicker({ scope: 'day', day: day.id, field: 'start' })"
+                          >
+                            <ClockIcon aria-hidden="true" />
+                            <span>{{ formatTimeLabel(repeatDayTimes(day.id).start) }}</span>
+                          </button>
+                          <span class="repeat-day-arrow" aria-hidden="true">&rarr;</span>
+                          <button
+                            type="button"
+                            class="field-input recurrence-picker-button"
+                            @click="openRepeatTimePicker({ scope: 'day', day: day.id, field: 'end' })"
+                          >
+                            <ClockIcon aria-hidden="true" />
+                            <span>{{ formatTimeLabel(repeatDayTimes(day.id).end) }}</span>
+                          </button>
+                          <button
+                            type="button"
+                            class="repeat-day-remove"
+                            :aria-label="`Remove ${day.name}`"
+                            @click="removeRepeatTimeRow(day.id)"
+                          >
+                            <XMarkIcon aria-hidden="true" />
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -2050,7 +2121,7 @@ watch(
   background: var(--ce-paper);
   border: 1px solid var(--ce-p4);
   border-radius: 24px;
-  padding: 1.6rem;
+  padding: 1.75rem;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.035);
 }
 
@@ -2064,8 +2135,8 @@ watch(
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  margin-bottom: 1rem;
+  gap: 8px;
+  margin-bottom: 1.25rem;
 }
 
 .field:last-child,
@@ -2096,7 +2167,7 @@ label span {
   background: var(--ce-p2);
   border: 1.5px solid var(--ce-p4);
   border-radius: 12px;
-  padding: 11px 14px;
+  padding: 12px 14px;
   font-family: 'Figtree', sans-serif;
   font-size: 14px;
   line-height: 1.3;
@@ -2160,14 +2231,14 @@ label span {
 .two-col {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 14px;
 }
 
 .divider {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 4px 0 1rem;
+  margin: 10px 0 1.2rem;
 }
 
 .divider span {
@@ -2191,7 +2262,8 @@ label span {
 .quick-chip-row,
 .day-row {
   display: flex;
-  gap: 7px;
+  gap: 9px;
+  row-gap: 10px;
   flex-wrap: wrap;
 }
 
@@ -2236,14 +2308,14 @@ label span {
   background: var(--ce-p2);
   border: 1px solid var(--ce-p3);
   border-radius: 14px;
-  padding: 1rem;
-  margin-bottom: 1rem;
+  padding: 1.1rem;
+  margin: 0.35rem 0 1.25rem;
 }
 
 .recurrence-steps {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 24px;
   font-family: var(--font-family-base, 'Figtree', sans-serif);
 }
 
@@ -2268,48 +2340,24 @@ label span {
   pointer-events: none;
 }
 
-.recurrence-step-head {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.recurrence-step-head > span {
-  width: 22px;
-  height: 22px;
-  border-radius: 999px;
-  background: var(--ce-p3);
-  color: var(--ce-ink2);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-
-.recurrence-step-head strong {
+.recurrence-label {
   display: block;
-  font-size: 13px;
-  color: var(--ce-ink);
-}
-
-.recurrence-step-head p {
-  margin: 2px 0 0;
-  font-size: 11.5px;
-  color: var(--ce-ink4);
-  line-height: 1.5;
+  margin-bottom: 8px;
+  color: var(--color-text-secondary, var(--ce-ink4));
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .reveal-step {
-  animation: recurrenceReveal 200ms ease both;
+  animation: recurrenceReveal 180ms ease both;
 }
 
 @keyframes recurrenceReveal {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(3px);
   }
   to {
     opacity: 1;
@@ -2317,26 +2365,25 @@ label span {
   }
 }
 
-.repeat-frequency-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+.repeat-frequency-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  row-gap: 10px;
 }
 
-.repeat-frequency-card {
-  min-height: 44px;
-  border: 1px solid color-mix(in srgb, var(--ce-p4) 20%, transparent);
-  border-radius: 10px;
+.repeat-frequency-pill {
+  min-height: 36px;
+  border: 0.5px solid color-mix(in srgb, var(--ce-p4) 60%, transparent);
+  border-radius: 999px;
   background: var(--ce-p2);
-  color: var(--ce-ink3);
+  color: var(--color-text-secondary, var(--ce-ink4));
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 10px 12px;
-  font-size: 12.5px;
-  font-weight: 650;
-  text-align: left;
+  justify-content: center;
+  padding: 8px 13px;
+  font-size: 13px;
+  font-weight: 500;
   text-transform: none;
   letter-spacing: 0;
   box-shadow: none;
@@ -2346,96 +2393,88 @@ label span {
     color 0.18s ease;
 }
 
-.repeat-frequency-card.selected {
+.repeat-frequency-pill.selected {
   background: color-mix(in srgb, var(--ce-green) 12%, var(--ce-paper));
   border-color: color-mix(in srgb, var(--ce-green) 70%, var(--ce-p4));
   border-width: 1.5px;
-  color: var(--ce-ink);
+  color: var(--ce-green);
 }
 
-.repeat-frequency-card:hover {
+.repeat-frequency-pill:hover {
   background: color-mix(in srgb, var(--ce-green) 4%, var(--ce-p2));
   border-color: color-mix(in srgb, var(--ce-green) 22%, var(--ce-p4));
-  color: var(--ce-ink2);
+  color: var(--ce-green);
   transform: none;
   box-shadow: none;
 }
 
-.repeat-frequency-card svg {
-  width: 15px;
-  height: 15px;
-  color: var(--ce-green);
-  flex-shrink: 0;
-}
-
 .recurrence-steps .day-row {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 6px;
+  display: flex;
   flex-wrap: nowrap;
+  gap: 8px;
 }
 
 .recurrence-steps .day-row.monthly {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.recurrence-review-card {
-  border: 1px solid color-mix(in srgb, var(--ce-p4) 55%, transparent);
-  border-radius: 12px;
-  background: var(--ce-p3);
-  padding: 12px;
-  box-shadow: none;
-}
-
-.create-event-page.is-dark .recurrence-review-card {
-  background: color-mix(in srgb, var(--ce-paper) 72%, var(--ce-p2));
+  flex-wrap: wrap;
 }
 
 .repeat-current-schedule {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  color: var(--ce-ink3);
-  font-size: 12px;
+  gap: 8px;
+  color: var(--color-text-secondary, var(--ce-ink4));
+  font-size: 13px;
   line-height: 1.5;
 }
 
 .repeat-current-schedule p {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 12px;
   margin: 0;
+}
+
+.repeat-current-schedule span {
+  color: var(--color-text-secondary, var(--ce-ink4));
 }
 
 .repeat-current-schedule strong {
   color: var(--ce-ink);
+  font-size: 13px;
+  font-weight: 500;
 }
 
-.repeat-change-link,
-.repeat-customize-btn,
-.repeat-change-actions button {
+.repeat-change-link {
   border: 0;
   background: transparent;
   color: var(--ce-green);
-  font-size: 12px;
-  font-weight: 650;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
   min-height: 0;
   padding: 0;
+  margin-top: 4px;
   text-align: left;
   text-transform: none;
   letter-spacing: 0;
+  width: fit-content;
 }
 
 .repeat-change-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 10px;
+  gap: 12px;
+  margin-top: 14px;
 }
 
 .repeat-change-actions button {
-  border: 1px solid color-mix(in srgb, var(--ce-p4) 45%, transparent);
-  border-radius: 9px;
-  background: var(--ce-p2);
+  border: 0.5px solid color-mix(in srgb, var(--ce-p4) 55%, transparent);
+  border-radius: var(--border-radius-md, 10px);
+  background: transparent;
   padding: 9px 10px;
   color: var(--ce-ink2);
+  box-shadow: none;
 }
 
 .repeat-change-option {
@@ -2445,7 +2484,8 @@ label span {
 }
 
 .repeat-change-option strong {
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--ce-ink);
 }
 
@@ -2456,19 +2496,12 @@ label span {
 }
 
 .repeat-change-link:hover,
-.repeat-customize-btn:hover,
 .repeat-change-actions button:hover {
-  background: color-mix(in srgb, var(--ce-green) 4%, transparent);
+  background: transparent;
+  border-color: color-mix(in srgb, var(--ce-green) 20%, var(--ce-p4));
   color: var(--ce-green);
   transform: none;
   box-shadow: none;
-}
-
-.repeat-default-block {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 12px;
 }
 
 .recurrence-inline-field {
@@ -2479,28 +2512,7 @@ label span {
 .repeat-day-overrides {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-}
-
-.repeat-day-tip {
-  border: 1px solid color-mix(in srgb, var(--ce-green) 24%, var(--ce-p4));
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--ce-green) 8%, transparent);
-  color: var(--ce-ink2);
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 12px;
-  line-height: 1.55;
-  padding: 9px 11px;
-  margin: 0;
-}
-
-.repeat-day-tip svg {
-  width: 14px;
-  height: 14px;
-  color: var(--ce-green);
-  flex-shrink: 0;
+  margin-top: 14px;
 }
 
 .recurrence-picker-stack {
@@ -2537,27 +2549,76 @@ label span {
 }
 
 .repeat-day-row {
-  border: 1px solid color-mix(in srgb, var(--ce-p4) 55%, transparent);
-  border-radius: 10px;
-  background: var(--ce-p2);
-  display: grid;
-  grid-template-columns: minmax(54px, 0.45fr) minmax(0, 1fr);
+  border-bottom: 0.5px solid color-mix(in srgb, var(--ce-p4) 58%, transparent);
+  background: transparent;
+  display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   box-shadow: none;
-  padding: 10px;
+  padding: 10px 0;
+}
+
+.repeat-day-row:last-child {
+  border-bottom: 0;
 }
 
 .repeat-day-name {
+  width: 36px;
+  flex-shrink: 0;
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 500;
   color: var(--ce-ink);
 }
 
+.repeat-day-row.monthly .repeat-day-name {
+  width: 86px;
+}
+
+.repeat-day-arrow {
+  color: var(--color-text-secondary, var(--ce-ink4));
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
 .repeat-day-time-controls {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  align-items: center;
   gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.repeat-day-time-controls .recurrence-picker-button {
+  flex: 1;
+  min-width: 0;
+}
+
+.repeat-day-remove {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  min-height: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text-secondary, var(--ce-ink4));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-shadow: none;
+}
+
+.repeat-day-remove:hover {
+  background: color-mix(in srgb, var(--ce-red) 7%, transparent);
+  color: var(--ce-red);
+  transform: none;
+  box-shadow: none;
+}
+
+.repeat-day-remove svg {
+  width: 15px;
+  height: 15px;
 }
 
 .repeat-number-card,
@@ -2604,21 +2665,42 @@ label span {
 }
 
 .day-chip {
-  width: 100%;
-  height: 34px;
-  border-radius: 9px;
-  border: 1px solid color-mix(in srgb, var(--ce-p4) 20%, transparent);
+  width: 42px;
+  height: 36px;
+  border-radius: var(--border-radius-md, 9px);
+  border: 0.5px solid color-mix(in srgb, var(--ce-p4) 55%, transparent);
   background: var(--ce-paper);
-  color: var(--ce-ink3);
+  color: var(--color-text-secondary, var(--ce-ink4));
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   padding: 0;
   min-width: 0;
   min-height: 0;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
   transition:
     background 0.18s ease,
     border-color 0.18s ease,
     color 0.18s ease;
+}
+
+.day-chip small {
+  color: inherit;
+  font-size: 8.5px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.day-chip.disabled,
+.day-chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.34;
+  background: var(--ce-p2);
+  color: var(--color-text-secondary, var(--ce-ink4));
+  border-color: color-mix(in srgb, var(--ce-p4) 35%, transparent);
 }
 
 .day-chip:hover {
@@ -2633,7 +2715,7 @@ label span {
   background: color-mix(in srgb, var(--ce-green) 12%, var(--ce-paper));
   border-color: color-mix(in srgb, var(--ce-green) 70%, var(--ce-p4));
   border-width: 1.5px;
-  color: var(--ce-ink);
+  color: var(--ce-green);
 }
 
 .recurrence-preview,
@@ -3584,12 +3666,18 @@ label span {
     display: none;
   }
 
-  .repeat-day-row,
-  .repeat-day-time-controls {
-    grid-template-columns: 1fr;
+  .repeat-day-row {
+    display: grid;
+    grid-template-columns: 36px auto;
+    align-items: start;
   }
 
-  .repeat-frequency-grid,
+  .repeat-day-time-controls {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  }
+
   .repeat-change-actions {
     grid-template-columns: 1fr;
   }
@@ -3603,7 +3691,16 @@ label span {
 
   .ce-card {
     border-radius: 18px;
-    padding: 1.2rem;
+    padding: 1.3rem;
+  }
+
+  .field,
+  .paid-block {
+    margin-bottom: 1.15rem;
+  }
+
+  .two-col {
+    gap: 12px;
   }
 
   .url-panel,
