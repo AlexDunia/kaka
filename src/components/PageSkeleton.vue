@@ -6,7 +6,19 @@ const props = defineProps({
     type: String,
     default: 'default',
     validator: (value) =>
-      ['default', 'grid', 'detail', 'dashboard', 'form', 'blog', 'create-event'].includes(value),
+      [
+        'default',
+        'grid',
+        'detail',
+        'dashboard',
+        'form',
+        'auth',
+        'contact',
+        'cart',
+        'blog',
+        'not-found',
+        'create-event',
+      ].includes(value),
   },
   rows: {
     type: Number,
@@ -40,6 +52,7 @@ const rowCount = computed(() => Math.max(1, props.rows))
       <div class="ce-header-actions">
         <div class="skeleton-block theme-btn"></div>
         <div class="skeleton-block draft-badge"></div>
+        <div class="skeleton-block ghost-btn"></div>
       </div>
     </header>
 
@@ -121,7 +134,7 @@ const rowCount = computed(() => Math.max(1, props.rows))
   </section>
 
   <section v-else class="page-skeleton" :class="`page-skeleton--${variant}`" aria-hidden="true">
-    <div class="page-skeleton__header">
+    <div v-if="!['auth', 'cart', 'not-found'].includes(variant)" class="page-skeleton__header">
       <div class="skeleton-block page-skeleton__eyebrow"></div>
       <div class="skeleton-block page-skeleton__title"></div>
       <div class="skeleton-block page-skeleton__subtitle"></div>
@@ -182,6 +195,73 @@ const rowCount = computed(() => Math.max(1, props.rows))
       </div>
     </div>
 
+    <div v-else-if="variant === 'auth'" class="page-skeleton__auth">
+      <div class="page-skeleton__auth-panel">
+        <div class="skeleton-block page-skeleton__auth-title"></div>
+        <div class="skeleton-block page-skeleton__auth-subtitle"></div>
+        <div
+          v-for="field in 3"
+          :key="`auth-field-${field}`"
+          class="skeleton-block page-skeleton__field"
+        ></div>
+        <div class="skeleton-block page-skeleton__submit"></div>
+        <div class="skeleton-block page-skeleton__auth-link"></div>
+      </div>
+    </div>
+
+    <div v-else-if="variant === 'contact'" class="page-skeleton__contact">
+      <div class="page-skeleton__contact-info">
+        <article
+          v-for="card in 3"
+          :key="`contact-info-${card}`"
+          class="page-skeleton__contact-card"
+        >
+          <div class="skeleton-block page-skeleton__contact-icon"></div>
+          <div class="skeleton-block page-skeleton__panel-title"></div>
+          <div class="skeleton-block page-skeleton__line"></div>
+          <div class="skeleton-block page-skeleton__line page-skeleton__line--short"></div>
+        </article>
+      </div>
+      <div class="page-skeleton__contact-form">
+        <div class="skeleton-block page-skeleton__panel-title"></div>
+        <div
+          v-for="field in 4"
+          :key="`contact-field-${field}`"
+          class="skeleton-block page-skeleton__field"
+          :class="{ 'page-skeleton__field--textarea': field === 4 }"
+        ></div>
+        <div class="skeleton-block page-skeleton__submit"></div>
+      </div>
+    </div>
+
+    <div v-else-if="variant === 'cart'" class="page-skeleton__cart">
+      <div class="page-skeleton__cart-head">
+        <div class="skeleton-block page-skeleton__button page-skeleton__button--short"></div>
+        <div class="skeleton-block page-skeleton__title"></div>
+      </div>
+      <div class="page-skeleton__cart-list">
+        <article v-for="item in 3" :key="`cart-row-${item}`" class="page-skeleton__cart-item">
+          <div class="skeleton-block page-skeleton__cart-image"></div>
+          <div class="page-skeleton__cart-copy">
+            <div class="skeleton-block page-skeleton__panel-title"></div>
+            <div class="skeleton-block page-skeleton__line"></div>
+            <div class="skeleton-block page-skeleton__line page-skeleton__line--short"></div>
+          </div>
+          <div class="skeleton-block page-skeleton__cart-qty"></div>
+          <div class="skeleton-block page-skeleton__cart-price"></div>
+        </article>
+      </div>
+      <aside class="page-skeleton__cart-summary">
+        <div class="skeleton-block page-skeleton__panel-title"></div>
+        <div
+          v-for="line in 3"
+          :key="`cart-summary-${line}`"
+          class="skeleton-block page-skeleton__line"
+        ></div>
+        <div class="skeleton-block page-skeleton__submit"></div>
+      </aside>
+    </div>
+
     <div v-else-if="variant === 'blog'" class="page-skeleton__list">
       <article v-for="row in rowCount + 1" :key="`blog-${row}`" class="page-skeleton__list-row">
         <div class="skeleton-block page-skeleton__thumb"></div>
@@ -191,6 +271,13 @@ const rowCount = computed(() => Math.max(1, props.rows))
           <div class="skeleton-block page-skeleton__line page-skeleton__line--short"></div>
         </div>
       </article>
+    </div>
+
+    <div v-else-if="variant === 'not-found'" class="page-skeleton__not-found">
+      <div class="skeleton-block page-skeleton__not-found-code"></div>
+      <div class="skeleton-block page-skeleton__title"></div>
+      <div class="skeleton-block page-skeleton__subtitle"></div>
+      <div class="skeleton-block page-skeleton__button"></div>
     </div>
 
     <div v-else class="page-skeleton__grid">
@@ -265,7 +352,12 @@ const rowCount = computed(() => Math.max(1, props.rows))
 .page-skeleton__summary,
 .page-skeleton__stat,
 .page-skeleton__table,
-.page-skeleton__list-row {
+.page-skeleton__list-row,
+.page-skeleton__auth-panel,
+.page-skeleton__contact-card,
+.page-skeleton__contact-form,
+.page-skeleton__cart-item,
+.page-skeleton__cart-summary {
   background: var(--color-skeleton-surface);
   border: 1px solid var(--color-skeleton-border);
   border-radius: 8px;
@@ -406,6 +498,10 @@ const rowCount = computed(() => Math.max(1, props.rows))
   height: 48px;
 }
 
+.page-skeleton__field--textarea {
+  height: 138px;
+}
+
 .page-skeleton__submit {
   width: 220px;
   margin-top: 8px;
@@ -420,6 +516,144 @@ const rowCount = computed(() => Math.max(1, props.rows))
   height: 96px;
 }
 
+.page-skeleton__auth {
+  display: flex;
+  justify-content: center;
+  padding: clamp(8px, 3vw, 24px) 0;
+}
+
+.page-skeleton__auth-panel {
+  width: min(100%, 500px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 2rem;
+}
+
+.page-skeleton__auth-title {
+  width: 56%;
+  height: 32px;
+}
+
+.page-skeleton__auth-subtitle,
+.page-skeleton__auth-link {
+  width: 72%;
+  height: 14px;
+}
+
+.page-skeleton__auth-link {
+  width: 46%;
+  align-self: center;
+}
+
+.page-skeleton__contact {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.15fr);
+  gap: 2rem;
+}
+
+.page-skeleton__contact-info {
+  display: grid;
+  gap: 1rem;
+}
+
+.page-skeleton__contact-card {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 10px 14px;
+  align-items: center;
+  padding: 1.25rem;
+}
+
+.page-skeleton__contact-card .page-skeleton__line {
+  grid-column: 2;
+}
+
+.page-skeleton__contact-icon {
+  grid-row: span 3;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+}
+
+.page-skeleton__contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 2rem;
+}
+
+.page-skeleton__cart {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 1.5rem;
+}
+
+.page-skeleton__cart-head {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.page-skeleton__cart-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.page-skeleton__cart-item {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) 92px 96px;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem;
+}
+
+.page-skeleton__cart-image {
+  width: 100%;
+  height: 84px;
+  border-radius: 8px;
+}
+
+.page-skeleton__cart-copy,
+.page-skeleton__cart-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.page-skeleton__cart-qty {
+  width: 86px;
+  height: 36px;
+  border-radius: 999px;
+}
+
+.page-skeleton__cart-price {
+  width: 92px;
+  height: 28px;
+}
+
+.page-skeleton__cart-summary {
+  align-self: start;
+  padding: 1.25rem;
+}
+
+.page-skeleton__not-found {
+  min-height: 48vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  text-align: center;
+}
+
+.page-skeleton__not-found-code {
+  width: 116px;
+  height: 58px;
+}
+
 .create-event-skeleton {
   min-height: 100vh;
   background: var(--color-bg);
@@ -431,10 +665,10 @@ const rowCount = computed(() => Math.max(1, props.rows))
   top: 0;
   z-index: 10;
   display: grid;
-  grid-template-columns: 150px 38px minmax(220px, 1fr) auto;
-  gap: 1rem;
+  grid-template-columns: auto minmax(44px, auto) minmax(0, 1fr) auto;
+  gap: clamp(14px, 2vw, 28px);
   align-items: center;
-  min-height: 88px;
+  min-height: var(--app-header-height, 96px);
   padding: 0 1.5rem;
   background: color-mix(in srgb, var(--color-surface) 94%, transparent);
   border-bottom: 1px solid var(--color-border);
@@ -442,9 +676,9 @@ const rowCount = computed(() => Math.max(1, props.rows))
 }
 
 .create-event-skeleton .ce-logo {
-  width: 142px;
-  height: 24px;
-  border-radius: 999px;
+  width: 118px;
+  height: var(--app-logo-height, 72px);
+  border-radius: 12px;
 }
 
 .create-event-skeleton .ce-header-back,
@@ -458,10 +692,10 @@ const rowCount = computed(() => Math.max(1, props.rows))
   justify-self: center;
   display: flex;
   align-items: center;
-  gap: 5px;
-  max-width: 340px;
-  min-height: 42px;
-  padding: 5px;
+  gap: 2px;
+  max-width: 100%;
+  min-height: 38px;
+  padding: 4px 5px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--color-tab-bg) 78%, transparent);
   border: 1px solid var(--color-border);
@@ -471,8 +705,8 @@ const rowCount = computed(() => Math.max(1, props.rows))
   display: flex;
   align-items: center;
   gap: 5px;
-  min-width: 62px;
-  padding: 5px 8px;
+  min-width: 74px;
+  padding: 5px 10px;
   border-radius: 999px;
 }
 
@@ -506,8 +740,14 @@ const rowCount = computed(() => Math.max(1, props.rows))
   border-radius: 10px;
 }
 
+.create-event-skeleton .ghost-btn {
+  width: 86px;
+  height: 32px;
+  border-radius: 10px;
+}
+
 .create-event-skeleton__body {
-  width: min(100% - 48px, 1030px);
+  width: min(100% - 48px, 1160px);
   margin: 0 auto;
   padding: 24px 0 56px;
 }
@@ -534,8 +774,8 @@ const rowCount = computed(() => Math.max(1, props.rows))
 
 .create-event-skeleton .ce-columns {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 1.75rem;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 2rem;
   align-items: start;
 }
 
@@ -579,7 +819,7 @@ const rowCount = computed(() => Math.max(1, props.rows))
 .create-event-skeleton .ce-card {
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 20px;
   padding: 1.75rem;
 }
 
@@ -859,8 +1099,33 @@ const rowCount = computed(() => Math.max(1, props.rows))
   }
 
   .page-skeleton__detail,
-  .page-skeleton__form {
+  .page-skeleton__form,
+  .page-skeleton__contact,
+  .page-skeleton__cart {
     grid-template-columns: 1fr;
+  }
+
+  .page-skeleton__auth-panel,
+  .page-skeleton__contact-form {
+    padding: 1.5rem;
+  }
+
+  .page-skeleton__contact-card,
+  .page-skeleton__cart-item {
+    grid-template-columns: 1fr;
+  }
+
+  .page-skeleton__contact-card .page-skeleton__line {
+    grid-column: auto;
+  }
+
+  .page-skeleton__cart-image {
+    height: 160px;
+  }
+
+  .page-skeleton__cart-qty,
+  .page-skeleton__cart-price {
+    width: 48%;
   }
 
   .page-skeleton__table-row {

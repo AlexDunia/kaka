@@ -13,7 +13,8 @@ const currentYear = ref(new Date().getFullYear())
 const route = useRoute()
 const router = useRouter()
 const { updateMetaDescription, updateSocialMeta } = useSeo()
-const isRouteLoading = ref(true)
+const routeUsesShellSkeleton = (targetRoute) => !targetRoute?.meta?.disableRouteSkeleton
+const isRouteLoading = ref(routeUsesShellSkeleton(route))
 const skeletonRoute = ref(route)
 const routeSkeletonMinimumMs = 360
 let routeLoadingStartedAt = Date.now()
@@ -29,12 +30,16 @@ const routeSkeletonVariant = computed(() => {
   if (targetRoute.name === 'CreateEvent') return 'create-event'
   if (['event-details', 'event-details-legacy'].includes(targetRoute.name)) return 'detail'
   if (['admin', 'dashboard', 'transactions'].includes(targetRoute.name)) return 'dashboard'
-  if (['checkout', 'contact', 'login', 'register', 'forgot-password'].includes(targetRoute.name)) {
-    return 'form'
-  }
+  if (['login', 'register', 'forgot-password', 'google-callback'].includes(targetRoute.name)) return 'auth'
+  if (targetRoute.name === 'contact') return 'contact'
+  if (targetRoute.name === 'cart') return 'cart'
+  if (targetRoute.name === 'not-found') return 'not-found'
+  if (targetRoute.name === 'checkout') return 'form'
   if (['blog', 'blog-post'].includes(targetRoute.name)) return 'blog'
   return 'grid'
 })
+
+const routeSkeletonEnabled = computed(() => routeUsesShellSkeleton(skeletonRoute.value))
 
 const clearRouteLoadingTimers = () => {
   if (routeLoadingReleaseTimer) {
@@ -62,17 +67,32 @@ const hideRouteSkeleton = () => {
 const removeRouteBeforeEach = router.beforeEach((to, from) => {
   if (to.fullPath !== from.fullPath) {
     skeletonRoute.value = to
-    showRouteSkeleton()
+    if (routeUsesShellSkeleton(to)) {
+      showRouteSkeleton()
+    } else {
+      clearRouteLoadingTimers()
+      isRouteLoading.value = false
+    }
   }
   return true
 })
 
-const removeRouteAfterEach = router.afterEach(() => {
-  hideRouteSkeleton()
+const removeRouteAfterEach = router.afterEach((to) => {
+  if (routeUsesShellSkeleton(to)) {
+    hideRouteSkeleton()
+  } else {
+    clearRouteLoadingTimers()
+    isRouteLoading.value = false
+  }
 })
 
 router.onError(() => {
-  hideRouteSkeleton()
+  if (routeUsesShellSkeleton(skeletonRoute.value)) {
+    hideRouteSkeleton()
+  } else {
+    clearRouteLoadingTimers()
+    isRouteLoading.value = false
+  }
 })
 
 watch(
@@ -213,7 +233,12 @@ onMounted(() => {
   handleScroll()
   authStore.initialize()
   initializeTheme()
-  hideRouteSkeleton()
+  if (routeUsesShellSkeleton(route)) {
+    hideRouteSkeleton()
+  } else {
+    clearRouteLoadingTimers()
+    isRouteLoading.value = false
+  }
 })
 
 onUnmounted(() => {
@@ -429,7 +454,7 @@ onUnmounted(() => {
       <RouterView v-slot="{ Component }">
         <transition name="fade" mode="out-in">
           <PageSkeleton
-            v-if="isRouteLoading"
+            v-if="isRouteLoading && routeSkeletonEnabled"
             :key="`route-skeleton-${skeletonRoute.fullPath || route.fullPath}`"
             :variant="routeSkeletonVariant"
           />
@@ -590,24 +615,49 @@ onUnmounted(() => {
 }
 
 .nav-item {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
   color: var(--color-muted);
   text-decoration: none;
   font-size: 0.9rem;
   font-weight: 500;
   padding: 0.5rem 0;
   position: relative;
+  transform: none;
+  transition: none;
   z-index: 1;
-  transition: color 0.3s ease;
 }
 
-.nav-item:hover {
-  cursor: pointer;
-  color: var(--color-text);
+.main-nav .nav-item:hover,
+.main-nav .nav-item:focus,
+.main-nav .nav-item:focus-visible,
+.mobile-nav-list .nav-item:hover,
+.mobile-nav-list .nav-item:focus,
+.mobile-nav-list .nav-item:focus-visible {
+  background: transparent;
+  box-shadow: none;
+  color: var(--color-muted);
+  outline: none;
+  transform: none;
 }
 
 .nav-item.active {
   color: var(--color-primary);
   font-weight: 600;
+}
+
+.main-nav .nav-item.active:hover,
+.main-nav .nav-item.active:focus,
+.main-nav .nav-item.active:focus-visible,
+.mobile-nav-list .nav-item.active:hover,
+.mobile-nav-list .nav-item.active:focus,
+.mobile-nav-list .nav-item.active:focus-visible {
+  color: var(--color-primary);
 }
 
 .header-actions {
@@ -628,14 +678,6 @@ onUnmounted(() => {
   color: var(--color-text);
   font-size: 1.1rem;
   cursor: pointer;
-  transition:
-    border-color 0.3s ease,
-    transform 0.3s ease;
-}
-
-.theme-toggle:hover {
-  border-color: var(--color-accent);
-  transform: translateY(-1px);
 }
 
 .user-avatar {
@@ -680,27 +722,15 @@ onUnmounted(() => {
   border-radius: 999px;
   padding: 0.65rem 1rem;
   font-size: 0.9rem;
-  transition:
-    background-color 0.2s ease,
-    color 0.2s ease,
-    transform 0.2s ease;
 }
 
 .auth-link {
   background: var(--color-tab-bg);
 }
 
-.auth-link:hover {
-  background: color-mix(in srgb, var(--color-tab-bg) 82%, var(--color-text));
-}
-
 .auth-button {
   background: #34d36b;
   color: #0b0b0f;
-}
-
-.auth-button:hover {
-  background: #2ebc5f;
 }
 
 .cart-icon {
@@ -801,14 +831,8 @@ onUnmounted(() => {
   transform: translateY(20px);
   transition:
     opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-    color 0.3s ease;
+    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   transition-delay: calc(var(--index) * 0.1s);
-}
-
-.mobile-nav-item:hover {
-  cursor: pointer;
-  color: var(--color-text);
 }
 
 .mobile-nav-item:last-of-type {
@@ -986,14 +1010,7 @@ body {
   transition:
     background-color 0.4s ease,
     color 0.4s ease;
-  background-image:
-    radial-gradient(circle at 10% 20%, rgba(236, 72, 153, 0.08) 0%, transparent 30%),
-    radial-gradient(circle at 90% 80%, rgba(236, 72, 153, 0.08) 0%, transparent 30%);
   min-height: 100vh;
-}
-
-.light body {
-  background-image: none;
 }
 
 /* Responsive styles */

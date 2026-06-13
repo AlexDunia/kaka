@@ -15,6 +15,7 @@ const router = createRouter({
         title: 'Home - Find and Book Amazing Events',
         description:
           'Discover and book tickets for the best events, concerts, movies, theatre shows, sports events, and festivals near you.',
+        disableRouteSkeleton: true,
       },
     },
     {
@@ -25,6 +26,7 @@ const router = createRouter({
         title: 'Search Events',
         description:
           'Search for events, concerts, movies, theatre shows, sports events, and festivals.',
+        disableRouteSkeleton: true,
       },
     },
     {
@@ -63,6 +65,7 @@ const router = createRouter({
         title: 'Music Events',
         description:
           'Find and book tickets for the best music events, concerts, and performances near you.',
+        disableRouteSkeleton: true,
       },
     },
     {
@@ -74,6 +77,7 @@ const router = createRouter({
         title: 'Movie Events',
         description:
           'Find and book tickets for the latest movie screenings, premieres, and film festivals.',
+        disableRouteSkeleton: true,
       },
     },
     {
@@ -85,6 +89,7 @@ const router = createRouter({
         title: 'Theatre & Comedy Events',
         description:
           'Find and book tickets for theatre shows, plays, musicals, and comedy performances.',
+        disableRouteSkeleton: true,
       },
     },
     {
@@ -96,6 +101,7 @@ const router = createRouter({
         title: 'Sports Events',
         description:
           'Find and book tickets for sports events, matches, tournaments, and competitions.',
+        disableRouteSkeleton: true,
       },
     },
     {
@@ -107,6 +113,7 @@ const router = createRouter({
         title: 'Festivals',
         description:
           'Find and book tickets for the best festivals, celebrations, and cultural events.',
+        disableRouteSkeleton: true,
       },
     },
     {
@@ -118,6 +125,7 @@ const router = createRouter({
         title: 'Other Events',
         description:
           "Discover unique events and experiences that don't fit traditional categories.",
+        disableRouteSkeleton: true,
       },
     },
     {
@@ -138,6 +146,7 @@ const router = createRouter({
         title: 'My Dashboard',
         description: 'Manage your events, tickets, and account settings.',
         requiresAuth: true,
+        disableRouteSkeleton: true,
       },
     },
     {
@@ -149,6 +158,7 @@ const router = createRouter({
         description: 'Manage events, users, and site settings.',
         requiresAuth: true,
         requiresAdmin: true,
+        disableRouteSkeleton: true,
       },
     },
     {
@@ -159,6 +169,7 @@ const router = createRouter({
       meta: {
         title: 'Event Details',
         description: 'View details and book tickets for this event.',
+        disableRouteSkeleton: true,
       },
     },
     {
@@ -172,6 +183,7 @@ const router = createRouter({
       meta: {
         title: 'Event Details',
         description: 'View details and book tickets for this event.',
+        disableRouteSkeleton: true,
       },
     },
     {
@@ -190,6 +202,7 @@ const router = createRouter({
       meta: {
         title: 'Checkout',
         description: 'Complete your ticket purchase securely.',
+        disableRouteSkeleton: true,
       },
     },
     {
@@ -207,6 +220,7 @@ const router = createRouter({
       component: () => import('@/pages/BlogList.vue'),
       meta: {
         title: 'Blog - Event Planning Tips & Insights',
+        disableRouteSkeleton: true,
       },
     },
     {
@@ -220,6 +234,7 @@ const router = createRouter({
       component: () => import('@/pages/BlogPost.vue'),
       meta: {
         title: 'Blog Post',
+        disableRouteSkeleton: true,
       },
     },
 
@@ -231,6 +246,7 @@ const router = createRouter({
         title: 'Transaction History',
         description: 'View your transaction history and past purchases.',
         requiresAuth: true,
+        disableRouteSkeleton: true,
       },
     },
     {

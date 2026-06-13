@@ -1816,10 +1816,6 @@ watch(
   padding: 0;
 }
 
-.ce-logo:hover {
-  background: transparent;
-}
-
 .ce-logo img {
   height: var(--app-logo-height, 72px);
   width: auto;
@@ -1841,14 +1837,6 @@ watch(
   min-height: 0;
   text-decoration: none;
   cursor: pointer;
-}
-
-.ce-header-back:hover,
-.theme-btn:hover {
-  background: var(--ce-p3);
-  color: var(--ce-ink);
-  transform: none;
-  box-shadow: none;
 }
 
 .ce-header-back svg,
@@ -1885,11 +1873,6 @@ watch(
   letter-spacing: 0;
   min-height: 0;
   min-width: 0;
-}
-
-.ce-step:hover {
-  transform: none;
-  box-shadow: none;
 }
 
 .ce-step:not(:disabled) {
@@ -1979,15 +1962,8 @@ watch(
   min-height: 0;
 }
 
-.ghost-btn:hover {
-  background: var(--ce-p3);
-  color: var(--ce-ink);
-  transform: none;
-  box-shadow: none;
-}
-
 .ce-wrap {
-  max-width: 1080px;
+  max-width: 1160px;
   margin: 0 auto;
   padding: 1.5rem 1.5rem 5rem;
 }
@@ -2072,8 +2048,8 @@ watch(
 
 .ce-columns {
   display: grid;
-  grid-template-columns: 1fr 320px;
-  gap: 1.75rem;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 2rem;
   align-items: start;
 }
 
