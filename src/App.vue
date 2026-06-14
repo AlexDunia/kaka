@@ -24,6 +24,7 @@ const showHero = computed(
   () => !isRouteLoading.value && (chromeRoute.value.name === 'home' || chromeRoute.value.path === '/'),
 )
 const isCreateEventRoute = computed(() => chromeRoute.value.name === 'CreateEvent')
+const usesFullScreenShell = computed(() => Boolean(chromeRoute.value.meta?.fullScreenShell))
 
 const routeSkeletonVariant = computed(() => {
   const targetRoute = skeletonRoute.value || route
@@ -252,7 +253,7 @@ onUnmounted(() => {
 <template>
   <div class="app-container">
     <header
-      v-if="!isCreateEventRoute"
+      v-if="!isCreateEventRoute && !usesFullScreenShell"
       class="app-header"
       :class="{ 'nav-shadow': scrollPosition > 20 }"
     >
@@ -463,7 +464,7 @@ onUnmounted(() => {
       </RouterView>
     </main>
 
-    <footer class="app-footer">
+    <footer v-if="!usesFullScreenShell" class="app-footer">
       <div class="footer-simple">
         <div class="footer-logo-col">
           <img

@@ -144,9 +144,22 @@ const router = createRouter({
       // meta: { requiresAuth: true },
       meta: {
         title: 'My Dashboard',
-        description: 'Manage your events, tickets, and account settings.',
+        description: 'Manage event performance, tickets, guests, payouts, and settings.',
         requiresAuth: true,
         disableRouteSkeleton: true,
+        fullScreenShell: true,
+      },
+    },
+    {
+      path: '/trolio',
+      name: 'trolio',
+      component: () => import('../pages/Trolio.vue'),
+      meta: {
+        title: 'Trolio',
+        description: 'TradeLog dashboard draft.',
+        requiresAuth: true,
+        disableRouteSkeleton: true,
+        fullScreenShell: true,
       },
     },
     {
