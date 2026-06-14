@@ -35,6 +35,8 @@ import {
 import DateTimePicker from '@/components/DateTimePicker.vue'
 import DateTimePickerInput from '@/components/DateTimePickerInput.vue'
 import EventCard from '@/components/EventCard.vue'
+import { getRushHourLogo } from '@/constants/brand'
+import { playThemeToggleClick } from '@/utils/themeClickSound'
 import {
   DEFAULT_CREATE_EVENT_TIPS,
   buildCreateEventPayload,
@@ -168,6 +170,7 @@ const form = reactive({
 const themePreferenceKey = 'kaka-theme-preference'
 const fallbackTheme = ref('dark')
 const theme = computed(() => themeController?.theme?.value || fallbackTheme.value)
+const brandLogoUrl = computed(() => getRushHourLogo(theme.value))
 let themeInstantToken = 0
 const currentStep = ref(1)
 const maxStepReached = ref(1)
@@ -497,6 +500,11 @@ function initializeTheme() {
 }
 
 function toggleTheme() {
+  if (themeController?.toggleTheme) {
+    themeController.toggleTheme()
+    return
+  }
+  playThemeToggleClick()
   applyTheme(theme.value === 'light' ? 'dark' : 'light')
 }
 
@@ -921,8 +929,8 @@ watch(
     <header v-if="!published" class="ce-header">
       <RouterLink to="/" class="ce-logo" aria-label="Go home">
         <img
-          src="https://res.cloudinary.com/dnuhjsckk/image/upload/v1775755308/rushhourticketbg_fyfbiu.png"
-          alt="Kaka"
+          :src="brandLogoUrl"
+          alt="Rush Hour"
         />
       </RouterLink>
       <button

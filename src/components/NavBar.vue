@@ -1,15 +1,20 @@
 <script setup>
 import { useCartStore } from '@/stores/cart'
-import { computed } from 'vue'
+import { getRushHourLogo } from '@/constants/brand'
+import { computed, inject } from 'vue'
+
+const themeController = inject('themeController', null)
 const cartStore = useCartStore()
 const cartCount = computed(() => cartStore.itemCount)
+const theme = computed(() => themeController?.theme?.value || 'dark')
+const brandLogoUrl = computed(() => getRushHourLogo(theme.value))
 </script>
 
 <template>
   <nav class="navbar">
     <div class="container navbar__container">
       <router-link to="/" class="navbar__logo">
-        <span class="navbar__logo-text"> Tix<span class="navbar__logo-accent">Easy</span> </span>
+        <img :src="brandLogoUrl" alt="Rush Hour" class="navbar__logo-img" />
       </router-link>
 
       <div class="navbar__menu">
@@ -93,6 +98,13 @@ const cartCount = computed(() => cartStore.itemCount)
   font-size: 1.5rem;
   display: flex;
   align-items: center;
+}
+
+.navbar__logo-img {
+  height: 44px;
+  width: auto;
+  display: block;
+  object-fit: contain;
 }
 
 .navbar__logo-text {

@@ -4,6 +4,8 @@ import { ref, onMounted, onUnmounted, computed, watch, provide } from 'vue'
 import { useCartStore } from '@/stores/cart'
 import { useAuthStore } from '@/stores/auth'
 import { useSeo } from '@/composables/useSeo'
+import { getRushHourLogo } from '@/constants/brand'
+import { playThemeToggleClick } from '@/utils/themeClickSound'
 import HeroSection from '@/components/HeroSection.vue'
 import PageSkeleton from '@/components/PageSkeleton.vue'
 import throttle from 'lodash.throttle' // ✅ use throttling to reduce scroll event calls
@@ -105,6 +107,7 @@ watch(
 
 const themePreferenceKey = 'kaka-theme-preference'
 const theme = ref('dark')
+const brandLogoUrl = computed(() => getRushHourLogo(theme.value))
 let themeInstantToken = 0
 
 const applyThemeInstantly = (callback) => {
@@ -157,6 +160,7 @@ const initializeTheme = () => {
 }
 
 const toggleTheme = () => {
+  playThemeToggleClick()
   applyTheme(theme.value === 'light' ? 'dark' : 'light')
 }
 
@@ -261,8 +265,8 @@ onUnmounted(() => {
         <div class="logo">
           <RouterLink to="/">
             <img
-              src="https://res.cloudinary.com/dnuhjsckk/image/upload/v1775755308/rushhourticketbg_fyfbiu.png"
-              alt="TD Logo"
+              :src="brandLogoUrl"
+              alt="Rush Hour"
               class="logo-img"
             />
           </RouterLink>
@@ -468,8 +472,8 @@ onUnmounted(() => {
       <div class="footer-simple">
         <div class="footer-logo-col">
           <img
-            src="https://res.cloudinary.com/dnuhjsckk/image/upload/v1775755308/rushhourticketbg_fyfbiu.png"
-            alt="TD Logo"
+            :src="brandLogoUrl"
+            alt="Rush Hour"
             class="footer-logo-img"
           />
         </div>

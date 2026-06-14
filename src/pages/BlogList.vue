@@ -1,16 +1,20 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, inject, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import blogService from '@/services/blogService'
 import { useSeo } from '@/composables/useSeo'
 import PageSkeleton from '@/components/PageSkeleton.vue'
+import { getRushHourLogo } from '@/constants/brand'
 
 const router = useRouter()
 const { updatePageTitle, updateMetaDescription, updateSocialMeta } = useSeo()
+const themeController = inject('themeController', null)
 
 const posts = ref([])
 const loading = ref(true)
 const error = ref(null)
+const theme = computed(() => themeController?.theme?.value || 'dark')
+const brandLogoUrl = computed(() => getRushHourLogo(theme.value))
 
 // Load blog posts
 const loadBlogPosts = async () => {
@@ -62,8 +66,8 @@ const navigateToPost = (slug) => {
   <div class="blog-list">
     <div class="blog-header">
       <img
-        src="https://res.cloudinary.com/dnuhjsckk/image/upload/v1751633898/tdlogo_lfg0lh-_2_hcydfz.png"
-        alt="Kaka Logo"
+        :src="brandLogoUrl"
+        alt="Rush Hour"
         class="kaka-logo"
       />
       <span class="blog-text">Blog</span>

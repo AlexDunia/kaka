@@ -1,9 +1,10 @@
 <script setup>
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch, inject } from 'vue'
 import { useEventStore } from '@/stores/events'
 import EventCard from '@/components/EventCard.vue'
 import { useLoading } from '@/composables/useLoading'
 import { useSeo } from '@/composables/useSeo'
+import { getRushHourLogo } from '@/constants/brand'
 
 const props = defineProps({
   category: {
@@ -13,6 +14,7 @@ const props = defineProps({
 })
 
 const eventStore = useEventStore()
+const themeController = inject('themeController', null)
 
 // Use our loading composable with safety timeouts
 const { isLoading: loading, startLoading } = useLoading({ initialState: false })
@@ -45,6 +47,8 @@ const ensureLoadingCompletes = () => {
 
 const error = ref(null)
 const currentPage = ref(1)
+const theme = computed(() => themeController?.theme?.value || 'dark')
+const brandLogoUrl = computed(() => getRushHourLogo(theme.value))
 
 // Get the SEO utilities
 const { updatePageTitle, updateMetaDescription, updateSocialMeta } = useSeo()
@@ -229,9 +233,7 @@ watch(
         description: description,
         url: window.location.href,
         // Use a category-specific image if available, otherwise use default
-        image:
-          categoryImages[newCategory] ||
-          'https://res.cloudinary.com/dnuhjsckk/image/upload/v1747056280/tdlogowhite_fvgocv.png',
+        image: categoryImages[newCategory] || brandLogoUrl.value,
       })
     }
   },
