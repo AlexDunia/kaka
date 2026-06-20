@@ -1584,7 +1584,7 @@ watch(
                         </p>
                       </div>
                       <div class="field">
-                        <label>Unit type</label>
+                        <label>Seat type</label>
                         <select v-model="ticket.unitType" class="field-input">
                           <option value="individual">Individual seat</option>
                           <option value="table">Group / Table</option>
@@ -1593,7 +1593,7 @@ watch(
                     </div>
                     <div class="two-col">
                       <div class="field">
-                        <label>{{ ticket.unitType === 'table' ? 'Number of tables' : 'Available spots' }}</label>
+                        <label>{{ ticket.unitType === 'table' ? 'Number of tables' : 'How many spots?' }}</label>
                         <input v-model.number="ticket.units" type="number" min="0" class="field-input" placeholder="Leave blank for unlimited" />
                       </div>
                       <div v-if="ticket.unitType === 'table'" class="field">
@@ -1603,12 +1603,12 @@ watch(
                     </div>
                     <div class="two-col">
                       <div class="field">
-                        <label>Price</label>
+                        <label>Price (₦)</label>
                         <input v-model.number="ticket.price" type="number" min="0" class="field-input" placeholder="0 = free" />
                       </div>
                       <div class="field">
-                        <label>Max per person <span>Optional</span></label>
-                        <input v-model.number="ticket.maxPerPerson" type="number" min="1" class="field-input" />
+                        <label>Each person can buy <span>Optional</span></label>
+                        <input v-model.number="ticket.maxPerPerson" type="number" min="1" class="field-input" placeholder="e.g. 2 means one person can only buy 2 tickets" />
                       </div>
                     </div>
                     <div v-if="ticket.unitType === 'table' && ticket.units" class="calc-card">
@@ -1625,14 +1625,10 @@ watch(
                         <DateTimePickerInput v-model="ticket.salesEnd" placeholder="Select sales close" :min-date="today" />
                       </div>
                     </div>
-                    <div class="field">
-                      <label>Perk description <span>Optional</span></label>
-                      <textarea v-model="ticket.perks" class="field-input" rows="2" placeholder="Includes dinner, front-row seating, premium access..." />
-                    </div>
                     <label class="toggle-row">
                       <span>
-                        <strong>Visible to attendees</strong>
-                        <small>Turn off to hide from your public event page.</small>
+                        <strong>Show on event page</strong>
+                        <small>Attendees will see this ticket type.</small>
                       </span>
                       <input v-model="ticket.visible" type="checkbox" />
                     </label>
