@@ -1,4 +1,5 @@
 import { APP_DEFAULT_TIME_ZONE, toLocalDateTimeString } from '@/utils/eventDateTime'
+import api, { ensureCsrfCookie } from '@/api/axios'
 
 export const DEFAULT_CREATE_EVENT_TIPS = [
   {
@@ -114,4 +115,22 @@ export const saveCreateEventDraft = (form) => {
   const payload = buildCreateEventPayload(form)
   window.localStorage?.setItem('kaka-create-event-draft', JSON.stringify(payload))
   return payload
+}
+
+export const createEventDraft = async (form) => {
+  await ensureCsrfCookie()
+  const response = await api.post('/create-event', buildCreateEventPayload(form))
+  return response.data
+}
+
+export const updateEventDraft = async (eventId, form) => {
+  await ensureCsrfCookie()
+  const response = await api.patch(`/create-event/${eventId}`, buildCreateEventPayload(form))
+  return response.data
+}
+
+export const publishEvent = async (eventId) => {
+  await ensureCsrfCookie()
+  const response = await api.post(`/create-event/${eventId}/publish`)
+  return response.data
 }

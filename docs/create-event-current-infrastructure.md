@@ -21,7 +21,11 @@ The frontend currently:
 - Saves a browser-local draft to `localStorage`.
 - Shows a local publish success screen.
 
-The frontend does **not** currently:
+The frontend does **not** currently:createEventService.js:121
+POST http://localhost:5173/api/create-event 404 (Not Found)
+(anonymous) @ createEventService.js:121
+persistDraft @ CreateEvent.vue:549
+publishEvent @ CreateEvent.vue:937
 
 - Create or update an event through an API.
 - Upload media to a backend.
@@ -285,15 +289,15 @@ State example:
 
 Weekday values follow JavaScript `Date#getDay()`:
 
-| Value | Day |
-| --- | --- |
-| 0 | Sunday |
-| 1 | Monday |
-| 2 | Tuesday |
-| 3 | Wednesday |
-| 4 | Thursday |
-| 5 | Friday |
-| 6 | Saturday |
+| Value | Day       |
+| ----- | --------- |
+| 0     | Sunday    |
+| 1     | Monday    |
+| 2     | Tuesday   |
+| 3     | Wednesday |
+| 4     | Thursday  |
+| 5     | Friday    |
+| 6     | Saturday  |
 
 Rules:
 
@@ -811,24 +815,24 @@ Recommended occurrence fields:
 
 ## Mapping Payload To Backend Domains
 
-| Payload field | Suggested backend destination |
-| --- | --- |
-| `title` | `events.title` |
-| `eventType` | `events.event_type` or presence of recurrence rule |
-| `startsAtLocal`, `endsAtLocal`, `timeZone` | `events` first occurrence and timezone |
-| `recurrence` | recurrence rule and generated occurrences |
-| `format` | `events.format` |
-| `venue` | `event_locations` |
-| `meetingLink` | private `event_locations` data |
-| `category` | resolve to `category_id` |
-| `description` | `events.description` |
-| `organiser`, `organiserWebsite` | event organizer display fields |
-| `tags` | normalized tags relation |
-| `coverImage`, `secondaryImages` | `event_media` after upload migration |
-| `ticketMode`, `freeCapacity` | event capacity/ticketing configuration |
-| `tickets` | `ticket_types` and inventory |
-| `attendeeFields` | `attendee_form_fields` |
-| `extraDetails` | `event_extra_details` |
+| Payload field                              | Suggested backend destination                      |
+| ------------------------------------------ | -------------------------------------------------- |
+| `title`                                    | `events.title`                                     |
+| `eventType`                                | `events.event_type` or presence of recurrence rule |
+| `startsAtLocal`, `endsAtLocal`, `timeZone` | `events` first occurrence and timezone             |
+| `recurrence`                               | recurrence rule and generated occurrences          |
+| `format`                                   | `events.format`                                    |
+| `venue`                                    | `event_locations`                                  |
+| `meetingLink`                              | private `event_locations` data                     |
+| `category`                                 | resolve to `category_id`                           |
+| `description`                              | `events.description`                               |
+| `organiser`, `organiserWebsite`            | event organizer display fields                     |
+| `tags`                                     | normalized tags relation                           |
+| `coverImage`, `secondaryImages`            | `event_media` after upload migration               |
+| `ticketMode`, `freeCapacity`               | event capacity/ticketing configuration             |
+| `tickets`                                  | `ticket_types` and inventory                       |
+| `attendeeFields`                           | `attendee_form_fields`                             |
+| `extraDetails`                             | `event_extra_details`                              |
 
 ## Backend Validation To Mirror
 

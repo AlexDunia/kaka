@@ -38,8 +38,9 @@ import { getRushHourLogo } from '@/constants/brand'
 import { playThemeToggleClick } from '@/utils/themeClickSound'
 import {
   DEFAULT_CREATE_EVENT_TIPS,
-  buildCreateEventPayload,
-  saveCreateEventDraft,
+  createEventDraft,
+  publishEvent as publishEventRequest,
+  updateEventDraft,
 } from '@/services/createEventService'
 import {
   APP_DEFAULT_TIME_ZONE,
@@ -193,6 +194,13 @@ const urlImageValue = ref('')
 const tipIndex = ref(0)
 const toast = ref('')
 const published = ref(false)
+const publishedResponse = ref(null)
+const draftId = ref(null)
+const isSaving = ref(false)
+const isPublishing = ref(false)
+const saveError = ref([])
+const publishErrors = ref([])
+const lastSavedAt = ref(null)
 const errors = reactive({})
 const ticketId = ref(0)
 let toastTimer
@@ -207,6 +215,21 @@ const activeTips = computed(() =>
 )
 
 const currentTip = computed(() => activeTips.value[tipIndex.value]?.body || activeTips.value[0]?.body)
+
+const publishedEvent = computed(() => publishedResponse.value?.data || {})
+const publishedMessage = computed(
+  () => publishedResponse.value?.message || 'Share it and start collecting attendees. Your dashboard can track everything live.',
+)
+const publishedUrl = computed(
+  () =>
+    publishedEvent.value.public_url ||
+    `kaka.events/e/${(form.title || 'your-event').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`,
+)
+const lastSavedLabel = computed(() =>
+  lastSavedAt.value
+    ? `Saved ${lastSavedAt.value.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+    : '',
+)
 
 const venueResults = computed(() => {
   const query = form.venue.toLowerCase().trim()
@@ -457,9 +480,98 @@ function markDraftSaved() {
   }, 2200)
 }
 
-function saveDraft() {
-  saveCreateEventDraft(form)
+const backendErrorMap = {
+  title: { field: 'title', step: 1 },
+  startsAt: { field: 'startsAt', step: 1 },
+  category: { field: 'category', step: 1 },
+  coverImage: { field: 'coverImage', step: 2 },
+  venue: { field: 'venue', step: 1 },
+  meetingLink: { field: 'meetingLink', step: 1 },
+  tickets: { field: 'tickets', step: 3 },
+  ticketPrice: { field: 'tickets', step: 3 },
+  recurrence: { field: 'repeatSchedule', step: 1 },
+  seriesEnd: { field: 'repeatSchedule', step: 1 },
+}
+
+function normalizeRequestErrors(error) {
+  const responseErrors = error?.response?.data?.errors
+  if (responseErrors && typeof responseErrors === 'object') {
+    return Object.entries(responseErrors).flatMap(([key, value]) => {
+      const messages = Array.isArray(value) ? value : [value]
+      return messages.map((message) => ({ key, message: String(message) }))
+    })
+  }
+
+  return [{
+    key: 'request',
+    message: error?.response?.data?.message || error?.message || 'Something went wrong. Please try again.',
+  }]
+}
+
+function backendErrorTarget(key) {
+  const rootKey = key.split('.')[0]
+  if (backendErrorMap[key] || backendErrorMap[rootKey]) {
+    return backendErrorMap[key] || backendErrorMap[rootKey]
+  }
+  if (rootKey.startsWith('ticketPrice')) return backendErrorMap.ticketPrice
+  if (rootKey.startsWith('seriesEnd')) return backendErrorMap.seriesEnd
+  return null
+}
+
+function applyBackendErrors(requestErrors, navigate = false) {
+  Object.keys(errors).forEach(clearError)
+
+  requestErrors.forEach(({ key, message }) => {
+    const target = backendErrorTarget(key)
+    if (!target) return
+    errors[target.field] = errors[target.field]
+      ? `${errors[target.field]} ${message}`
+      : message
+  })
+
+  if (!navigate) return
+  const firstTarget = requestErrors.map(({ key }) => backendErrorTarget(key)).find(Boolean)
+  if (!firstTarget) return
+
+  maxStepReached.value = Math.max(maxStepReached.value, firstTarget.step)
+  currentStep.value = firstTarget.step
+  requestAnimationFrame(() => {
+    document.querySelector(`[data-error-key=${firstTarget.field}]`)?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center',
+    })
+  })
+}
+
+async function persistDraft() {
+  const response = draftId.value
+    ? await updateEventDraft(draftId.value, form)
+    : await createEventDraft(form)
+
+  if (!draftId.value) {
+    draftId.value = response?.data?.id ?? null
+    if (!draftId.value) throw new Error('The backend did not return a draft ID.')
+  }
+
+  lastSavedAt.value = new Date()
   markDraftSaved()
+  return response
+}
+
+async function saveDraft() {
+  if (isSaving.value || isPublishing.value) return
+
+  isSaving.value = true
+  saveError.value = []
+  publishErrors.value = []
+  try {
+    await persistDraft()
+  } catch (error) {
+    saveError.value = normalizeRequestErrors(error)
+    applyBackendErrors(saveError.value)
+  } finally {
+    isSaving.value = false
+  }
 }
 
 function togglePreview() {
@@ -802,7 +914,8 @@ function ticketSeatCount(ticket) {
   return ticket.unitType === 'table' ? ticket.units * ticket.peoplePerUnit : ticket.units
 }
 
-function publishEvent() {
+async function publishEvent() {
+  if (isSaving.value || isPublishing.value) return
   if (!validateStep(1)) {
     currentStep.value = 1
     return
@@ -816,10 +929,22 @@ function publishEvent() {
     return
   }
 
-  buildCreateEventPayload(form)
-  saveDraft()
-  published.value = true
-  window.scrollTo({ top: 0, behavior: 'smooth' })
+  isPublishing.value = true
+  saveError.value = []
+  publishErrors.value = []
+
+  try {
+    await persistDraft()
+    const response = await publishEventRequest(draftId.value)
+    publishedResponse.value = response
+    published.value = true
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  } catch (error) {
+    publishErrors.value = normalizeRequestErrors(error)
+    applyBackendErrors(publishErrors.value, error?.response?.status === 422)
+  } finally {
+    isPublishing.value = false
+  }
 }
 
 onMounted(() => {
@@ -934,14 +1059,33 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
           <MoonIcon v-if="theme === 'light'" aria-hidden="true" />
           <SunIcon v-else aria-hidden="true" />
         </button>
-        <span class="draft-badge" :class="{ show: draftSaved }">
-          <CheckIcon aria-hidden="true" /> Draft saved
+        <span class="draft-badge" :class="{ show: draftSaved || lastSavedAt }">
+          <CheckIcon aria-hidden="true" /> {{ draftSaved ? 'Draft saved' : lastSavedLabel }}
         </span>
-        <button type="button" class="ghost-btn" @click="saveDraft">Save draft</button>
+        <button
+          type="button"
+          class="ghost-btn"
+          :disabled="isSaving || isPublishing"
+          @click="saveDraft"
+        >
+          {{ isSaving ? 'Saving...' : 'Save draft' }}
+        </button>
       </div>
     </header>
 
     <main v-if="!published" class="ce-wrap">
+      <div v-if="saveError.length || publishErrors.length" class="api-error-summary" role="alert">
+        <strong>{{ publishErrors.length ? 'We could not publish this event.' : 'We could not save this draft.' }}</strong>
+        <ul>
+          <li
+            v-for="error in (publishErrors.length ? publishErrors : saveError)"
+            :key="error.key + error.message"
+          >
+            {{ error.message }}
+          </li>
+        </ul>
+      </div>
+
       <div class="preview-toggle">
         <span>See your event as attendees will</span>
         <button type="button" class="preview-btn" :class="{ on: previewOn }" @click="togglePreview">
@@ -1731,11 +1875,11 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
               v-else
               type="button"
               class="primary-btn publish"
-              :class="{ disabled: !canContinue }"
-              :disabled="!canContinue"
+              :class="{ disabled: !canContinue || isSaving || isPublishing }"
+              :disabled="!canContinue || isSaving || isPublishing"
               @click="publishEvent"
             >
-              Publish Event <ArrowRightIcon aria-hidden="true" />
+              {{ isPublishing ? 'Publishing...' : 'Publish Event' }} <ArrowRightIcon aria-hidden="true" />
             </button>
           </div>
         </section>
@@ -1754,12 +1898,22 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
     <section v-else class="success-screen">
       <div class="success-ring"><CheckIcon aria-hidden="true" /></div>
       <h1>Your event<br />is live!</h1>
-      <p>Share it and start collecting attendees. Your dashboard can track everything live.</p>
+      <p>{{ publishedMessage }}</p>
+      <p v-if="publishedEvent.id || publishedEvent.status" class="published-meta">
+        <span v-if="publishedEvent.id">Event #{{ publishedEvent.id }}</span>
+        <span v-if="publishedEvent.status">{{ publishedEvent.status }}</span>
+      </p>
       <div class="share-box">
-        <span>kaka.events/e/{{ (form.title || 'your-event').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') }}</span>
+        <span>{{ publishedUrl }}</span>
         <button type="button" @click="showToast('Link copied')">Copy link</button>
       </div>
-      <button type="button" class="primary-btn" @click="router.push('/')">Back to events</button>
+      <button
+        type="button"
+        class="primary-btn"
+        @click="router.push(publishedEvent.dashboard_url || publishedEvent.public_url || '/')"
+      >
+        {{ publishedEvent.dashboard_url ? 'Open dashboard' : publishedEvent.public_url ? 'View event' : 'Back to events' }}
+      </button>
     </section>
 
   </div>
@@ -1974,10 +2128,30 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
   min-height: 0;
 }
 
+.ghost-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .ce-wrap {
   max-width: 1160px;
   margin: 0 auto;
   padding: 1.5rem 1.5rem 5rem;
+}
+
+.api-error-summary {
+  margin-bottom: 1rem;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--ce-red) 45%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--ce-red) 8%, var(--ce-paper));
+  color: var(--ce-red);
+  font-size: 13px;
+}
+
+.api-error-summary ul {
+  margin: 6px 0 0;
+  padding-left: 1.2rem;
 }
 
 .preview-toggle {
@@ -3721,6 +3895,18 @@ label span {
   color: var(--ce-ink3);
   font-size: 14px;
   line-height: 1.65;
+}
+
+.success-screen .published-meta {
+  display: flex;
+  gap: 8px;
+  margin: -0.75rem 0 0;
+  text-transform: capitalize;
+}
+
+.success-screen .published-meta span + span::before {
+  content: '·';
+  margin-right: 8px;
 }
 
 .share-box {
