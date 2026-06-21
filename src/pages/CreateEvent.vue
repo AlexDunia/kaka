@@ -1,5 +1,5 @@
 <script setup>
-import { computed, inject, onMounted, reactive, ref, watch } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   AcademicCapIcon,
@@ -32,7 +32,6 @@ import {
   UserIcon,
   XMarkIcon,
 } from '@heroicons/vue/24/outline'
-import DateTimePicker from '@/components/DateTimePicker.vue'
 import DateTimePickerInput from '@/components/DateTimePickerInput.vue'
 import EventCard from '@/components/EventCard.vue'
 import { getRushHourLogo } from '@/constants/brand'
@@ -42,28 +41,29 @@ import {
   buildCreateEventPayload,
   saveCreateEventDraft,
 } from '@/services/createEventService'
+import {
+  APP_DEFAULT_TIME_ZONE,
+  getMinimumStartDateTime,
+  getVenueToday,
+  isAfter,
+  isStartDateTimeValid,
+} from '@/utils/eventDateTime'
+import {
+  WEEKDAYS,
+  deriveMonthlyPattern,
+  generateOccurrences,
+  scheduleHasOverlap,
+} from '@/utils/recurrenceSchedule'
 
 const router = useRouter()
 const themeController = inject('themeController', null)
 
 const steps = ['Basics', 'Details', 'Tickets', 'Attendees']
 const repeatRhythmOptions = [
-  { value: 'every_day', unit: 'days', label: 'Every day' },
-  { value: 'every_week', unit: 'weeks', label: 'Every week' },
-  { value: 'every_month', unit: 'months', label: 'Every month' },
+  { value: 'daily', label: 'Every day' },
+  { value: 'weekly', label: 'Every week' },
+  { value: 'monthly', label: 'Every month' },
 ]
-const repeatDayOptions = [
-  { id: 'Mon', short: 'Mon', name: 'Monday' },
-  { id: 'Tue', short: 'Tue', name: 'Tuesday' },
-  { id: 'Wed', short: 'Wed', name: 'Wednesday' },
-  { id: 'Thu', short: 'Thu', name: 'Thursday' },
-  { id: 'Fri', short: 'Fri', name: 'Friday' },
-  { id: 'Sat', short: 'Sat', name: 'Saturday' },
-  { id: 'Sun', short: 'Sun', name: 'Sunday' },
-]
-const today = new Date()
-today.setHours(0, 0, 0, 0)
-
 const categoryOptions = [
   { name: 'Conference & Summit', icon: CalendarDaysIcon },
   { name: 'Music & Concert', icon: MusicalNoteIcon },
@@ -80,11 +80,11 @@ const categoryOptions = [
 ]
 
 const venues = [
-  ['Eko Hotel & Suites', 'Plot 1415 Adetokunbo Ademola St, Victoria Island, Lagos'],
-  ['The Civic Centre', 'Ozumba Mbadiwe Ave, Victoria Island, Lagos'],
-  ['Landmark Event Centre', 'Water Corporation Dr, Oniru, Lagos'],
-  ['Terra Kulture', '1376 Tiamiyu Savage St, Victoria Island, Lagos'],
-  ['Transcorp Hilton Abuja', '1 Aguiyi-Ironsi St, Maitama, Abuja'],
+  ['Eko Hotel & Suites', 'Plot 1415 Adetokunbo Ademola St, Victoria Island, Lagos', 'Africa/Lagos'],
+  ['The Civic Centre', 'Ozumba Mbadiwe Ave, Victoria Island, Lagos', 'Africa/Lagos'],
+  ['Landmark Event Centre', 'Water Corporation Dr, Oniru, Lagos', 'Africa/Lagos'],
+  ['Terra Kulture', '1376 Tiamiyu Savage St, Victoria Island, Lagos', 'Africa/Lagos'],
+  ['Transcorp Hilton Abuja', '1 Aguiyi-Ironsi St, Maitama, Abuja', 'Africa/Lagos'],
 ]
 
 const detailOptions = [
@@ -131,25 +131,23 @@ const form = reactive({
   title: '',
   startsAt: tomorrowAt(18),
   endsAt: tomorrowAt(22),
-  recurrenceType: 'once',
-  repeatFrequency: '',
-  repeatInterval: 1,
-  repeatUnit: '',
-  repeatDays: [],
-  repeatStartDate: '',
-  repeatStartTime: '',
-  repeatEndTime: '',
-  repeatDayOverrides: {},
-  repeatStopMode: '',
-  repeatEndDate: '',
-  recurring: {
+  eventType: 'one_time',
+  recurrence: {
     frequency: null,
-    selectedDays: [],
-    useDefaultTimes: true,
-    perDayTimes: {},
+    weeklyDays: [],
+    monthlyMode: 'day_of_month',
+    dayOfMonth: null,
+    nthWeekday: {
+      ordinal: null,
+      weekday: null,
+    },
+    seriesEndType: 'on_date',
+    seriesEndDate: '',
+    occurrenceCount: null,
   },
   format: 'in-person',
   venue: '',
+  venueTimezone: '',
   meetingLink: '',
   category: '',
   coverImage: '',
@@ -167,6 +165,16 @@ const form = reactive({
   attendeeFields: attendeeFieldDefaults.map((field) => ({ ...field })),
 })
 
+const clock = ref(new Date())
+const eventTimeZone = computed(() => form.venueTimezone || APP_DEFAULT_TIME_ZONE)
+const venueToday = computed(() => getVenueToday(eventTimeZone.value, clock.value))
+const minimumStartDateTime = computed(() =>
+  getMinimumStartDateTime(eventTimeZone.value, clock.value),
+)
+const minimumEndDateTime = computed(() => {
+  if (!form.startsAt) return minimumStartDateTime.value
+  return new Date(new Date(form.startsAt).getTime() + 60_000)
+})
 const themePreferenceKey = 'kaka-theme-preference'
 const fallbackTheme = ref('dark')
 const theme = computed(() => themeController?.theme?.value || fallbackTheme.value)
@@ -187,11 +195,10 @@ const toast = ref('')
 const published = ref(false)
 const errors = reactive({})
 const ticketId = ref(0)
-const activeRepeatTimePicker = ref(null)
-const showRepeatChangeActions = ref(false)
-const showRepeatDayOverrides = ref(false)
 let toastTimer
 let draftTimer
+let clockTimer
+let tipTimer
 
 const activeTips = computed(() =>
   DEFAULT_CREATE_EVENT_TIPS.filter((tip) => tip.status === 'active').sort(
@@ -238,50 +245,113 @@ const previewEvent = computed(() => ({
 }))
 
 const emailDate = computed(() => formatDateTime(form.startsAt))
-const activeRepeatOption = computed(() =>
-  repeatRhythmOptions.find((option) => option.value === form.recurring.frequency),
-)
-const repeatRequiresDaySelection = computed(() =>
-  ['every_week', 'every_month'].includes(form.recurring.frequency),
-)
-const activeRepeatDayOptions = computed(() => {
-  if (form.recurring.frequency === 'every_week') return repeatDayOptions
-  if (form.recurring.frequency === 'every_month') return buildRepeatMonthDayOptions()
-  return []
+const isMultiDayEvent = computed(() => {
+  if (form.eventType !== 'one_time' || !form.startsAt || !form.endsAt) return false
+  const start = new Date(form.startsAt)
+  const end = new Date(form.endsAt)
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) return false
+  return (
+    start.getFullYear() !== end.getFullYear() ||
+    start.getMonth() !== end.getMonth() ||
+    start.getDate() !== end.getDate()
+  )
 })
-const selectedRepeatDays = computed(() =>
-  activeRepeatDayOptions.value.filter((day) => form.recurring.selectedDays.includes(day.id)),
-)
-const repeatTimeRows = computed(() => {
-  if (!form.recurring.selectedDays.length) return [{ id: 'all_days', short: 'All days', name: 'All days' }]
-  return selectedRepeatDays.value
+const multiDayDurationLabel = computed(() => {
+  if (!isMultiDayEvent.value) return ''
+  const totalMinutes = Math.floor(
+    (new Date(form.endsAt).getTime() - new Date(form.startsAt).getTime()) / 60_000,
+  )
+  const days = Math.floor(totalMinutes / (24 * 60))
+  const hours = Math.floor((totalMinutes % (24 * 60)) / 60)
+  const minutes = totalMinutes % 60
+  const parts = []
+  if (days) parts.push(`${days} day${days === 1 ? '' : 's'}`)
+  if (hours) parts.push(`${hours} hour${hours === 1 ? '' : 's'}`)
+  if (minutes) parts.push(`${minutes} minute${minutes === 1 ? '' : 's'}`)
+  return parts.join(', ')
 })
-const repeatStepOneComplete = computed(() => Boolean(form.recurring.frequency))
-const repeatStepTwoComplete = computed(
-  () => !repeatRequiresDaySelection.value || form.recurring.selectedDays.length > 0,
-)
-const repeatDateRangeValid = computed(() => {
-  if (!form.repeatStartDate || !form.repeatEndDate) return true
-  return new Date(form.repeatEndDate) >= new Date(form.repeatStartDate)
+const firstOccurrenceDate = computed(() => (form.startsAt ? new Date(form.startsAt) : null))
+const firstOccurrenceWeekday = computed(() => firstOccurrenceDate.value?.getDay() ?? null)
+const monthlyPattern = computed(() => deriveMonthlyPattern(form.startsAt))
+const seriesEndMinDate = computed(() => {
+  if (!firstOccurrenceDate.value) return toDateInputValue(venueToday.value)
+  const minimum = new Date(firstOccurrenceDate.value)
+  minimum.setDate(minimum.getDate() + 1)
+  return toDateInputValue(minimum)
 })
-const repeatStepThreeComplete = computed(
-  () =>
-    Boolean(form.startsAt && form.endsAt && form.repeatStartDate && form.repeatStartTime && form.repeatEndTime) &&
-    new Date(form.endsAt) > new Date(form.startsAt) &&
-    repeatDateRangeValid.value,
+const recurrenceOverlaps = computed(() =>
+  form.eventType === 'recurring'
+    ? scheduleHasOverlap(form.startsAt, form.endsAt, form.recurrence)
+    : false,
 )
-const recurrenceReady = computed(
-  () => repeatStepOneComplete.value && repeatStepTwoComplete.value && repeatStepThreeComplete.value,
+const seriesEndValid = computed(() => {
+  if (form.recurrence.seriesEndType === 'after_occurrences') {
+    const count = Number(form.recurrence.occurrenceCount)
+    return Number.isInteger(count) && count > 0
+  }
+  if (!form.recurrence.seriesEndDate || !firstOccurrenceDate.value) return false
+  const endDate = dateOnlyToDate(form.recurrence.seriesEndDate)
+  const startDate = new Date(firstOccurrenceDate.value)
+  startDate.setHours(0, 0, 0, 0)
+  return Boolean(endDate && endDate > startDate)
+})
+const recurrenceReady = computed(() => {
+  if (!form.recurrence.frequency || !seriesEndValid.value || recurrenceOverlaps.value) return false
+  if (form.recurrence.frequency === 'weekly' && !form.recurrence.weeklyDays.length) return false
+  return true
+})
+const recurrenceInlineError = computed(() => {
+  if (recurrenceOverlaps.value) {
+    return 'This duration overlaps the next occurrence. Shorten the event or change the repeat pattern.'
+  }
+  if (
+    form.recurrence.seriesEndType === 'on_date' &&
+    form.recurrence.seriesEndDate &&
+    !seriesEndValid.value
+  ) {
+    return 'Series end date must be after the first occurrence date.'
+  }
+  if (
+    form.recurrence.seriesEndType === 'after_occurrences' &&
+    form.recurrence.occurrenceCount !== null &&
+    form.recurrence.occurrenceCount !== '' &&
+    !seriesEndValid.value
+  ) {
+    return 'Enter a positive whole number of occurrences.'
+  }
+  return ''
+})
+const nextOccurrences = computed(() =>
+  recurrenceReady.value ? generateOccurrences(form.startsAt, form.recurrence, 5) : [],
 )
-const repeatRhythmLabel = computed(
-  () => activeRepeatOption.value?.label || 'Repeats',
-)
+const recurrencePatternText = computed(() => {
+  const recurrence = form.recurrence
+  if (recurrence.frequency === 'daily') return 'Every day'
+  if (recurrence.frequency === 'weekly') {
+    const names = WEEKDAYS.filter((day) => recurrence.weeklyDays.includes(day.value)).map(
+      (day) => day.label,
+    )
+    return names.length ? `Every week on ${joinWithAnd(names)}` : 'Every week'
+  }
+  if (recurrence.frequency === 'monthly') {
+    if (recurrence.monthlyMode === 'nth_weekday') {
+      const weekday = WEEKDAYS.find((day) => day.value === recurrence.nthWeekday.weekday)?.label
+      return `Every month on the ${ordinalWord(recurrence.nthWeekday.ordinal)} ${weekday || ''}`.trim()
+    }
+    return `Every month on the ${ordinalNumber(recurrence.dayOfMonth)}`
+  }
+  return 'Choose a repeat pattern'
+})
+const seriesEndText = computed(() => {
+  if (form.recurrence.seriesEndType === 'after_occurrences') {
+    const count = Number(form.recurrence.occurrenceCount)
+    return count > 0 ? `After ${count} occurrence${count === 1 ? '' : 's'}` : 'Occurrence count not set'
+  }
+  return form.recurrence.seriesEndDate
+    ? `Until ${formatReviewDate(form.recurrence.seriesEndDate)}`
+    : 'End date not set'
+})
 const canContinue = computed(() => isStepComplete(currentStep.value))
-const repeatTimePickerInitialDate = computed(() => {
-  const time = getRepeatTimePickerValue() || '09:00'
-  return combineDateAndTime(form.repeatStartDate || toDateInputValue(form.startsAt || today), time)
-})
-
 function tomorrowAt(hour) {
   const date = new Date()
   date.setDate(date.getDate() + 1)
@@ -300,14 +370,6 @@ function formatDateTime(value) {
   })
 }
 
-function formatDateOnly(value) {
-  if (!value) return 'the selected end date'
-  return new Date(value).toLocaleDateString('en-NG', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
-}
 
 function formatReviewDate(value) {
   if (!value) return 'Date not set'
@@ -320,38 +382,37 @@ function formatReviewDate(value) {
   return `${byType.day} ${byType.month} ${byType.year}`
 }
 
-function formatRepeatDateLabel(value) {
-  if (!value) return ''
-  const parts = new Intl.DateTimeFormat('en-NG', {
+function joinWithAnd(values) {
+  if (values.length <= 1) return values[0] || ''
+  if (values.length === 2) return `${values[0]} and ${values[1]}`
+  return `${values.slice(0, -1).join(', ')}, and ${values.at(-1)}`
+}
+
+function ordinalNumber(value) {
+  const number = Number(value)
+  if (!number) return ''
+  const remainder = number % 100
+  if (remainder >= 11 && remainder <= 13) return `${number}th`
+  return `${number}${{ 1: 'st', 2: 'nd', 3: 'rd' }[number % 10] || 'th'}`
+}
+
+function ordinalWord(value) {
+  return ['', 'first', 'second', 'third', 'fourth', 'fifth'][Number(value)] || ''
+}
+
+function formatOccurrenceDate(value) {
+  return new Intl.DateTimeFormat('en-NG', {
     weekday: 'short',
-    month: 'short',
     day: 'numeric',
-  }).formatToParts(new Date(value))
-  const byType = Object.fromEntries(parts.map((part) => [part.type, part.value]))
-  return `${byType.weekday}, ${byType.month} ${byType.day}`
+    month: 'short',
+  }).format(new Date(value))
 }
 
-function buildRepeatMonthDayOptions() {
-  const source = dateOnlyToDate(form.repeatStartDate) || new Date(form.startsAt || today)
-  const year = source.getFullYear()
-  const month = source.getMonth()
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const minDate = new Date(Math.max(today.getTime(), dateOnlyToDate(form.repeatStartDate)?.getTime() || today.getTime()))
-  minDate.setHours(0, 0, 0, 0)
-
-  return Array.from({ length: daysInMonth }, (_, index) => {
-    const day = index + 1
-    const date = new Date(year, month, day)
-    date.setHours(0, 0, 0, 0)
-    return {
-      id: day,
-      short: String(day),
-      name: formatRepeatDateLabel(date),
-      disabled: date < minDate,
-    }
-  })
+function formatTimeRange() {
+  return `${formatTimeLabel(toTimeInputValue(form.startsAt))} – ${formatTimeLabel(
+    toTimeInputValue(form.endsAt),
+  )}`
 }
-
 function toDateInputValue(value) {
   const date = value ? new Date(value) : new Date()
   const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
@@ -379,65 +440,6 @@ function toTimeInputValue(value) {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
-function combineDateAndTime(dateValue, timeValue) {
-  const date = dateOnlyToDate(dateValue) || new Date()
-  const [hour = '9', minute = '00'] = String(timeValue || '09:00').split(':')
-  date.setHours(Number(hour) || 0, Number(minute) || 0, 0, 0)
-  return date
-}
-
-function getRepeatTimePickerValue() {
-  const target = activeRepeatTimePicker.value
-  if (!target) return ''
-  if (target.scope === 'default') {
-    return target.field === 'start' ? form.repeatStartTime : form.repeatEndTime
-  }
-  const override = form.repeatDayOverrides[target.day]
-  return target.field === 'start'
-    ? override?.startTime || form.repeatStartTime
-    : override?.endTime || form.repeatEndTime
-}
-
-function setRepeatTimePickerValue(value) {
-  const target = activeRepeatTimePicker.value
-  if (!target) return
-  if (target.scope === 'default') {
-    if (target.field === 'start') form.repeatStartTime = value
-    else form.repeatEndTime = value
-    syncRecurringPrimaryDates()
-    clearError('repeatSchedule')
-    return
-  }
-  const override = ensureRepeatDayOverride(target.day)
-  if (target.field === 'start') override.startTime = value
-  else override.endTime = value
-  form.recurring.useDefaultTimes = false
-  form.recurring.perDayTimes[target.day] = {
-    startTime: override.startTime || form.repeatStartTime,
-    endTime: override.endTime || form.repeatEndTime,
-  }
-  clearError('repeatSchedule')
-}
-
-function syncRecurringPrimaryDates() {
-  if (form.recurrenceType !== 'recur' || !form.repeatStartDate) return
-  if (form.repeatStartTime) {
-    form.startsAt = combineDateAndTime(form.repeatStartDate, form.repeatStartTime)
-  }
-  if (form.repeatStartTime && form.repeatEndTime) {
-    const start = combineDateAndTime(form.repeatStartDate, form.repeatStartTime)
-    const end = combineDateAndTime(form.repeatStartDate, form.repeatEndTime)
-    if (end <= start) end.setDate(end.getDate() + 1)
-    form.endsAt = end
-  }
-}
-
-function syncRepeatScheduleFromPrimary() {
-  if (!form.startsAt) return
-  form.repeatStartDate = toDateInputValue(form.startsAt)
-  form.repeatStartTime = toTimeInputValue(form.startsAt)
-  if (form.endsAt) form.repeatEndTime = toTimeInputValue(form.endsAt)
-}
 
 function showToast(message) {
   toast.value = message
@@ -538,7 +540,7 @@ function isStepComplete(step) {
   if (step === 1) {
     if (!form.title.trim()) return false
     if (!form.startsAt || !form.endsAt) return false
-    if (form.startsAt && new Date(form.startsAt) < today) return false
+    if (form.startsAt && !isStartDateTimeValid(form.startsAt, eventTimeZone.value, clock.value)) return false
     if (form.endsAt && form.startsAt && new Date(form.endsAt) <= new Date(form.startsAt)) {
       return false
     }
@@ -547,9 +549,7 @@ function isStepComplete(step) {
       return false
     }
     if (!form.category) return false
-    if (form.recurrenceType === 'recur') {
-      return recurrenceReady.value
-    }
+    if (form.eventType === 'recurring') return recurrenceReady.value
     return true
   }
 
@@ -580,8 +580,8 @@ function validateStep(step) {
     if (!form.title.trim()) setError('title', 'Please enter an event name.')
     if (!form.startsAt) setError('startsAt', 'Please choose a start date and time.')
     if (!form.endsAt) setError('endsAt', 'Please choose an end date and time.')
-    if (form.startsAt && new Date(form.startsAt) < today) {
-      setError('startsAt', 'Start date cannot be in the past.')
+    if (form.startsAt && !isStartDateTimeValid(form.startsAt, eventTimeZone.value, clock.value)) {
+      setError('startsAt', 'Choose a start time at least 30 minutes from now.')
     }
     if (form.endsAt && form.startsAt && new Date(form.endsAt) <= new Date(form.startsAt)) {
       setError('endsAt', 'End time must be after the start time.')
@@ -593,13 +593,22 @@ function validateStep(step) {
       setError('meetingLink', 'Please add the meeting link for online attendees.')
     }
     if (!form.category) setError('category', 'Please choose a category.')
-    if (form.recurrenceType === 'recur') {
-      if (!repeatStepOneComplete.value) setError('repeatSchedule', 'Choose how often this repeats.')
-      if (repeatStepOneComplete.value && !repeatStepTwoComplete.value) {
-        setError('repeatSchedule', 'Pick at least one day for the recurring schedule.')
-      }
-      if (repeatStepTwoComplete.value && !repeatStepThreeComplete.value) {
-        setError('repeatSchedule', 'Review the main start and end date/time above.')
+    if (form.eventType === 'recurring') {
+      if (!form.recurrence.frequency) {
+        setError('repeatSchedule', 'Choose how often this event repeats.')
+      } else if (form.recurrence.frequency === 'weekly' && !form.recurrence.weeklyDays.length) {
+        setError('repeatSchedule', 'Choose at least one weekday.')
+      } else if (form.recurrence.seriesEndType === 'on_date' && !form.recurrence.seriesEndDate) {
+        setError('repeatSchedule', 'Choose a date for the series to end.')
+      } else if (!seriesEndValid.value) {
+        setError(
+          'repeatSchedule',
+          form.recurrence.seriesEndType === 'after_occurrences'
+            ? 'Enter a positive whole number of occurrences.'
+            : 'Series end date must be after the first occurrence date.',
+        )
+      } else if (recurrenceOverlaps.value) {
+        setError('repeatSchedule', 'This duration overlaps the next occurrence. Shorten the event or change the repeat pattern.')
       }
     }
   }
@@ -613,6 +622,12 @@ function validateStep(step) {
     form.tickets.forEach((ticket) => {
       if (!ticket.name.trim()) setError(`ticket-${ticket.id}-name`, 'Ticket name is required.')
       if (ticket.price < 0) setError(`ticket-${ticket.id}-price`, 'Ticket price cannot be negative.')
+      if (ticket.salesStart && ticket.salesEnd && !isAfter(ticket.salesEnd, ticket.salesStart)) {
+        setError(`ticket-${ticket.id}-salesEnd`, 'Sales close must be after sales open.')
+      }
+      if (ticket.salesEnd && form.startsAt && isAfter(ticket.salesEnd, form.startsAt)) {
+        setError(`ticket-${ticket.id}-salesEnd`, 'Ticket sales must end by the event start time.')
+      }
     })
   }
 
@@ -629,9 +644,11 @@ function validateStep(step) {
   return true
 }
 
-function pickVenue(name) {
+function pickVenue(name, timeZone) {
   form.venue = name
+  form.venueTimezone = timeZone || ''
   showVenueResults.value = false
+  clearError('venue')
 }
 
 function selectCategory(category) {
@@ -640,164 +657,54 @@ function selectCategory(category) {
   clearError('category')
 }
 
-function selectRepeatRhythm(unit) {
-  const option = repeatRhythmOptions.find((item) => item.value === unit || item.unit === unit)
-  if (!option) return
-  form.recurring.frequency = option.value
-  form.recurring.selectedDays = []
-  form.recurring.useDefaultTimes = true
-  form.recurring.perDayTimes = {}
-  form.repeatUnit = option.unit
-  form.repeatFrequency = option.value
-  form.repeatInterval = 1
-  form.repeatDays = []
-  form.repeatDayOverrides = {}
-  showRepeatChangeActions.value = false
-  showRepeatDayOverrides.value = false
-  syncRepeatScheduleFromPrimary()
+function selectEventType(type) {
+  form.eventType = type
+  clearError('repeatSchedule')
+  if (type === 'recurring' && form.recurrence.frequency === 'weekly') {
+    ensureFirstOccurrenceWeekday()
+  }
+}
+
+function selectRepeatRhythm(frequency) {
+  form.recurrence.frequency = frequency
+  if (frequency === 'weekly') ensureFirstOccurrenceWeekday()
+  if (frequency === 'monthly') syncMonthlyPattern()
   clearError('repeatSchedule')
 }
 
-function toggleRepeatDay(day) {
-  const option = activeRepeatDayOptions.value.find((item) => item.id === day)
-  if (option?.disabled) return
-  if (form.recurring.selectedDays.includes(day)) {
-    form.recurring.selectedDays = form.recurring.selectedDays.filter((item) => item !== day)
-    delete form.repeatDayOverrides[day]
-    delete form.recurring.perDayTimes[day]
+function ensureFirstOccurrenceWeekday() {
+  const weekday = firstOccurrenceWeekday.value
+  if (weekday === null || form.recurrence.weeklyDays.includes(weekday)) return
+  form.recurrence.weeklyDays.push(weekday)
+  form.recurrence.weeklyDays.sort((left, right) => left - right)
+}
+
+function toggleWeeklyDay(day) {
+  if (day === firstOccurrenceWeekday.value) return
+  if (form.recurrence.weeklyDays.includes(day)) {
+    form.recurrence.weeklyDays = form.recurrence.weeklyDays.filter((value) => value !== day)
   } else {
-    form.recurring.selectedDays.push(day)
-  }
-  form.repeatDays = [...form.recurring.selectedDays]
-  if (!form.recurring.selectedDays.length) {
-    showRepeatChangeActions.value = false
-    showRepeatDayOverrides.value = false
-    form.recurring.useDefaultTimes = true
-    form.recurring.perDayTimes = {}
-  } else if (!form.recurring.useDefaultTimes) {
-    reconcileRepeatDayOverrides()
+    form.recurrence.weeklyDays.push(day)
+    form.recurrence.weeklyDays.sort((left, right) => left - right)
   }
   clearError('repeatSchedule')
 }
 
-function removeRepeatTimeRow(day) {
-  if (day === 'all_days') {
-    delete form.repeatDayOverrides[day]
-    delete form.recurring.perDayTimes[day]
-    form.recurring.useDefaultTimes = true
-    showRepeatDayOverrides.value = false
-    showRepeatChangeActions.value = true
-    return
-  }
-  if (form.recurring.selectedDays.includes(day)) {
-    toggleRepeatDay(day)
-    return
-  }
-  delete form.repeatDayOverrides[day]
-  delete form.recurring.perDayTimes[day]
+function syncMonthlyPattern() {
+  form.recurrence.dayOfMonth = monthlyPattern.value.dayOfMonth
+  form.recurrence.nthWeekday.ordinal = monthlyPattern.value.ordinal
+  form.recurrence.nthWeekday.weekday = monthlyPattern.value.weekday
 }
 
-function syncMonthlyRepeatSelections() {
-  if (form.recurring.frequency !== 'every_month') return
-  const allowedDays = new Set(activeRepeatDayOptions.value.filter((day) => !day.disabled).map((day) => day.id))
-  const nextDays = form.recurring.selectedDays.filter((day) => allowedDays.has(day))
-  if (nextDays.length !== form.recurring.selectedDays.length) {
-    form.recurring.selectedDays = nextDays
-    form.repeatDays = [...nextDays]
-    reconcileRepeatDayOverrides()
-  }
+function setMonthlyMode(mode) {
+  form.recurrence.monthlyMode = mode
+  syncMonthlyPattern()
+  clearError('repeatSchedule')
 }
 
-function handleRepeatChangeLink() {
-  if (showRepeatChangeActions.value) {
-    showRepeatChangeActions.value = false
-    showRepeatDayOverrides.value = false
-    return
-  }
-  if (showRepeatDayOverrides.value) {
-    showRepeatDayOverrides.value = false
-    showRepeatChangeActions.value = true
-    return
-  }
-  showRepeatChangeActions.value = true
-}
-
-function openRepeatDayOverrides() {
-  showRepeatDayOverrides.value = true
-  showRepeatChangeActions.value = false
-  form.recurring.useDefaultTimes = false
-  reconcileRepeatDayOverrides()
-}
-
-function ensureRepeatDayOverride(day) {
-  if (!form.repeatDayOverrides[day]) {
-    form.repeatDayOverrides[day] = {
-      startTime: form.repeatStartTime,
-      endTime: form.repeatEndTime,
-    }
-  }
-  form.recurring.perDayTimes[day] = {
-    startTime: form.repeatDayOverrides[day].startTime || form.repeatStartTime,
-    endTime: form.repeatDayOverrides[day].endTime || form.repeatEndTime,
-  }
-  return form.repeatDayOverrides[day]
-}
-
-function reconcileRepeatDayOverrides() {
-  const selectedKeys = new Set(repeatTimeRows.value.map((day) => String(day.id)))
-  Object.keys(form.repeatDayOverrides).forEach((day) => {
-    if (!selectedKeys.has(String(day))) delete form.repeatDayOverrides[day]
-  })
-  Object.keys(form.recurring.perDayTimes).forEach((day) => {
-    if (!selectedKeys.has(String(day))) delete form.recurring.perDayTimes[day]
-  })
-  repeatTimeRows.value.forEach((day) => {
-    const override = ensureRepeatDayOverride(day.id)
-    if (!override.startTime) override.startTime = form.repeatStartTime
-    if (!override.endTime) override.endTime = form.repeatEndTime
-    form.recurring.perDayTimes[day.id] = {
-      startTime: override.startTime,
-      endTime: override.endTime,
-    }
-  })
-}
-
-function repeatDayTimes(day) {
-  const override = form.repeatDayOverrides[day]
-  if (override?.startTime && override?.endTime) {
-    return {
-      start: override.startTime,
-      end: override.endTime,
-      custom: true,
-    }
-  }
-  return {
-    start: form.repeatStartTime,
-    end: form.repeatEndTime,
-    custom: false,
-  }
-}
-
-function openRepeatTimePicker(target) {
-  activeRepeatTimePicker.value = target
-}
-
-function closeRepeatTimePicker() {
-  activeRepeatTimePicker.value = null
-}
-
-function applyRepeatTime(dateTime) {
-  setRepeatTimePickerValue(toTimeInputValue(dateTime))
-  closeRepeatTimePicker()
-}
-
-function scrollToPrimaryDateTime() {
-  showRepeatChangeActions.value = false
-  const target = document.querySelector('[data-error-key="startsAt"]')
-  target?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  requestAnimationFrame(() => {
-    target?.querySelector('input')?.focus({ preventScroll: true })
-  })
+function setSeriesEndType(type) {
+  form.recurrence.seriesEndType = type
+  clearError('repeatSchedule')
 }
 
 function handleFiles(files) {
@@ -896,7 +803,19 @@ function ticketSeatCount(ticket) {
 }
 
 function publishEvent() {
-  if (!validateStep(4)) return
+  if (!validateStep(1)) {
+    currentStep.value = 1
+    return
+  }
+  if (!validateStep(2)) {
+    currentStep.value = 2
+    return
+  }
+  if (!validateStep(3)) {
+    currentStep.value = 3
+    return
+  }
+
   buildCreateEventPayload(form)
   saveDraft()
   published.value = true
@@ -905,21 +824,67 @@ function publishEvent() {
 
 onMounted(() => {
   initializeTheme()
-  syncRepeatScheduleFromPrimary()
-  setInterval(() => {
+  clockTimer = setInterval(() => {
+    clock.value = new Date()
+  }, 60_000)
+  tipTimer = setInterval(() => {
     tipIndex.value = (tipIndex.value + 1) % activeTips.value.length
   }, 7000)
 })
 
+onBeforeUnmount(() => {
+  clearInterval(clockTimer)
+  clearInterval(tipTimer)
+  clearTimeout(toastTimer)
+  clearTimeout(draftTimer)
+})
+
+
 watch(
-  () => [form.startsAt, form.endsAt, form.recurrenceType],
-  () => {
-    syncRepeatScheduleFromPrimary()
-    syncMonthlyRepeatSelections()
+  () => form.startsAt,
+  (value) => {
+    if (value && isStartDateTimeValid(value, eventTimeZone.value, clock.value)) {
+      clearError('startsAt')
+    }
+    if (value && form.endsAt && !isAfter(form.endsAt, value)) {
+      form.endsAt = null
+      setError('endsAt', 'End time must be after the start time.')
+    }
+    syncMonthlyPattern()
+    if (form.eventType === 'recurring' && form.recurrence.frequency === 'weekly') {
+      ensureFirstOccurrenceWeekday()
+    }
+    if (
+      form.recurrence.seriesEndType === 'on_date' &&
+      form.recurrence.seriesEndDate &&
+      !seriesEndValid.value
+    ) {
+      form.recurrence.seriesEndDate = ''
+      setError('repeatSchedule', 'Choose a new series end date after the first occurrence.')
+    }
   },
-  { immediate: true },
 )
 
+watch(
+  () => form.endsAt,
+  (value) => {
+    if (value && form.startsAt && isAfter(value, form.startsAt)) clearError('endsAt')
+  },
+)
+watch(
+  () => form.recurrence,
+  () => {
+    if (errors.repeatSchedule && recurrenceReady.value) clearError('repeatSchedule')
+  },
+  { deep: true },
+)
+watch(eventTimeZone, (timeZone, previousTimeZone) => {
+  if (timeZone === previousTimeZone || !form.startsAt) return
+  if (!isStartDateTimeValid(form.startsAt, timeZone, clock.value)) {
+    form.startsAt = null
+    setError('startsAt', 'Choose a start time at least 30 minutes from now.')
+  }
+})
 </script>
 
 <template>
@@ -1012,15 +977,39 @@ watch(
                 <p v-if="errors.title" class="error-text">{{ errors.title }}</p>
               </div>
 
+                            <div class="divider"><span>Event type</span></div>
+              <div class="field">
+                <div class="pill-row" role="group" aria-label="Event type">
+                  <button
+                    type="button"
+                    class="pill"
+                    :class="{ selected: form.eventType === 'one_time' }"
+                    @click="selectEventType('one_time')"
+                  >
+                    <CalendarDaysIcon aria-hidden="true" /> One-time
+                  </button>
+                  <button
+                    type="button"
+                    class="pill"
+                    :class="{ selected: form.eventType === 'recurring' }"
+                    @click="selectEventType('recurring')"
+                  >
+                    <ClockIcon aria-hidden="true" /> Recurring
+                  </button>
+                </div>
+              </div>
+
               <div class="divider"><span>When</span></div>
               <div class="two-col">
                 <div data-error-key="startsAt">
                   <DateTimePickerInput
                     v-model="form.startsAt"
-                    label="Starts"
+                    :label="form.eventType === 'recurring' ? 'First occurrence starts' : 'Starts'"
                     placeholder="Select start date and time"
                     modal-title="Select start date and time"
-                    :min-date="today"
+                    :min-date="venueToday"
+                    :min-date-time="minimumStartDateTime"
+                    invalid-time-message="Choose a start time at least 30 minutes from now."
                     :error="errors.startsAt"
                     date-format="YYYY-MM-DD"
                     time-format="hh:mm A"
@@ -1029,51 +1018,38 @@ watch(
                 <div data-error-key="endsAt">
                   <DateTimePickerInput
                     v-model="form.endsAt"
-                    label="Ends"
+                    :label="form.eventType === 'recurring' ? 'First occurrence ends' : 'Ends'"
                     placeholder="Select end date and time"
                     modal-title="Select end date and time"
-                    :min-date="today"
+                    :min-date="form.startsAt || venueToday"
+                    :min-date-time="minimumEndDateTime"
+                    invalid-time-message="End time must be after the start time."
                     :error="errors.endsAt"
                     date-format="YYYY-MM-DD"
                     time-format="hh:mm A"
                   />
                 </div>
               </div>
-
-              <div class="field">
-                <label>One-time or recurring?</label>
-                <p class="help">Choose whether this event happens once or repeats.</p>
-                <div class="pill-row">
-                  <button
-                    type="button"
-                    class="pill"
-                    :class="{ selected: form.recurrenceType === 'once' }"
-                    @click="form.recurrenceType = 'once'"
-                  >
-                    <CalendarDaysIcon aria-hidden="true" /> One-time
-                  </button>
-                  <button
-                    type="button"
-                    class="pill"
-                    :class="{ selected: form.recurrenceType === 'recur' }"
-                    @click="form.recurrenceType = 'recur'"
-                  >
-                    <ClockIcon aria-hidden="true" /> Recurring
-                  </button>
+              <div v-if="isMultiDayEvent" class="multi-day-hint" aria-live="polite">
+                <CalendarDaysIcon aria-hidden="true" />
+                <div>
+                  <strong>This is a multi-day event</strong>
+                  <span>Duration: {{ multiDayDurationLabel }}</span>
                 </div>
               </div>
 
-              <div v-if="form.recurrenceType === 'recur'" class="sub-panel">
+              <div v-if="form.eventType === 'recurring'" class="sub-panel">
                 <div class="recurrence-steps" data-error-key="repeatSchedule">
-                  <section class="recurrence-step" :class="{ complete: repeatStepOneComplete }">
+                  <section class="recurrence-step">
                     <span class="recurrence-label">Repeats</span>
-                    <div class="repeat-frequency-row">
+                    <div class="repeat-frequency-row" role="group" aria-label="Repeat frequency">
                       <button
                         v-for="option in repeatRhythmOptions"
                         :key="option.value"
                         type="button"
                         class="repeat-frequency-pill"
-                        :class="{ selected: form.recurring.frequency === option.value }"
+                        :class="{ selected: form.recurrence.frequency === option.value }"
+                        :aria-pressed="form.recurrence.frequency === option.value"
                         @click="selectRepeatRhythm(option.value)"
                       >
                         {{ option.label }}
@@ -1082,118 +1058,150 @@ watch(
                   </section>
 
                   <section
-                    v-if="repeatStepOneComplete && repeatRequiresDaySelection"
+                    v-if="form.recurrence.frequency === 'weekly'"
                     class="recurrence-step reveal-step"
-                    :class="{ complete: repeatStepTwoComplete }"
                   >
-                    <span class="recurrence-label">
-                      {{ form.recurring.frequency === 'every_week' ? 'Days' : 'Day of month' }}
-                    </span>
-                    <div
-                      class="day-row"
-                      :class="{ monthly: form.recurring.frequency === 'every_month' }"
-                    >
+                    <span class="recurrence-label">Days</span>
+                    <div class="day-row" role="group" aria-label="Repeat on weekdays">
                       <button
-                        v-for="day in activeRepeatDayOptions"
-                        :key="day.id"
+                        v-for="day in WEEKDAYS"
+                        :key="day.value"
                         type="button"
                         class="day-chip"
-                        :class="{
-                          selected: form.recurring.selectedDays.includes(day.id),
-                          disabled: day.disabled,
-                          monthly: form.recurring.frequency === 'every_month',
-                        }"
-                        :disabled="day.disabled"
-                        :title="day.name"
-                        :aria-label="day.name"
-                        @click="toggleRepeatDay(day.id)"
+                        :class="{ selected: form.recurrence.weeklyDays.includes(day.value) }"
+                        :aria-pressed="form.recurrence.weeklyDays.includes(day.value)"
+                        :title="
+                          day.value === firstOccurrenceWeekday
+                            ? `${day.label} is the first occurrence`
+                            : day.label
+                        "
+                        @click="toggleWeeklyDay(day.value)"
                       >
-                        <span>{{ day.short }}</span>
-                        <small v-if="form.recurring.frequency === 'every_month'">{{ day.name.split(',')[0] }}</small>
+                        {{ day.short }}
                       </button>
                     </div>
                   </section>
 
                   <section
-                    v-if="repeatStepOneComplete && repeatStepTwoComplete"
+                    v-if="form.recurrence.frequency === 'monthly'"
                     class="recurrence-step reveal-step"
                   >
-                    <div class="repeat-current-schedule">
-                      <p>
-                        <span>Date</span>
-                        <strong>{{ formatReviewDate(form.repeatStartDate) }}</strong>
-                      </p>
-                      <p>
-                        <span>Time</span>
-                        <strong>{{ formatTimeLabel(form.repeatStartTime) }} &ndash; {{ formatTimeLabel(form.repeatEndTime) }}</strong>
-                      </p>
-                      <button type="button" class="repeat-change-link" @click="handleRepeatChangeLink">
-                        {{
-                          showRepeatDayOverrides
-                            ? 'Done'
-                            : showRepeatChangeActions
-                              ? 'Never mind'
-                              : 'Change this'
-                        }}
-                      </button>
-                    </div>
-
-                    <div v-if="showRepeatChangeActions" class="repeat-change-actions reveal-step">
-                      <button type="button" class="repeat-change-option" @click="openRepeatDayOverrides">
-                        <strong>Per day</strong>
-                        <span>Different times for each day</span>
-                      </button>
-                      <button type="button" class="repeat-change-option" @click="scrollToPrimaryDateTime">
-                        <strong>Main date</strong>
-                        <span>Edit the event's start date</span>
-                      </button>
-                    </div>
-
-                    <div v-if="showRepeatDayOverrides" class="repeat-day-overrides reveal-step">
-                      <div
-                        v-for="day in repeatTimeRows"
-                        :key="day.id"
-                        class="repeat-day-row"
-                        :class="{ monthly: form.recurring.frequency === 'every_month' }"
-                      >
-                        <span class="repeat-day-name">
-                          {{ form.recurring.frequency === 'every_month' ? day.name : day.short }}
+                    <span class="recurrence-label">Occurs</span>
+                    <div class="recurrence-choice-list">
+                      <label class="recurrence-choice" :class="{ selected: form.recurrence.monthlyMode === 'day_of_month' }">
+                        <input
+                          type="radio"
+                          name="monthly-mode"
+                          value="day_of_month"
+                          :checked="form.recurrence.monthlyMode === 'day_of_month'"
+                          @change="setMonthlyMode('day_of_month')"
+                        />
+                        <span>
+                          <strong>On the same date every month</strong>
+                          <small>{{ ordinalNumber(form.recurrence.dayOfMonth) }} of every month</small>
                         </span>
-                        <div class="repeat-day-time-controls">
-                          <button
-                            type="button"
-                            class="field-input recurrence-picker-button"
-                            @click="openRepeatTimePicker({ scope: 'day', day: day.id, field: 'start' })"
-                          >
-                            <ClockIcon aria-hidden="true" />
-                            <span>{{ formatTimeLabel(repeatDayTimes(day.id).start) }}</span>
-                          </button>
-                          <span class="repeat-day-arrow" aria-hidden="true">&rarr;</span>
-                          <button
-                            type="button"
-                            class="field-input recurrence-picker-button"
-                            @click="openRepeatTimePicker({ scope: 'day', day: day.id, field: 'end' })"
-                          >
-                            <ClockIcon aria-hidden="true" />
-                            <span>{{ formatTimeLabel(repeatDayTimes(day.id).end) }}</span>
-                          </button>
-                          <button
-                            type="button"
-                            class="repeat-day-remove"
-                            :aria-label="`Remove ${day.name}`"
-                            @click="removeRepeatTimeRow(day.id)"
-                          >
-                            <XMarkIcon aria-hidden="true" />
-                          </button>
-                        </div>
+                      </label>
+                      <label class="recurrence-choice" :class="{ selected: form.recurrence.monthlyMode === 'nth_weekday' }">
+                        <input
+                          type="radio"
+                          name="monthly-mode"
+                          value="nth_weekday"
+                          :checked="form.recurrence.monthlyMode === 'nth_weekday'"
+                          @change="setMonthlyMode('nth_weekday')"
+                        />
+                        <span>
+                          <strong>On the same weekday pattern</strong>
+                          <small>
+                            {{ ordinalWord(form.recurrence.nthWeekday.ordinal) }}
+                            {{ WEEKDAYS.find((day) => day.value === form.recurrence.nthWeekday.weekday)?.label }}
+                            of every month
+                          </small>
+                        </span>
+                      </label>
+                    </div>
+                  </section>
+
+                  <section v-if="form.recurrence.frequency" class="recurrence-step reveal-step">
+                    <span class="recurrence-label">Series ends</span>
+                    <div class="recurrence-choice-list series-end-choices">
+                      <label class="recurrence-choice" :class="{ selected: form.recurrence.seriesEndType === 'on_date' }">
+                        <input
+                          type="radio"
+                          name="series-end"
+                          value="on_date"
+                          :checked="form.recurrence.seriesEndType === 'on_date'"
+                          @change="setSeriesEndType('on_date')"
+                        />
+                        <span><strong>On a date</strong></span>
+                      </label>
+                      <div v-if="form.recurrence.seriesEndType === 'on_date'" class="recurrence-inline-control">
+                        <input
+                          v-model="form.recurrence.seriesEndDate"
+                          type="date"
+                          class="field-input"
+                          :min="seriesEndMinDate"
+                          aria-label="Series end date"
+                          @input="clearError('repeatSchedule')"
+                        />
+                      </div>
+
+                      <label class="recurrence-choice" :class="{ selected: form.recurrence.seriesEndType === 'after_occurrences' }">
+                        <input
+                          type="radio"
+                          name="series-end"
+                          value="after_occurrences"
+                          :checked="form.recurrence.seriesEndType === 'after_occurrences'"
+                          @change="setSeriesEndType('after_occurrences')"
+                        />
+                        <span><strong>After number of occurrences</strong></span>
+                      </label>
+                      <div
+                        v-if="form.recurrence.seriesEndType === 'after_occurrences'"
+                        class="recurrence-inline-control occurrence-count-control"
+                      >
+                        <input
+                          v-model.number="form.recurrence.occurrenceCount"
+                          type="number"
+                          class="field-input"
+                          min="1"
+                          step="1"
+                          inputmode="numeric"
+                          aria-label="Number of occurrences"
+                          @input="clearError('repeatSchedule')"
+                        />
+                        <span>occurrences</span>
                       </div>
                     </div>
                   </section>
 
-                  <p v-if="errors.repeatSchedule" class="error-text">{{ errors.repeatSchedule }}</p>
+                  <p v-if="errors.repeatSchedule || recurrenceInlineError" class="error-text">
+                    {{ errors.repeatSchedule || recurrenceInlineError }}
+                  </p>
+
+                  <section
+                    v-if="form.recurrence.frequency"
+                    class="recurrence-step recurrence-schedule-preview reveal-step"
+                    aria-live="polite"
+                  >
+                    <span class="recurrence-label">Schedule preview</span>
+                    <strong>{{ recurrencePatternText }}</strong>
+                    <p>{{ formatTimeRange() }}</p>
+                    <p>
+                      Starts {{ formatReviewDate(form.startsAt) }}
+                      <span aria-hidden="true">·</span>
+                      {{ seriesEndText }}
+                    </p>
+                    <div v-if="nextOccurrences.length" class="next-occurrences">
+                      <span>Next dates</span>
+                      <ul>
+                        <li v-for="occurrence in nextOccurrences" :key="occurrence.toISOString()">
+                          {{ formatOccurrenceDate(occurrence) }}
+                        </li>
+                      </ul>
+                    </div>
+                  </section>
                 </div>
               </div>
-
               <div class="divider"><span>Format</span></div>
               <div class="field">
                 <label>Where is it happening?</label>
@@ -1226,15 +1234,15 @@ watch(
                     :class="{ error: errors.venue }"
                     placeholder="Type a venue name or address"
                     @focus="showVenueResults = true"
-                    @input="clearError('venue')"
+                    @input="form.venueTimezone = ''; clearError('venue')"
                   />
                 </div>
                 <div v-if="showVenueResults && venueResults.length" class="venue-results">
                   <button
-                    v-for="[name, address] in venueResults"
+                    v-for="[name, address, timeZone] in venueResults"
                     :key="name"
                     type="button"
-                    @click="pickVenue(name)"
+                    @click="pickVenue(name, timeZone)"
                   >
                     <strong>{{ name }}</strong>
                     <span>{{ address }}</span>
@@ -1618,11 +1626,24 @@ watch(
                     <div class="two-col">
                       <div class="field">
                         <label>Sales open <span>Optional</span></label>
-                        <DateTimePickerInput v-model="ticket.salesStart" placeholder="Select sales open" :min-date="today" />
+                        <DateTimePickerInput
+                          v-model="ticket.salesStart"
+                          placeholder="Select sales open"
+                          :min-date="venueToday"
+                          :max-date="form.startsAt"
+                          :max-date-time="form.startsAt"
+                        />
                       </div>
-                      <div class="field">
+                      <div class="field" :data-error-key="`ticket-${ticket.id}-salesEnd`">
                         <label>Sales close <span>Optional</span></label>
-                        <DateTimePickerInput v-model="ticket.salesEnd" placeholder="Select sales close" :min-date="today" />
+                        <DateTimePickerInput
+                          v-model="ticket.salesEnd"
+                          placeholder="Select sales close"
+                          :min-date="venueToday"
+                          :max-date="form.startsAt"
+                          :max-date-time="form.startsAt"
+                          :error="errors[`ticket-${ticket.id}-salesEnd`]"
+                        />
                       </div>
                     </div>
                     <label class="toggle-row">
@@ -1741,19 +1762,6 @@ watch(
       <button type="button" class="primary-btn" @click="router.push('/')">Back to events</button>
     </section>
 
-    <Teleport to="body">
-      <div v-if="activeRepeatTimePicker" class="datetime-picker-modal-overlay" @click.self="closeRepeatTimePicker">
-        <div class="datetime-picker-modal">
-          <DateTimePicker
-            mode="time"
-            title="Select recurrence time"
-            :initial-date-time="repeatTimePickerInitialDate"
-            @update:date-time="applyRepeatTime"
-            @close="closeRepeatTimePicker"
-          />
-        </div>
-      </div>
-    </Teleport>
   </div>
 </template>
 
@@ -2284,6 +2292,41 @@ label span {
   color: var(--ce-ink);
 }
 
+.multi-day-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: -2px 0 1rem;
+  padding: 9px 11px;
+  border: 1px solid color-mix(in srgb, var(--ce-green) 24%, var(--ce-p4));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ce-green) 7%, var(--ce-paper));
+}
+
+.multi-day-hint svg {
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  color: var(--ce-green);
+  flex-shrink: 0;
+}
+
+.multi-day-hint div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.multi-day-hint strong {
+  color: var(--ce-ink);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.multi-day-hint span {
+  color: var(--ce-ink3);
+  font-size: 11.5px;
+}
 .sub-panel {
   background: var(--ce-p2);
   border: 1px solid var(--ce-p3);
@@ -2311,6 +2354,125 @@ label span {
     border-color 0.18s ease;
 }
 
+.recurrence-choice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.recurrence-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--ce-p4);
+  border-radius: 10px;
+  background: var(--ce-paper);
+  color: var(--ce-ink3);
+  cursor: pointer;
+}
+
+.recurrence-choice.selected {
+  border-color: var(--ce-acc-border);
+  background: var(--ce-acc-soft);
+  color: var(--ce-ink);
+}
+
+.recurrence-choice input {
+  margin: 3px 0 0;
+  accent-color: var(--ce-acc);
+}
+
+.recurrence-choice span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.recurrence-choice strong {
+  color: var(--ce-ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.recurrence-choice small {
+  color: var(--ce-ink3);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.recurrence-inline-control {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: -2px 0 3px 34px;
+  max-width: 280px;
+}
+
+.recurrence-inline-control .field-input {
+  margin: 0;
+}
+
+.occurrence-count-control .field-input {
+  width: 90px;
+  flex: 0 0 90px;
+}
+
+.occurrence-count-control span {
+  color: var(--ce-ink3);
+  font-size: 12px;
+}
+
+.recurrence-schedule-preview {
+  padding: 12px 14px;
+  border: 1px solid var(--ce-pinkbdr);
+  border-radius: 11px;
+  background: var(--ce-pinkbg);
+}
+
+.recurrence-schedule-preview > strong {
+  display: block;
+  color: var(--ce-ink);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.recurrence-schedule-preview > p {
+  margin: 4px 0 0;
+  color: var(--ce-ink3);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.next-occurrences {
+  margin-top: 10px;
+}
+
+.next-occurrences > span {
+  color: var(--ce-ink4);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.next-occurrences ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 7px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.next-occurrences li {
+  padding: 5px 8px;
+  border: 1px solid var(--ce-pinkbdr);
+  border-radius: 999px;
+  background: var(--ce-paper);
+  color: var(--ce-ink2);
+  font-size: 11px;
+}
 .recurrence-step.complete {
   border-color: transparent;
 }

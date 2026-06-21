@@ -80,12 +80,15 @@
           </div>
         </div>
         <p class="datetime-summary">{{ selectedSummary }}</p>
+        <p v-if="timeConstraintMessage" class="time-constraint-message" role="alert">
+          {{ timeConstraintMessage }}
+        </p>
       </div>
     </div>
 
     <div class="datetime-picker-actions">
       <button @click="$emit('close')" class="cancel-btn">Cancel</button>
-      <button @click="applySelection" class="apply-btn">{{ applyButtonLabel }}</button>
+      <button @click="applySelection" class="apply-btn" :disabled="!selectionValid">{{ applyButtonLabel }}</button>
     </div>
   </div>
 </template>
@@ -106,7 +109,15 @@ const props = defineProps({
     type: Date,
     default: null,
   },
+  minDateTime: {
+    type: Date,
+    default: null,
+  },
   maxDate: {
+    type: Date,
+    default: null,
+  },
+  maxDateTime: {
     type: Date,
     default: null,
   },
@@ -118,6 +129,10 @@ const props = defineProps({
     type: String,
     default: 'datetime',
     validator: (value) => ['datetime', 'date', 'time'].includes(value),
+  },
+  invalidTimeMessage: {
+    type: String,
+    default: 'Choose a later time.',
   },
 })
 
@@ -230,6 +245,21 @@ const applyButtonLabel = computed(() => {
   if (props.mode === 'date') return 'Set Date'
   if (props.mode === 'time') return 'Set Time'
   return 'Set Date & Time'
+})
+const selectionValid = computed(() => {
+  const value = selectedDate.value?.getTime()
+  if (!Number.isFinite(value)) return false
+  if (props.minDateTime && value < props.minDateTime.getTime()) return false
+  if (props.maxDateTime && value > props.maxDateTime.getTime()) return false
+  return true
+})
+
+const timeConstraintMessage = computed(() => {
+  if (selectionValid.value) return ''
+  if (props.maxDateTime && selectedDate.value > props.maxDateTime) {
+    return 'Choose a time no later than the allowed maximum.'
+  }
+  return props.invalidTimeMessage
 })
 
 // Methods
@@ -348,6 +378,7 @@ function updateSelectedDateTime() {
 }
 
 function applySelection() {
+  if (!selectionValid.value) return
   emit('update:dateTime', selectedDate.value)
   emit('close')
 }
@@ -652,6 +683,18 @@ watch(
   background-color: #3755d8;
 }
 
+.apply-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.time-constraint-message {
+  margin: 10px 0 0;
+  color: #d92d20;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
 :global(:root:not(.light)) .datetime-picker {
   background-color: #19181e;
   border: 1px solid rgba(255, 255, 255, 0.1);

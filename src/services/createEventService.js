@@ -1,3 +1,5 @@
+import { APP_DEFAULT_TIME_ZONE, toLocalDateTimeString } from '@/utils/eventDateTime'
+
 export const DEFAULT_CREATE_EVENT_TIPS = [
   {
     id: 'cover-photo',
@@ -50,49 +52,38 @@ const sanitizeTicket = (ticket) => ({
   perks: stripUnsafeHtml(ticket.perks),
   salesStart: ticket.salesStart || null,
   salesEnd: ticket.salesEnd || null,
+  salesStartLocal: toLocalDateTimeString(ticket.salesStart),
+  salesEndLocal: toLocalDateTimeString(ticket.salesEnd),
 })
 
-const sanitizeRepeatDayOverrides = (overrides = {}) =>
-  Object.fromEntries(
-    Object.entries(overrides)
-      .filter(([, override]) => override?.startTime && override?.endTime)
-      .map(([day, override]) => [
-        day,
-        {
-          startTime: override.startTime,
-          endTime: override.endTime,
-        },
-      ]),
-  )
-
-const sanitizeRecurringConfig = (recurring = {}) => ({
-  frequency: recurring.frequency || null,
-  selectedDays: Array.isArray(recurring.selectedDays) ? [...recurring.selectedDays] : [],
-  useDefaultTimes: recurring.useDefaultTimes !== false,
-  perDayTimes:
-    recurring.useDefaultTimes === false
-      ? sanitizeRepeatDayOverrides(recurring.perDayTimes)
-      : {},
+const sanitizeRecurrence = (recurrence = {}) => ({
+  frequency: recurrence.frequency || null,
+  weeklyDays: Array.isArray(recurrence.weeklyDays) ? [...recurrence.weeklyDays] : [],
+  monthlyMode: recurrence.monthlyMode || 'day_of_month',
+  dayOfMonth: Number(recurrence.dayOfMonth) || null,
+  nthWeekday: {
+    ordinal: Number(recurrence.nthWeekday?.ordinal) || null,
+    weekday: Number.isInteger(recurrence.nthWeekday?.weekday)
+      ? recurrence.nthWeekday.weekday
+      : null,
+  },
+  seriesEndType: recurrence.seriesEndType || null,
+  seriesEndDate:
+    recurrence.seriesEndType === 'on_date' ? recurrence.seriesEndDate || null : null,
+  occurrenceCount:
+    recurrence.seriesEndType === 'after_occurrences'
+      ? Number(recurrence.occurrenceCount) || null
+      : null,
 })
-
 export const buildCreateEventPayload = (form) => ({
   title: stripUnsafeHtml(form.title),
   startsAt: form.startsAt || null,
   endsAt: form.endsAt || null,
-  recurring: sanitizeRecurringConfig(form.recurring),
-  recurrence: {
-    type: form.recurrenceType,
-    frequency: form.repeatUnit || form.repeatFrequency || null,
-    interval: Number(form.repeatInterval) || 1,
-    unit: form.repeatUnit || null,
-    days: [...form.repeatDays],
-    startDate: form.repeatStartDate || null,
-    startTime: form.repeatStartTime || null,
-    endTime: form.repeatEndTime || null,
-    dayOverrides: sanitizeRepeatDayOverrides(form.repeatDayOverrides),
-    stopMode: form.repeatStopMode || null,
-    endDate: form.repeatEndDate || null,
-  },
+  startsAtLocal: toLocalDateTimeString(form.startsAt),
+  endsAtLocal: toLocalDateTimeString(form.endsAt),
+  timeZone: form.venueTimezone || APP_DEFAULT_TIME_ZONE,
+  eventType: form.eventType,
+  recurrence: form.eventType === 'recurring' ? sanitizeRecurrence(form.recurrence) : null,
   format: form.format,
   venue: stripUnsafeHtml(form.venue),
   meetingLink: stripUnsafeHtml(form.meetingLink),

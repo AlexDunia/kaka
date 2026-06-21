@@ -40,8 +40,11 @@
             :title="modalTitle"
             :initial-date-time="modelValue || new Date()"
             :min-date="minDate"
+            :min-date-time="minDateTime"
             :max-date="maxDate"
+            :max-date-time="maxDateTime"
             :use12-hour-format="use12HourFormat"
+            :invalid-time-message="invalidTimeMessage"
             @update:date-time="updateDateTime"
             @close="closePicker"
           />
@@ -89,13 +92,25 @@ const props = defineProps({
     type: Date,
     default: null,
   },
+  minDateTime: {
+    type: Date,
+    default: null,
+  },
   maxDate: {
+    type: Date,
+    default: null,
+  },
+  maxDateTime: {
     type: Date,
     default: null,
   },
   use12HourFormat: {
     type: Boolean,
     default: true,
+  },
+  invalidTimeMessage: {
+    type: String,
+    default: 'Choose a later time.',
   },
 })
 
@@ -156,22 +171,6 @@ function updateDateTime(dateTime) {
   closePicker()
 }
 
-// Format date for display
-const formatDate = (date) => {
-  try {
-    if (!date) return ''
-    return new Date(date).toLocaleString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  } catch {
-    return 'Invalid date'
-  }
-}
 </script>
 
 <style scoped>
