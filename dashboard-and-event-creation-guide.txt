@@ -1,0 +1,1513 @@
+KAKA / RUSH HOUR DASHBOARD AND EVENT CREATION GUIDE
+Generated from the current source in C:\Users\HP\kaka
+
+This file merges two things:
+1. A full walkthrough of the dashboard page, including each major slide/panel/div and what data it displays.
+2. A guideline for how events are created, how the form is structured, what payload is built, and how the API flow is intended to work.
+
+Important note:
+The dashboard at /dashboard is currently mostly a hard-coded event-management mockup for one sample event: "Comedy Meets Dance". It does not yet load live dashboard analytics from the event store or backend. The create-event page is much more functional: it owns real form state, validates the wizard, builds a backend-ready payload, saves drafts, and tries to publish through API endpoints.
+
+
+============================================================
+1. MAIN APP ROUTES RELATED TO THIS GUIDE
+============================================================
+
+Router file:
+src/router/index.js
+
+Dashboard route:
+- Path: /dashboard
+- Name: dashboard
+- Component: src/pages/Dashboard.vue
+- Requires auth: yes, through meta.requiresAuth
+- Full-screen shell: yes, through meta.fullScreenShell
+- Purpose: manage event performance, tickets, guests, payouts, and settings.
+
+Create event route:
+- Path: /create-event
+- Name: CreateEvent
+- Component: src/pages/CreateEvent.vue
+- Purpose: create and publish a new event.
+- Current route metadata does not require auth in the frontend router, but a real backend must still require an authenticated organiser before drafts, publishing, media upload, ticket creation, payouts, or dashboard access.
+
+
+============================================================
+2. DASHBOARD PAGE STRUCTURE
+============================================================
+
+Main dashboard file:
+src/pages/Dashboard.vue
+
+The dashboard has two modes:
+- Manage mode: normal dashboard views such as overview, insights, check-in, email, promo codes, share, payouts, and settings.
+- Edit mode: a four-step event editing/review flow: Basics, Details, Tickets, Attendees.
+
+Main local state in Dashboard.vue:
+- theme: injected from the global theme controller, defaulting to dark.
+- dropdownOpen: controls the event switcher dropdown in the sidebar.
+- isEditMode: false means manage dashboard; true means edit event.
+- currentStep: current edit step number, 1 to 4.
+- currentManageView: current manage tab, default "overview".
+- pageBody: scroll container ref used to scroll to top when switching views.
+
+Main dashboard layout:
+- <div class="event-dashboard">
+  - DashboardSidebar
+  - <main class="main">
+    - DashboardTopbar
+    - <div id="page-body" class="page-body">
+      - DashboardManageContent when not editing.
+      - DashboardEditContent when editing.
+
+Dashboard mode switching:
+- Clicking "Edit event" in DashboardTopbar sets isEditMode to true and moves to step 1.
+- Clicking "Cancel" in the edit topbar exits edit mode.
+- Clicking sidebar manage items changes currentManageView.
+- Clicking sidebar edit steps or topbar edit progress changes currentStep.
+
+
+============================================================
+3. DASHBOARD SIDEBAR
+============================================================
+
+File:
+src/components/dashboard/DashboardSidebar.vue
+
+What it does:
+- Shows navigation for the dashboard.
+- Shows the current event switcher.
+- Switches between manage navigation and edit-step navigation depending on isEditMode.
+
+Top sidebar areas:
+1. Back link:
+   - Text: My Events
+   - Emits go-back.
+   - Current Dashboard.vue handler only shows an alert: "Going back to My Events..."
+
+2. Event switcher:
+   - Current event image: Cloudinary image for Comedy Meets Dance.
+   - Current event name: Comedy Meets Dance.
+   - Current status: Live.
+   - Dropdown contains one other live event:
+     - 6th Service w/ Mudiaga
+   - This is currently static/hard-coded.
+
+3. Manage navigation:
+   - Overview
+   - Insights
+   - Check-in & QR
+   - Email Attendees
+   - Promo Codes
+   - Share Event
+   - Payouts
+   - Event Settings
+
+4. Edit navigation:
+   - Basics, step 1
+   - Details, step 2
+   - Tickets, step 3
+   - Attendees, step 4
+
+5. Sidebar footer:
+   - User initials: AJ
+   - User name: Alex Johnson
+   - Role: Event Organiser
+   - This is static/hard-coded.
+
+
+============================================================
+4. DASHBOARD TOPBAR
+============================================================
+
+File:
+src/components/dashboard/DashboardTopbar.vue
+
+Manage mode topbar:
+- Left side:
+  - Event name: Comedy Meets Dance
+  - Status: Live
+- Right side:
+  - "View public page" button. Currently visual only; it does not navigate.
+  - "Edit event" button. Emits enter-edit-mode.
+
+Edit mode topbar:
+- Label: Editing event
+- Step progress:
+  - Basics
+  - Details
+  - Tickets
+  - Attendees
+- Saved badge: "Saved"
+- Cancel button: exits edit mode.
+- Save changes button: currently visual only; no save handler is wired here.
+
+
+============================================================
+5. DASHBOARD MANAGE CONTENT
+============================================================
+
+File:
+src/components/dashboard/DashboardManageContent.vue
+
+This component always shows:
+1. DashboardEventHero
+2. DashboardStatStrip
+3. One selected manage view based on currentManageView
+
+View mapping:
+- overview -> DashboardOverviewView
+- insights -> DashboardInsightsView
+- checkin -> DashboardCheckinView
+- email -> DashboardEmailView
+- promo -> DashboardPromoView
+- share -> DashboardShareView
+- payout -> DashboardPayoutView
+- settings -> DashboardSettingsView
+
+
+============================================================
+6. DASHBOARD EVENT HERO
+============================================================
+
+File:
+src/components/dashboard/DashboardEventHero.vue
+
+This is the large event header at the top of manage mode.
+
+Data shown:
+- Cover image: Comedy Meets Dance Cloudinary image.
+- Status: Live now.
+- Event title: Comedy Meets Dance.
+- Date/time: May 12, 2026 - 6:00 PM.
+- Venue: Eko Hotel & Suites, Lagos.
+
+Current data source:
+- Static template data.
+- It does not receive props from the event store yet.
+
+
+============================================================
+7. DASHBOARD STAT STRIP
+============================================================
+
+File:
+src/components/dashboard/DashboardStatStrip.vue
+
+This is the row of top KPI cards below the hero.
+
+Card 1: Tickets sold
+- Value: 612
+- Trend: +18% this week
+- Progress text: 612 of 850
+- Progress percent: 72%
+
+Card 2: Revenue
+- Value: NGN 7.4M
+- Trend: NGN 1.2M this week
+
+Card 3: Spots left
+- Value: 238
+- Subtext: out of 850 total
+
+Card 4: Page views
+- Value: 4,821
+- Subtext: 3.2% buy a ticket
+
+Current data source:
+- Static template data.
+
+
+============================================================
+8. DASHBOARD OVERVIEW VIEW
+============================================================
+
+File:
+src/components/dashboard/DashboardOverviewView.vue
+
+This is the default dashboard tab.
+
+Main sections:
+
+1. Quick actions
+- Check-in
+  - Opens currentManageView "checkin".
+  - Text: Scan tickets at the door.
+- Email attendees
+  - Opens currentManageView "email".
+  - Text: Send a message to everyone.
+- Share event
+  - Opens currentManageView "share".
+  - Text: Get your link out there.
+- Payouts
+  - Opens currentManageView "payout".
+  - Text: NGN 7.4M ready to withdraw.
+
+2. Ticket sales over time
+- Card title: Tickets bought per day.
+- Range pills: 7d, 30d, All.
+- 30d is visually selected.
+- Chart is a hard-coded SVG line/area chart.
+- It does not use a charting library or live sales data yet.
+
+3. Tickets by category
+- Early Bird:
+  - 61 sold.
+  - 89 spots left of 150.
+  - Progress: 41%.
+  - Price: NGN 5,000.
+  - Revenue: NGN 305,000 earned.
+- General Admission:
+  - 177 sold.
+  - 323 spots left of 500.
+  - Progress: 35%.
+  - Price: NGN 10,000.
+  - Revenue: NGN 1,770,000 earned.
+- VIP:
+  - 38 sold.
+  - 12 spots left of 50.
+  - Progress: 76%.
+  - Price: NGN 30,000.
+  - Revenue: NGN 1,140,000 earned.
+- Gold Table:
+  - 336 sold / almost full.
+  - Only 5 spots left.
+  - Progress: 93%.
+  - Price: NGN 250,000.
+  - Revenue: NGN 4,200,000 earned.
+
+4. Where buyers came from
+- WhatsApp:
+  - 271 buyers.
+  - 44%.
+- Direct link:
+  - 148 buyers.
+  - 24%.
+- Instagram:
+  - 110 buyers.
+  - 18%.
+- X / Twitter:
+  - 55 buyers.
+  - 9%.
+- Other:
+  - 28 buyers.
+  - 5%.
+
+Current data source:
+- Static template data.
+
+
+============================================================
+9. DASHBOARD INSIGHTS VIEW
+============================================================
+
+File:
+src/components/dashboard/DashboardInsightsView.vue
+
+Purpose:
+- Shows a focused analytics page for the event.
+
+Header:
+- Eyebrow: Insights.
+- Title: How it's going.
+- Paragraph: Live data for Comedy Meets Dance. Updates every few minutes.
+
+Stat cards:
+- Tickets sold: 612, +18% this week.
+- Revenue: NGN 7.4M, NGN 1.2M this week.
+- Spots left: 238 out of 850.
+- Page views: 4,821, 3.2% convert.
+
+Chart:
+- Tickets bought per day.
+- Last 30 days.
+- Range pills: 7d, 30d, All.
+- Hard-coded SVG line chart.
+
+Current data source:
+- Static template data.
+
+
+============================================================
+10. DASHBOARD CHECK-IN AND QR VIEW
+============================================================
+
+File:
+src/components/dashboard/DashboardCheckinView.vue
+
+Purpose:
+- Shows check-in progress, event QR code area, and attendee search/list UI.
+
+Header:
+- Eyebrow: Check-in & QR.
+- Title: Who's here?
+- Paragraph: Scan tickets at the door or search by name. 612 tickets sold.
+
+Stats:
+- Checked in: 312.
+- Not yet arrived: 300.
+- Check-in rate: 51%.
+
+QR card:
+- Section title: Event QR code.
+- Fake QR visual placeholder.
+- Caption: Print or display at the entrance. Guests scan to check in.
+- Buttons:
+  - Download QR
+  - Print page
+- Buttons are currently visual only.
+
+Search/list card:
+- Search placeholder: Search by name or ticket number...
+- Attendees shown:
+  - Adaeze Okonkwo, VIP, #8821, In.
+  - Biodun Martins, General, #8822, In.
+  - Chioma Adekunle, Early Bird, #8823, Waiting.
+  - Dami Olawale, General, #8824, In.
+  - Emeka Ifeanyi, VIP, #8825, Waiting.
+
+Current data source:
+- Static template data.
+
+
+============================================================
+11. DASHBOARD EMAIL ATTENDEES VIEW
+============================================================
+
+File:
+src/components/dashboard/DashboardEmailView.vue
+
+Purpose:
+- Compose an email to all attendees and view past email campaigns.
+
+Header:
+- Eyebrow: Email Attendees.
+- Title: Send a message.
+- Paragraph: Reach all 612 people who bought a ticket.
+
+Warning banner:
+- Emails go to all 612 people. Double-check before you send.
+
+Compose area:
+- To: All attendees (612).
+- Subject default: Quick update about Comedy Meets Dance.
+- Body explains doors open at 5:30 PM, parking is available, and ends as Rush Hour Entertainment.
+- Toolbar has link/list icon buttons.
+- Actions:
+  - Save draft
+  - Send to 612 people
+- These are currently visual only.
+
+Past emails:
+- Campaign 1:
+  - Subject: You're in! Comedy Meets Dance.
+  - Type: Confirmation.
+  - 612 sent.
+  - Date: Apr 14.
+  - Opened: 84%.
+  - Clicked: 22%.
+- Campaign 2:
+  - Subject: VIP spots almost gone.
+  - Type: Manual.
+  - 540 sent.
+  - Date: Apr 22.
+  - Opened: 71%.
+  - Clicked: 31%.
+
+Current data source:
+- Static template data.
+
+
+============================================================
+12. DASHBOARD PROMO CODES VIEW
+============================================================
+
+File:
+src/components/dashboard/DashboardPromoView.vue
+
+Purpose:
+- Show discount/promo code performance and controls.
+
+Header:
+- Eyebrow: Promo Codes.
+- Title: Your discounts.
+- Paragraph: Create codes to give people a discount when they buy a ticket.
+
+Stats:
+- Active codes: 3.
+- Total uses: 87.
+- Revenue from codes: NGN 620K.
+
+Active promo codes:
+- LASVIP30:
+  - 30% off VIP tickets.
+  - Expires May 10.
+  - No use limit.
+  - 42 uses.
+- FRIENDS:
+  - NGN 2,000 off any ticket.
+  - No expiry.
+  - Max 50 uses.
+  - 29 uses.
+- MEDIA50:
+  - Free ticket / 100% off.
+  - Expires Apr 30.
+  - Max 20 uses.
+  - 16 uses.
+
+Expired promo code:
+- EARLYBIRD:
+  - 20% off Early Bird.
+  - Expired Apr 1.
+
+Action:
+- Create a new promo code.
+- Currently visual only.
+
+Current data source:
+- Static template data.
+
+
+============================================================
+13. DASHBOARD SHARE EVENT VIEW
+============================================================
+
+File:
+src/components/dashboard/DashboardShareView.vue
+
+Purpose:
+- Give the organiser a share link, social channels, and QR code.
+
+Header:
+- Eyebrow: Share Event.
+- Title: Spread the word.
+- Paragraph: Share your event link. More reach, more tickets sold.
+
+Banner:
+- Message says WhatsApp gets 3x more conversions for Nigerian events and recommends sharing there first.
+
+Event link:
+- URL displayed: rushhourtickets.com/e/comedy-meets-dance-2026.
+- Copy link button.
+- Currently visual only.
+
+Share channels:
+- WhatsApp: share to contacts and groups.
+- Instagram: story or post with your link.
+- X / Twitter: tweet your event.
+- Facebook: share to page or groups.
+- LinkedIn: for professional events.
+- Email: copy a ready-to-send message.
+
+QR code:
+- QR placeholder.
+- Text encourages using it on flyers and posters.
+- Download QR button.
+
+Current data source:
+- Static template data.
+
+
+============================================================
+14. DASHBOARD PAYOUT VIEW
+============================================================
+
+File:
+src/components/dashboard/DashboardPayoutView.vue
+
+Purpose:
+- Show event earnings, payout account, and recent transactions.
+
+Header:
+- Eyebrow: Payouts.
+- Title: Your earnings.
+- Paragraph: Revenue from this event. Payouts go to GTBank ending 7823.
+
+Payout hero card:
+- Available to withdraw: NGN 7,415,000.
+- Fee note: After 5% platform fee, NGN 390,263 deducted.
+- Withdraw now button.
+- Currently visual only.
+
+Payout account:
+- Bank: GTBank.
+- Account number: masked, ending 7823.
+- Account name: Rush Hour Entertainment Ltd.
+
+Transactions:
+- 4 tickets sold - General, VIP:
+  - Apr 27, 11:34 PM.
+  - +NGN 50,000.
+- 2 tickets sold - Early Bird:
+  - Apr 27, 9:10 AM.
+  - +NGN 10,000.
+- Platform fee:
+  - Apr 27, 9:10 AM.
+  - -NGN 500.
+- 1 Gold Table sold:
+  - Apr 26, 3:55 PM.
+  - +NGN 250,000.
+
+Current data source:
+- Static template data.
+
+
+============================================================
+15. DASHBOARD SETTINGS VIEW
+============================================================
+
+File:
+src/components/dashboard/DashboardSettingsView.vue
+
+Purpose:
+- Manage event visibility, notifications, and dangerous event actions.
+
+Header:
+- Eyebrow: Event Settings.
+- Title: Event settings.
+- Paragraph: Control visibility, notifications, and what happens with this event.
+
+Visibility toggles:
+- Event is public: on.
+- Show on Rush Hour discovery: on.
+- Show exact attendee count: off.
+
+Notification toggles:
+- Email me every new ticket sale: off.
+- Daily summary email: on.
+- Notify when 90% sold out: on.
+
+Danger zone:
+- Pause ticket sales:
+  - Stop new purchases. Current tickets stay valid.
+- Cancel this event:
+  - All buyers get a full refund. This cannot be undone.
+- Delete this event:
+  - Permanently removes the event and all data.
+
+Current data source:
+- Static template data.
+- Toggles and danger actions are visual only right now.
+
+
+============================================================
+16. DASHBOARD EDIT MODE
+============================================================
+
+Files:
+- src/components/dashboard/DashboardEditContent.vue
+- src/components/dashboard/DashboardEditBasicsStep.vue
+- src/components/dashboard/DashboardEditDetailsStep.vue
+- src/components/dashboard/DashboardEditTicketsStep.vue
+- src/components/dashboard/DashboardEditAttendeesStep.vue
+
+Important:
+This edit mode is a static review/edit mockup for "Comedy Meets Dance". It is not the same as the full create-event wizard. It does not currently bind to editable input models or call a backend save endpoint.
+
+EditContent mapping:
+- currentStep 1 -> Basics
+- currentStep 2 -> Details
+- currentStep 3 -> Tickets
+- currentStep 4 -> Attendees
+
+Step 1: Basics
+- Event name: Comedy Meets Dance.
+- Starts: May 12, 2026 - 6:00 PM.
+- Ends: May 12, 2026 - 10:00 PM.
+- Recurring: One-time event.
+- Event type/format: In-Person.
+- Venue: Eko Hotel & Suites, Victoria Island, Lagos.
+- Category: Party & Social.
+- Next button moves to Details.
+
+Step 2: Details
+- Cover image: same Comedy Meets Dance image.
+- Images added: 1 image uploaded; first image is the cover.
+- Description: comedy and dance collide, Lagos comics and dance crews, laughter and entertainment.
+- Organiser: Rush Hour Entertainment.
+- Website: Not added.
+- Dress code: Smart casual, no slippers or flip-flops, bring a light jacket.
+- Parking: Free parking on site via main gate on Adetokunbo Ademola Street.
+- Back moves to Basics; next moves to Tickets.
+
+Step 3: Tickets
+- Attendance type: Paid tickets.
+- Ticket categories:
+  - Early Bird: individual, 150 spots, 89 remaining, NGN 5,000.
+  - General Admission: individual, 500 spots, 323 remaining, NGN 10,000.
+  - VIP: individual, 50 spots, 12 remaining, NGN 30,000.
+  - Gold Table: table, seats 10, 5 remaining, NGN 250,000.
+- Payout:
+  - Bank: GTBank.
+  - Account: masked, ending 7823.
+  - Account name: Rush Hour Entertainment Ltd.
+- Back moves to Details; next moves to Attendees.
+
+Step 4: Attendees
+- Registration form fields:
+  - Full name: on, required.
+  - Email address: on, required.
+  - Phone number: on, optional.
+  - Organisation: off.
+  - How did you hear about us?: on, optional.
+- Confirmation email:
+  - Subject: You're in! Comedy Meets Dance.
+  - Personal message about laughing, dancing, and seeing guests on May 12.
+- Finish button exits edit mode.
+
+
+============================================================
+17. CREATE EVENT PAGE STRUCTURE
+============================================================
+
+Main file:
+src/pages/CreateEvent.vue
+
+Related files:
+- src/services/createEventService.js
+- src/api/axios.js
+- src/utils/eventDateTime.js
+- src/utils/recurrenceSchedule.js
+- src/components/DateTimePickerInput.vue
+- src/components/EventCard.vue
+
+Create Event is a four-step wizard:
+1. Basics
+2. Details
+3. Tickets
+4. Attendees
+
+The page also has:
+- Header with logo, back button, step progress, theme toggle, draft status, and Save draft button.
+- Optional live preview panel using EventCard.
+- Tip card using DEFAULT_CREATE_EVENT_TIPS.
+- Success screen after publish.
+
+Current main state:
+- currentStep: starts at 1.
+- maxStepReached: prevents jumping to future steps before they are reached.
+- previewOn: saved to localStorage key kaka-create-preview.
+- draftSaved: temporary badge state.
+- published: switches to the success screen.
+- draftId: backend draft ID after first successful draft save.
+- isSaving / isPublishing: API request state.
+- saveError / publishErrors: normalized backend errors.
+- errors: frontend validation messages keyed by field.
+
+
+============================================================
+18. CREATE EVENT FORM STATE
+============================================================
+
+The canonical form object in CreateEvent.vue contains:
+
+- title
+- startsAt
+- endsAt
+- eventType: one_time or recurring
+- recurrence:
+  - frequency: daily, weekly, monthly, or null
+  - weeklyDays: JavaScript weekday numbers, 0 Sunday through 6 Saturday
+  - monthlyMode: day_of_month or nth_weekday
+  - dayOfMonth
+  - nthWeekday.ordinal
+  - nthWeekday.weekday
+  - seriesEndType: on_date or after_occurrences
+  - seriesEndDate
+  - occurrenceCount
+- format: in-person, online, or hybrid
+- venue
+- venueTimezone
+- meetingLink
+- category
+- coverImage
+- coverGradient
+- secondaryImages
+- urlImages
+- description
+- organiser
+- organiserWebsite
+- tags
+- extraDetails
+- ticketMode: free or paid
+- freeCapacity
+- tickets
+- attendeeFields
+
+Defaults:
+- startsAt is tomorrow at 6:00 PM.
+- endsAt is tomorrow at 10:00 PM.
+- eventType is one_time.
+- format is in-person.
+- ticketMode is free.
+- attendee fields come from attendeeFieldDefaults.
+
+
+============================================================
+19. CREATE EVENT STEP 1: BASICS
+============================================================
+
+Purpose:
+Collect the core event identity, timing, recurrence, format, location/link, and category.
+
+UI sections:
+1. Event name
+   - Text input.
+   - Required.
+   - Max length: 100.
+
+2. Event type
+   - One-time.
+   - Recurring.
+
+3. When
+   - Starts / First occurrence starts.
+   - Ends / First occurrence ends.
+   - Uses DateTimePickerInput.
+   - Start must be at least 30 minutes from now in the event timezone.
+   - End must be after start.
+   - For one-time multi-day events, the UI shows a duration hint.
+
+4. Recurrence controls, only when eventType is recurring
+   - Repeats:
+     - Daily.
+     - Weekly.
+     - Monthly.
+   - Weekly days:
+     - Sunday through Saturday chips.
+     - The first occurrence weekday is automatically included.
+   - Monthly mode:
+     - Same date every month.
+     - Same weekday pattern every month.
+   - Series ends:
+     - On a date.
+     - After number of occurrences.
+   - Schedule preview:
+     - Plain-English recurrence text.
+     - Time range.
+     - Start date.
+     - Series end text.
+     - Up to five generated upcoming dates.
+
+5. Format
+   - In-person.
+   - Online.
+   - Hybrid.
+
+6. Venue / location
+   - Required for in-person and hybrid.
+   - Uses hard-coded Nigerian venue suggestions.
+   - A picked venue can set venueTimezone.
+
+7. Meeting link
+   - Required for online and hybrid.
+   - Help text says it is only shown to confirmed attendees in email.
+
+8. Category
+   - Dropdown/menu from categoryOptions.
+
+
+============================================================
+20. CREATE EVENT STEP 2: DETAILS
+============================================================
+
+Purpose:
+Collect event media and richer public content.
+
+UI sections:
+1. Event images
+   - Cover image is required.
+   - Max 6 images.
+   - Upload methods:
+     - File drag/drop or browse.
+     - Direct image URL ending in jpg, jpeg, png, webp, or gif.
+     - Gradient template selection.
+   - First image becomes the cover.
+   - Later images go into secondaryImages.
+   - A secondary image can be promoted to cover.
+   - Cover can be removed, then the first secondary image becomes cover if available.
+
+2. Description
+   - Optional text area.
+   - Explains what attendees should expect.
+
+3. Organiser
+   - Name or organisation.
+   - Website URL.
+   - Both optional.
+
+4. Extra details
+   - Optional chips add text areas.
+   - Current option types include items such as what to bring, food and drinks, parking, dress code, accessibility, age restriction, refund policy, and FAQs.
+   - Each added detail is stored as type, label, and value.
+
+5. Tags
+   - Optional free text.
+   - Example placeholder: networking, AI, Lagos.
+
+
+============================================================
+21. CREATE EVENT STEP 3: TICKETS
+============================================================
+
+Purpose:
+Configure whether the event is free or paid, and define ticket categories.
+
+Ticket mode:
+1. Free admission
+   - Anyone can register at no cost.
+   - Optional max spots stored in freeCapacity.
+
+2. Paid tickets
+   - User can add template tickets or a custom category.
+   - Templates include common categories such as Early Bird, General, VIP, and Table.
+
+Ticket object fields:
+- id: temporary client-side ID.
+- name.
+- unitType: individual or table.
+- color.
+- price.
+- units.
+- peoplePerUnit.
+- maxPerPerson.
+- visible.
+- perks.
+- salesStart.
+- salesEnd.
+
+Paid ticket UI fields:
+- Ticket name.
+- Seat type:
+  - Individual seat.
+  - Group / Table.
+- Quantity:
+  - How many spots for individual.
+  - Number of tables for table.
+- People per table, only for table ticket type.
+- Price in NGN.
+- Max per person.
+- Sales open date/time.
+- Sales close date/time.
+- Show on event page toggle.
+
+Ticket calculations:
+- totalCapacity sums individual units plus table units multiplied by peoplePerUnit.
+- ticketSeatCount() calculates seats per ticket category.
+
+Important ambiguity:
+- In the current code, blank ticket quantity becomes 0 in the payload. The product/backend should decide whether blank means unlimited or unavailable.
+
+
+============================================================
+22. CREATE EVENT STEP 4: ATTENDEES
+============================================================
+
+Purpose:
+Choose what information each attendee must provide and preview the confirmation email.
+
+Attendee field defaults:
+- Full name: enabled and required.
+- Email address: enabled and required.
+- Phone number: optional toggle.
+- Organisation: optional toggle.
+- How did you hear about us?: optional toggle.
+
+Rules:
+- Required fields are shown with a required tag and cannot be toggled off in the UI.
+- Optional fields can be enabled or disabled.
+
+Confirmation email preview:
+- From: organiser name, event title, or "Your Event" via Kaka.
+- Subject: You're in! [event title].
+- Includes event title, event date, and location from previewEvent.
+
+
+============================================================
+23. CREATE EVENT VALIDATION RULES
+============================================================
+
+Navigation:
+- Continue calls goNext().
+- goNext() calls validateStep(currentStep).
+- User cannot jump to future steps past maxStepReached.
+
+Step 1 validation:
+- Event title is required after trimming.
+- Start date/time is required.
+- End date/time is required.
+- Start must be at least 30 minutes ahead of now in the event timezone.
+- End must be after start.
+- Venue is required for in-person and hybrid.
+- Meeting link is required for online and hybrid.
+- Category is required.
+- If recurring:
+  - Frequency is required.
+  - Weekly recurrence requires at least one weekday.
+  - Series end is required.
+  - Series end date must be after first occurrence date.
+  - Occurrence count must be a positive whole number.
+  - Recurrence must not overlap the next occurrence.
+
+Step 2 validation:
+- Cover image is required.
+
+Step 3 validation:
+- For paid events:
+  - At least one ticket category is required.
+  - Ticket name is required.
+  - Ticket price cannot be negative.
+  - Sales close must be after sales open.
+  - Sales close cannot be after event start.
+
+Step 4 validation:
+- No extra step-specific validation currently exists.
+
+Publish validation:
+- publishEvent() validates steps 1, 2, and 3 again before sending API requests.
+
+
+============================================================
+24. RECURRENCE STRUCTURE
+============================================================
+
+Utility file:
+src/utils/recurrenceSchedule.js
+
+Weekday values:
+- 0: Sunday
+- 1: Monday
+- 2: Tuesday
+- 3: Wednesday
+- 4: Thursday
+- 5: Friday
+- 6: Saturday
+
+Daily recurrence:
+- Uses the first occurrence start time and duration.
+- Repeats every calendar day.
+- A daily event duration of 24 hours or more is treated as overlapping.
+
+Weekly recurrence:
+- Uses selected weekday numbers.
+- The first occurrence weekday is kept selected.
+- All weekly occurrences share the same start time and duration.
+
+Monthly recurrence:
+- day_of_month mode repeats on the same calendar day.
+- If the target day does not exist in a shorter month, it clamps to the last day of that month.
+- nth_weekday mode repeats on patterns like "third Sunday".
+- If a fifth weekday does not exist in a month, that month is skipped.
+
+Series ending:
+- on_date: stops at the end of the selected date.
+- after_occurrences: stops after the selected count.
+
+Preview:
+- generateOccurrences() creates preview dates.
+- scheduleHasOverlap() detects if the event duration runs into the next occurrence.
+- These frontend preview dates are informational. The backend should generate authoritative occurrences server-side.
+
+
+============================================================
+25. CREATE EVENT PAYLOAD
+============================================================
+
+Payload builder:
+src/services/createEventService.js
+
+Function:
+buildCreateEventPayload(form)
+
+It sanitizes strings by removing script blocks, removing angle brackets, and trimming values.
+
+Top-level payload fields:
+- title
+- startsAt
+- endsAt
+- startsAtLocal
+- endsAtLocal
+- timeZone
+- eventType
+- recurrence
+- format
+- venue
+- meetingLink
+- category
+- description
+- organiser
+- organiserWebsite
+- tags
+- coverImage
+- secondaryImages
+- ticketMode
+- freeCapacity
+- tickets
+- attendeeFields
+- extraDetails
+
+Datetime:
+- startsAt and endsAt may be Date objects before JSON serialization.
+- startsAtLocal and endsAtLocal preserve local wall-clock values.
+- timeZone comes from venueTimezone or APP_DEFAULT_TIME_ZONE.
+
+One-time event:
+- eventType is one_time.
+- recurrence is null.
+
+Recurring event:
+- eventType is recurring.
+- recurrence includes frequency, weeklyDays, monthlyMode, dayOfMonth, nthWeekday, seriesEndType, seriesEndDate, and occurrenceCount.
+
+Ticket payload fields:
+- id
+- name
+- unitType
+- color
+- price
+- units
+- peoplePerUnit
+- maxPerPerson
+- visible
+- perks
+- salesStart
+- salesEnd
+- salesStartLocal
+- salesEndLocal
+
+Attendee fields payload:
+- id
+- label
+- enabled
+- required
+
+Extra details payload:
+- type
+- label
+- value
+
+Fields used in UI but not submitted:
+- coverGradient.
+- urlImages.
+- frontend icon component references.
+
+
+============================================================
+26. CREATE EVENT API FLOW
+============================================================
+
+Frontend API setup:
+src/api/axios.js
+
+API base:
+- baseURL: /api
+- Uses credentials.
+- Vite proxies /api to http://127.0.0.1:8000 in development.
+- Vite also proxies /sanctum to http://127.0.0.1:8000.
+
+CSRF:
+- ensureCsrfCookie() calls /sanctum/csrf-cookie before create/update/publish requests.
+
+Create-event service calls:
+- createEventDraft(form):
+  - ensure CSRF cookie.
+  - POST /api/create-event with buildCreateEventPayload(form).
+
+- updateEventDraft(eventId, form):
+  - ensure CSRF cookie.
+  - PATCH /api/create-event/{eventId} with buildCreateEventPayload(form).
+
+- publishEvent(eventId):
+  - ensure CSRF cookie.
+  - POST /api/create-event/{eventId}/publish.
+
+CreateEvent.vue API behavior:
+- Save draft:
+  - Calls persistDraft().
+  - If draftId exists, it PATCHes the existing draft.
+  - If draftId does not exist, it POSTs a new draft.
+  - The response must return data.id for draftId.
+  - lastSavedAt is updated.
+  - draftSaved badge is shown briefly.
+
+- Publish:
+  - Validates steps 1, 2, and 3.
+  - Calls persistDraft().
+  - Calls publishEventRequest(draftId).
+  - Stores response in publishedResponse.
+  - Sets published to true, showing the success screen.
+
+Expected publish response shape:
+- data.id
+- data.status
+- data.public_url
+- data.dashboard_url
+- message
+
+Success screen behavior:
+- Shows "Your event is live!"
+- Shows backend message or fallback: "Share it and start collecting attendees. Your dashboard can track everything live."
+- Shows event ID/status if returned.
+- Button routes to dashboard_url, public_url, or home.
+
+
+============================================================
+27. CURRENT BACKEND / API REALITY IN THIS REPO
+============================================================
+
+There are two different backend stories in the repo:
+
+1. New create-event frontend contract:
+   - Used by src/pages/CreateEvent.vue and src/services/createEventService.js.
+   - Expects Laravel/Sanctum-style endpoints:
+     - POST /api/create-event
+     - PATCH /api/create-event/{id}
+     - POST /api/create-event/{id}/publish
+   - These are not visible in the PHP api folder in this repo.
+
+2. Older event listing/search PHP API:
+   - File: api/events.php
+   - Reads from a MySQL events table.
+   - Supports GET listing, category filtering, featured filtering, search, date range, price range, sorting, and pagination.
+   - Supports GET by id.
+   - Has a purchase action stub/check.
+   - Does not implement the new create-event draft/publish flow.
+
+Existing database file:
+api/database.sql
+
+Existing events table shape:
+- id
+- title
+- description
+- category
+- subCategories as JSON text
+- date
+- location
+- mainImage
+- bannerImage
+- price
+- totalTickets
+- availableTickets
+- featured
+- organizer
+- duration
+- ticketTypes as JSON text
+- faqs as JSON text
+- created_at
+- updated_at
+
+Important mismatch:
+- The create-event payload is richer than the old events table.
+- The old PHP API uses fields like date, location, mainImage, totalTickets, ticketTypes.
+- The new CreateEvent.vue payload uses startsAt/endsAt, recurrence, format, venue/meetingLink, coverImage/secondaryImages, ticketMode/tickets, attendeeFields, and extraDetails.
+- A real backend should reconcile these before production.
+
+Docs note:
+- docs/create-event-current-infrastructure.md says publishing was local-only as of its last review on 2026-06-21.
+- The current code has moved beyond that: CreateEvent.vue now calls createEventDraft, updateEventDraft, and publishEventRequest.
+- That doc is useful historically but stale on the API-calling part.
+
+
+============================================================
+28. EVENT DATA LAYER OUTSIDE CREATE EVENT
+============================================================
+
+Store:
+src/stores/events.js
+
+Service:
+src/services/eventService.js
+
+Purpose:
+- Fetch all events.
+- Fetch one event by ID.
+- Fetch events by category.
+- Fetch featured events.
+- Search events.
+- Toggle/check likes.
+- Create/update/delete events through eventService.
+
+Important:
+- CreateEvent.vue does not use useEventStore().createEvent().
+- CreateEvent.vue uses createEventService.js instead.
+
+eventService.js:
+- Has EVENTS_API_URL set to http://127.0.0.1:8000/api/events.
+- Uses Axios.
+- Adds CSRF token for non-GET requests in its own API instance.
+- Has fallback support for some search/category calls.
+- Transforms Laravel-style paginated responses for listing.
+- Its createEvent method posts to /events.php through an Axios instance whose baseURL is already the events API URL, which is an inconsistent legacy path.
+
+Recommended direction:
+- Do not connect the new create-event wizard to the old /events.php write path.
+- Keep the richer create-event contract and implement it in the backend cleanly.
+
+
+============================================================
+29. RECOMMENDED BACKEND STRUCTURE FOR CREATED EVENTS
+============================================================
+
+Because the create-event payload is richer than the old table, the backend should not store everything in one flat events row.
+
+Suggested domains/tables:
+- events
+- event_locations
+- event_recurrence_rules
+- event_occurrences
+- event_media
+- categories
+- tags
+- event_tag
+- ticket_types
+- ticket_inventory_holds
+- orders
+- order_items
+- attendee_form_fields
+- attendees
+- attendee_answers
+- event_extra_details
+- promo_codes
+- payouts
+- dashboard_metrics or reporting views
+- audit_logs
+
+Suggested event core fields:
+- id
+- organiser_id or organisation_id
+- title
+- slug
+- status: draft, published, paused, cancelled, completed
+- event_type: one_time or recurring
+- format: in-person, online, hybrid
+- category_id
+- description
+- organiser_display_name
+- organiser_website
+- timezone
+- starts_at_utc
+- ends_at_utc
+- starts_at_local
+- ends_at_local
+- visibility flags
+- created_at
+- updated_at
+
+Suggested location fields:
+- event_id
+- venue_name/address
+- meeting_link, stored privately
+- timezone
+- lat/lng if map lookup is later added
+
+Suggested recurrence rule fields:
+- event_id
+- frequency
+- weekly_days_json
+- monthly_mode
+- day_of_month
+- ordinal
+- weekday
+- series_end_type
+- series_end_date
+- occurrence_count
+- timezone
+
+Suggested occurrence fields:
+- event_id
+- starts_at_utc
+- ends_at_utc
+- local_date
+- timezone
+- status
+
+Suggested ticket type fields:
+- event_id
+- name
+- unit_type
+- price_minor
+- currency, likely NGN
+- quantity_total, nullable for unlimited if product decides that
+- people_per_unit
+- max_per_buyer
+- visible
+- perks
+- sales_start_utc
+- sales_end_utc
+- sort_order
+
+Suggested attendee form fields:
+- event_id
+- field_key
+- label
+- enabled
+- required
+- sort_order
+- version/snapshot number
+
+
+============================================================
+30. BACKEND VALIDATION GUIDELINES
+============================================================
+
+The frontend validation is helpful but must not be trusted as the security boundary.
+
+Backend should validate:
+- User is authenticated.
+- User owns or can manage the organiser account.
+- Title exists and is within length limits.
+- Event timezone is valid.
+- Publish start time is at least 30 minutes in the future, calculated by backend time.
+- End time is after start.
+- Event type is one_time or recurring.
+- Format is in-person, online, or hybrid.
+- Venue is present for in-person/hybrid.
+- Meeting link is present and a valid URL for online/hybrid.
+- Category exists.
+- Cover media exists for publishing.
+- Recurrence frequency and pattern are valid.
+- Weekly days are integers from 0 to 6.
+- Monthly pattern is valid.
+- Series end is present for recurring events.
+- Occurrence count is positive when used.
+- Recurrence duration does not overlap the next occurrence.
+- Ticket names are present for paid ticket types.
+- Prices are not negative.
+- Money is stored as integer minor units.
+- Ticket sales close after sales open.
+- Ticket sales close no later than event start.
+- Ticket inventory cannot oversell.
+- Required attendee identity fields cannot be removed.
+- Strings are sanitized/escaped on output to prevent stored XSS.
+- Media uploads are validated by MIME type, size, and owner.
+
+
+============================================================
+31. HOW DASHBOARD SHOULD EVENTUALLY CONNECT TO REAL DATA
+============================================================
+
+Right now dashboard panels are static. A production version should load a selected event and analytics.
+
+Suggested dashboard data sources:
+- Event core:
+  - title, cover image, status, date/time, venue.
+- Ticket summary:
+  - total tickets sold.
+  - total capacity.
+  - spots left.
+  - sales by ticket category.
+  - revenue by category.
+- Analytics:
+  - page views.
+  - conversion rate.
+  - sales over time.
+  - traffic sources.
+- Check-in:
+  - attendee list.
+  - checked-in count.
+  - waiting count.
+  - QR code token/link.
+- Email:
+  - attendee segments.
+  - campaign drafts.
+  - sent campaigns.
+  - open/click stats.
+- Promo:
+  - active/expired promo codes.
+  - usage limits.
+  - discount values.
+  - revenue attributed to codes.
+- Share:
+  - canonical public URL.
+  - share URLs per channel.
+  - QR image.
+- Payouts:
+  - available balance.
+  - fees.
+  - payout account.
+  - transaction ledger.
+- Settings:
+  - visibility settings.
+  - notifications.
+  - pause/cancel/delete actions.
+
+Suggested route structure later:
+- /dashboard/events/{eventId}
+- /dashboard/events/{eventId}/insights
+- /dashboard/events/{eventId}/checkin
+- /dashboard/events/{eventId}/email
+- /dashboard/events/{eventId}/promo
+- /dashboard/events/{eventId}/share
+- /dashboard/events/{eventId}/payouts
+- /dashboard/events/{eventId}/settings
+
+
+============================================================
+32. QUICK SOURCE FILE MAP
+============================================================
+
+Dashboard:
+- src/pages/Dashboard.vue
+- src/components/dashboard/DashboardSidebar.vue
+- src/components/dashboard/DashboardTopbar.vue
+- src/components/dashboard/DashboardManageContent.vue
+- src/components/dashboard/DashboardEventHero.vue
+- src/components/dashboard/DashboardStatStrip.vue
+- src/components/dashboard/DashboardOverviewView.vue
+- src/components/dashboard/DashboardInsightsView.vue
+- src/components/dashboard/DashboardCheckinView.vue
+- src/components/dashboard/DashboardEmailView.vue
+- src/components/dashboard/DashboardPromoView.vue
+- src/components/dashboard/DashboardShareView.vue
+- src/components/dashboard/DashboardPayoutView.vue
+- src/components/dashboard/DashboardSettingsView.vue
+- src/components/dashboard/DashboardEditContent.vue
+- src/components/dashboard/DashboardEditBasicsStep.vue
+- src/components/dashboard/DashboardEditDetailsStep.vue
+- src/components/dashboard/DashboardEditTicketsStep.vue
+- src/components/dashboard/DashboardEditAttendeesStep.vue
+- src/components/dashboard/eventDashboard.css
+
+Create event:
+- src/pages/CreateEvent.vue
+- src/services/createEventService.js
+- src/api/axios.js
+- src/utils/eventDateTime.js
+- src/utils/recurrenceSchedule.js
+- src/components/DateTimePickerInput.vue
+- src/components/DateTimePicker.vue
+- src/components/EventCard.vue
+
+Event browsing/data:
+- src/stores/events.js
+- src/services/eventService.js
+- api/events.php
+- api/database.sql
+- docs/api-spec.md
+- docs/create-event-current-infrastructure.md
+
+
+============================================================
+33. SUMMARY
+============================================================
+
+Dashboard summary:
+- /dashboard is a polished event manager UI for "Comedy Meets Dance".
+- It has manage views for overview, insights, check-in, email, promo, share, payout, and settings.
+- It has edit-mode review steps for basics, details, tickets, and attendees.
+- Most dashboard values are hard-coded, not live backend data yet.
+
+Create event summary:
+- /create-event is the actual event creation wizard.
+- It has four steps: Basics, Details, Tickets, Attendees.
+- It validates each step before continuing.
+- It builds a sanitized payload through buildCreateEventPayload().
+- It now attempts backend draft and publish requests through createEventService.js.
+- The expected new endpoints are /api/create-event and /api/create-event/{id}/publish.
+- The older PHP api/events.php does not currently match this richer create-event contract.
+
+Best next engineering step:
+- Decide the backend contract for drafts and published events.
+- Implement the create-event endpoints.
+- Connect dashboard components to event-specific API data instead of hard-coded template values.

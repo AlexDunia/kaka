@@ -228,17 +228,15 @@ onUnmounted(() => {
       <div class="section-inner">
         <div class="section-header">
           <h2>Featured Events</h2>
-          <p>Debug: {{ sortedFeaturedEvents.length }} events</p>
         </div>
 
         <div v-if="loadingFeatured && !sortedFeaturedEvents.length" class="featured-skeleton">
-          <SkeletonLoader type="grid" :count="3" :color="skeletonColor" />
+          <SkeletonLoader type="grid" :count="5" :color="skeletonColor" />
         </div>
         <div v-else-if="sortedFeaturedEvents.length === 0" class="empty-state">
           <p>No featured events available. Check back soon!</p>
         </div>
         <div v-else class="event-grid">
-          <p>About to render {{ sortedFeaturedEvents.length }} EventCards</p>
           <EventCard v-for="event in sortedFeaturedEvents" :key="event.id" :event="event" />
         </div>
       </div>
@@ -580,5 +578,96 @@ onUnmounted(() => {
   .event-grid > * {
     box-shadow: 0 6px 16px var(--color-shadow);
   }
+}
+
+/* Mature event listing layout */
+.section-header h2 {
+  position: relative;
+  padding-left: 13px;
+  font-size: 1.22rem;
+  font-weight: 600;
+}
+
+.section-header h2::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12%;
+  width: 2px;
+  height: 76%;
+  border-radius: 2px;
+  background: var(--color-primary);
+}
+
+.event-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 238px), 1fr));
+  gap: 18px;
+  align-items: stretch;
+}
+
+.event-grid > *:hover {
+  transform: none;
+}
+
+/* Five-column desktop event grid */
+.event-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+@media (max-width: 1100px) {
+  .event-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .event-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .event-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 440px) {
+  .event-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Wider five-card canvas with clearer row separation */
+.section-inner {
+  max-width: 1320px;
+  padding-inline: 24px;
+}
+
+.event-grid {
+  column-gap: 18px;
+  row-gap: 34px;
+}
+
+@media (max-width: 640px) {
+  .event-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Four-column desktop grid */
+.event-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+/* Match the global header alignment rail exactly */
+.home-page {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.section-inner {
+  width: 100%;
+  max-width: 1320px;
+  padding-inline: clamp(16px, 1.8vw, 24px);
 }
 </style>

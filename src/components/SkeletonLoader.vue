@@ -565,4 +565,105 @@ defineProps({
     --skeleton-animation-duration: 2.5s; /* Slower animation for better performance */
   }
 }
-</style>
+
+/* Match the compact ticket-card proportions */
+.skeleton-card {
+  min-height: 334px;
+  border-radius: 8px;
+}
+
+.skeleton-card-image {
+  height: 174px;
+  border-radius: 8px 8px 0 0;
+}
+
+.skeleton-card-content {
+  padding: 1rem;
+}
+
+.skeleton-card-button {
+  border-radius: 6px;
+}
+
+.skeleton-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 18px;
+}
+
+@media (max-width: 1100px) {
+  .skeleton-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .skeleton-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .skeleton-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 440px) {
+  .skeleton-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Match the shortened reference card */
+.skeleton-card {
+  min-height: 238px;
+  border-radius: 7px;
+}
+
+.skeleton-card-image {
+  height: 122px;
+  border-radius: 7px 7px 0 0;
+}
+
+.skeleton-card-content {
+  padding: 0.7rem;
+}
+
+.skeleton-card-title {
+  height: 1rem;
+  margin-bottom: 0.55rem;
+}
+
+.skeleton-card-text {
+  height: 0.62rem;
+  margin-bottom: 0.5rem;
+}
+
+.skeleton-card-footer {
+  gap: 14px;
+}
+
+.skeleton-card-price {
+  height: 1rem;
+}
+
+.skeleton-card-button {
+  height: 1.8rem;
+  border-radius: 5px;
+}
+
+.skeleton-grid {
+  column-gap: 18px;
+  row-gap: 34px;
+}
+
+@media (max-width: 640px) {
+  .skeleton-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Four-column desktop grid */
+.skeleton-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}</style>

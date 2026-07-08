@@ -251,7 +251,9 @@ watch(
               <div class="category-skeleton__block category-skeleton__eyebrow"></div>
               <div class="category-skeleton__block category-skeleton__title"></div>
               <div class="category-skeleton__block category-skeleton__copy"></div>
-              <div class="category-skeleton__block category-skeleton__copy category-skeleton__copy--short"></div>
+              <div
+                class="category-skeleton__block category-skeleton__copy category-skeleton__copy--short"
+              ></div>
             </div>
           </div>
         </section>
@@ -268,7 +270,9 @@ watch(
                 <div class="category-skeleton__card-body">
                   <div class="category-skeleton__block category-skeleton__card-title"></div>
                   <div class="category-skeleton__block category-skeleton__line"></div>
-                  <div class="category-skeleton__block category-skeleton__line category-skeleton__line--short"></div>
+                  <div
+                    class="category-skeleton__block category-skeleton__line category-skeleton__line--short"
+                  ></div>
                   <div class="category-skeleton__footer">
                     <div class="category-skeleton__block category-skeleton__price"></div>
                     <div class="category-skeleton__block category-skeleton__button"></div>
@@ -311,7 +315,9 @@ watch(
                 <div class="category-skeleton__card-body">
                   <div class="category-skeleton__block category-skeleton__card-title"></div>
                   <div class="category-skeleton__block category-skeleton__line"></div>
-                  <div class="category-skeleton__block category-skeleton__line category-skeleton__line--short"></div>
+                  <div
+                    class="category-skeleton__block category-skeleton__line category-skeleton__line--short"
+                  ></div>
                   <div class="category-skeleton__footer">
                     <div class="category-skeleton__block category-skeleton__price"></div>
                     <div class="category-skeleton__block category-skeleton__button"></div>
@@ -478,12 +484,7 @@ watch(
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--color-skeleton-highlight),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, var(--color-skeleton-highlight), transparent);
   animation: categorySkeletonShimmer 1.45s ease-in-out infinite;
 }
 
@@ -857,5 +858,71 @@ watch(
     width: 36px;
     height: 36px;
   }
+}
+
+/* Five-column desktop event grid */
+.category-skeleton__grid,
+.category-events__grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 18px;
+}
+
+@media (max-width: 1100px) {
+  .category-skeleton__grid,
+  .category-events__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .category-skeleton__grid,
+  .category-events__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .category-skeleton__grid,
+  .category-events__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 440px) {
+  .category-skeleton__grid,
+  .category-events__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Wider five-card canvas with clearer row separation */
+.category-page .container {
+  max-width: 1320px;
+  padding-inline: 24px;
+}
+
+.category-skeleton__grid,
+.category-events__grid {
+  column-gap: 18px;
+  row-gap: 34px;
+}
+
+@media (max-width: 640px) {
+  .category-skeleton__grid,
+  .category-events__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Four-column desktop grid */
+.category-skeleton__grid,
+.category-events__grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+/* Match the global header alignment rail exactly */
+.category-page .container {
+  width: 100%;
+  max-width: 1320px;
+  padding-inline: clamp(16px, 1.8vw, 24px);
 }
 </style>

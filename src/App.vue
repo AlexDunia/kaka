@@ -23,17 +23,22 @@ let routeLoadingStartedAt = Date.now()
 let routeLoadingReleaseTimer = null
 const chromeRoute = computed(() => (isRouteLoading.value ? skeletonRoute.value : route))
 const showHero = computed(
-  () => !isRouteLoading.value && (chromeRoute.value.name === 'home' || chromeRoute.value.path === '/'),
+  () =>
+    !isRouteLoading.value && (chromeRoute.value.name === 'home' || chromeRoute.value.path === '/'),
 )
 const isCreateEventRoute = computed(() => chromeRoute.value.name === 'CreateEvent')
 const usesFullScreenShell = computed(() => Boolean(chromeRoute.value.meta?.fullScreenShell))
+const showGlobalHeader = computed(
+  () => !isCreateEventRoute.value && chromeRoute.value.name !== 'dashboard',
+)
 
 const routeSkeletonVariant = computed(() => {
   const targetRoute = skeletonRoute.value || route
   if (targetRoute.name === 'CreateEvent') return 'create-event'
   if (['event-details', 'event-details-legacy'].includes(targetRoute.name)) return 'detail'
   if (['admin', 'dashboard', 'transactions'].includes(targetRoute.name)) return 'dashboard'
-  if (['login', 'register', 'forgot-password', 'google-callback'].includes(targetRoute.name)) return 'auth'
+  if (['login', 'register', 'forgot-password', 'google-callback'].includes(targetRoute.name))
+    return 'auth'
   if (targetRoute.name === 'contact') return 'contact'
   if (targetRoute.name === 'cart') return 'cart'
   if (targetRoute.name === 'not-found') return 'not-found'
@@ -135,12 +140,18 @@ const applyThemeInstantly = (callback) => {
   }
 }
 
-const applyTheme = (value) => {
+const applyTheme = (value, { instant = true } = {}) => {
   theme.value = value
   if (typeof document !== 'undefined') {
-    applyThemeInstantly(() => {
+    const updateDocumentTheme = () => {
       document.documentElement.classList.toggle('light', value === 'light')
-    })
+    }
+
+    if (instant) {
+      applyThemeInstantly(updateDocumentTheme)
+    } else {
+      updateDocumentTheme()
+    }
   }
   if (typeof window !== 'undefined') {
     window.localStorage?.setItem(themePreferenceKey, value)
@@ -161,7 +172,7 @@ const initializeTheme = () => {
 
 const toggleTheme = () => {
   playThemeToggleClick()
-  applyTheme(theme.value === 'light' ? 'dark' : 'light')
+  applyTheme(theme.value === 'light' ? 'dark' : 'light', { instant: false })
 }
 
 provide('themeController', {
@@ -255,20 +266,16 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="app-container">
+  <div class="app-container" :class="{ 'has-global-header': showGlobalHeader }">
     <header
-      v-if="!isCreateEventRoute && !usesFullScreenShell"
+      v-if="showGlobalHeader"
       class="app-header"
       :class="{ 'nav-shadow': scrollPosition > 20 }"
     >
       <div class="container">
         <div class="logo">
           <RouterLink to="/">
-            <img
-              :src="brandLogoUrl"
-              alt="Rush Hour"
-              class="logo-img"
-            />
+            <img :src="brandLogoUrl" alt="Rush Hour" class="logo-img" />
           </RouterLink>
         </div>
 
@@ -345,7 +352,28 @@ onUnmounted(() => {
             @click="toggleTheme"
             :aria-label="theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'"
           >
-            <span aria-hidden="true">{{ theme === 'light' ? '🌙' : '☀️' }}</span>
+            <span class="theme-icon-window" aria-hidden="true">
+              <span class="theme-icon-track" :class="{ 'is-light': theme === 'light' }">
+                <svg class="theme-icon theme-icon--moon" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M20.3 15.2A8.5 8.5 0 0 1 8.8 3.7a8.5 8.5 0 1 0 11.5 11.5Z"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+                <svg class="theme-icon theme-icon--sun" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="3.6" stroke="currentColor" stroke-width="1.8" />
+                  <path
+                    d="M12 2.5v2M12 19.5v2M4.5 12h-2M21.5 12h-2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M18.7 5.3l-1.4 1.4M6.7 17.3l-1.4 1.4"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              </span>
+            </span>
           </button>
           <template v-if="isAuthenticated">
             <div
@@ -471,11 +499,7 @@ onUnmounted(() => {
     <footer v-if="!usesFullScreenShell" class="app-footer">
       <div class="footer-simple">
         <div class="footer-logo-col">
-          <img
-            :src="brandLogoUrl"
-            alt="Rush Hour"
-            class="footer-logo-img"
-          />
+          <img :src="brandLogoUrl" alt="Rush Hour" class="footer-logo-img" />
         </div>
         <div class="footer-center-col">
           <span class="footer-copyright">© {{ currentYear }} kakaworldcompany</span>
@@ -996,6 +1020,294 @@ onUnmounted(() => {
   height: 45px;
   width: auto;
   display: block;
+}
+
+/* Reference-style fixed global header */
+:global(:root) {
+  --app-header-height: 92px;
+  --app-logo-height: 64px;
+}
+
+.app-container.has-global-header {
+  padding-top: var(--app-header-height);
+}
+
+.app-header {
+  position: fixed;
+  inset: 0 0 auto;
+  width: 100%;
+  height: var(--app-header-height);
+  background: color-mix(in srgb, var(--color-surface) 91%, transparent);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-bottom-color: color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+
+.nav-shadow {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+}
+
+.app-header .container {
+  max-width: 1160px;
+}
+
+.logo {
+  flex: 0 0 auto;
+}
+
+.logo-img {
+  margin-right: 0;
+  object-fit: contain;
+}
+
+.main-nav {
+  height: 100%;
+  gap: clamp(1.45rem, 2.35vw, 2.45rem);
+  padding: 0 1.5rem;
+}
+
+.main-nav .nav-item {
+  height: 100%;
+  padding: 0;
+  color: color-mix(in srgb, var(--color-text) 72%, transparent);
+  font-size: 0.92rem;
+  transition: color 0.2s ease;
+}
+
+.main-nav .nav-item::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--color-primary);
+  opacity: 0;
+  transform: scaleX(0.4);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.main-nav .nav-item.active::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.header-actions {
+  flex: 0 0 auto;
+  gap: 1rem;
+  padding-left: 1.2rem;
+  border-left: 1px solid color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+
+.theme-toggle {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  font-size: 1rem;
+}
+
+.theme-toggle:hover,
+.theme-toggle:focus-visible,
+.cart-icon:hover,
+.cart-icon:focus-visible {
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-text) 6%, transparent);
+  outline: none;
+}
+
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--color-primary);
+  background: transparent;
+  color: var(--color-text);
+  font-size: 0.72rem;
+  box-shadow: none;
+}
+
+.auth-link,
+.auth-button {
+  padding: 0.58rem 0.85rem;
+  font-size: 0.92rem;
+}
+
+.cart-icon {
+  width: 34px;
+  height: 34px;
+  padding: 7px;
+  border-radius: 999px;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.cart-icon svg {
+  width: 19px;
+  height: 19px;
+}
+
+@media (max-width: 992px) {
+  .app-header .container {
+    padding-inline: 1rem;
+  }
+
+  .header-actions {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  :global(:root) {
+    --app-header-height: 72px;
+    --app-logo-height: 46px;
+  }
+
+  .auth-link {
+    display: none;
+  }
+
+  .auth-button {
+    padding: 0.44rem 0.62rem;
+  }
+
+  .header-actions {
+    gap: 0.35rem;
+    padding-left: 0.55rem;
+  }
+
+  .mobile-menu-toggle {
+    width: 34px;
+    height: 34px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobile-menu-toggle svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* Refined transparent header controls */
+.app-header {
+  background: color-mix(in srgb, var(--color-surface) 68%, transparent);
+  backdrop-filter: blur(22px) saturate(125%);
+  -webkit-backdrop-filter: blur(22px) saturate(125%);
+}
+
+.main-nav .nav-item.active,
+.main-nav .nav-item.active:hover,
+.main-nav .nav-item.active:focus,
+.main-nav .nav-item.active:focus-visible {
+  color: var(--color-primary);
+}
+
+.theme-toggle {
+  color: color-mix(in srgb, var(--color-text) 88%, transparent);
+  overflow: hidden;
+}
+
+.theme-toggle:hover,
+.theme-toggle:focus-visible,
+.cart-icon:hover,
+.cart-icon:focus-visible {
+  color: var(--color-primary);
+  background: transparent;
+}
+
+.theme-icon-window {
+  display: block;
+  width: 20px;
+  height: 20px;
+  overflow: hidden;
+}
+
+.theme-icon-track {
+  display: flex;
+  width: 40px;
+  height: 20px;
+  transform: translateX(0);
+  transition: transform 0.48s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.theme-icon-track.is-light {
+  transform: translateX(-20px);
+}
+
+.theme-icon {
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  transition: transform 0.48s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.theme-icon--moon {
+  transform: rotate(0deg);
+}
+
+.theme-icon--sun {
+  color: #e7b85c;
+  transform: rotate(-70deg);
+}
+
+.theme-icon-track.is-light .theme-icon--moon {
+  transform: rotate(55deg);
+}
+
+.theme-icon-track.is-light .theme-icon--sun {
+  transform: rotate(0deg);
+}
+
+.user-avatar {
+  border-color: color-mix(in srgb, var(--color-primary) 82%, transparent);
+  box-shadow: none;
+}
+
+.cart-icon {
+  color: color-mix(in srgb, var(--color-text) 78%, transparent);
+}
+
+/* Keep the global header aligned with the wider main canvas */
+.app-header .container {
+  max-width: 1280px;
+}
+
+/* Brand hierarchy: pink for identity and interaction */
+.main-nav .nav-item.active,
+.main-nav .nav-item.active:hover,
+.main-nav .nav-item.active:focus,
+.main-nav .nav-item.active:focus-visible {
+  color: var(--color-accent);
+}
+
+.main-nav .nav-item::after {
+  background: var(--color-accent);
+}
+
+.theme-toggle:hover,
+.theme-toggle:focus-visible,
+.cart-icon:hover,
+.cart-icon:focus-visible {
+  color: var(--color-accent);
+}
+
+.user-avatar {
+  border-color: color-mix(in srgb, var(--color-accent) 82%, transparent);
+}
+
+.auth-button {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+/* One alignment rail for header, content, and footer */
+.app-header .container,
+.footer-simple {
+  width: 100%;
+  max-width: 1320px;
+  padding-inline: clamp(16px, 1.8vw, 24px);
 }
 </style>
 
