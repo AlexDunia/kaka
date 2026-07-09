@@ -1,4 +1,6 @@
 <script setup>
+import { RUSH_HOUR_LIGHT_LOGO } from '@/constants/brand'
+
 defineProps({
   dropdownOpen: {
     type: Boolean,
@@ -28,7 +30,9 @@ const goToStep = (step) => emit('select-step', step)
 
 <template>
   <aside class="sidebar">
-    <div class="sidebar-brand">RUSH HOUR</div>
+    <div class="sidebar-brand">
+      <img :src="RUSH_HOUR_LIGHT_LOGO" alt="Rush Hour" class="sidebar-brand-logo" />
+    </div>
 
     <div class="back-link" @click="goBack">
       <svg viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7" /></svg>

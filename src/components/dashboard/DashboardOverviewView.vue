@@ -20,55 +20,80 @@ const showManage = (view) => emit('select-view', view)
         </article>
       </section>
 
-      <section class="overview-insight-grid">
-        <article class="overview-health-card">
-          <div class="section-title">Event health</div>
-          <div class="score-wrap">
-            <div class="score-ring"><strong>82</strong></div>
-            <div class="score-copy">
+      <section class="overview-command-grid">
+        <article class="event-health-panel">
+          <div class="health-panel-head">
+            <div>
+              <div class="section-title compact-section-title">Event health</div>
               <h3>Strong momentum</h3>
-              <p>Sales pace and WhatsApp buyers are carrying the event. General Admission is the one soft spot.</p>
+            </div>
+            <span class="health-status-pill">Watch GA</span>
+          </div>
+
+          <div class="health-focus">
+            <div class="health-radial" aria-label="Event health score 82 percent">
+              <div class="health-radial-core">
+                <strong>82%</strong>
+                <span>Event health</span>
+              </div>
+            </div>
+            <p>
+              Sales pace is healthy and premium spots feel scarce. The only drag is General Admission,
+              where 323 seats still need a cleaner push.
+            </p>
+          </div>
+
+          <div class="health-signal-grid">
+            <div class="health-signal">
+              <span>Sold out pace</span>
+              <strong>72%</strong>
+            </div>
+            <div class="health-signal">
+              <span>Best buyer source</span>
+              <strong>WhatsApp</strong>
+            </div>
+            <div class="health-signal needs-attention">
+              <span>Needs attention</span>
+              <strong>General Admission</strong>
             </div>
           </div>
         </article>
 
-        <article class="overview-actions-panel">
-          <div class="overview-card-head compact-head">
-            <h3>Do these next</h3>
-            <p>The shortest path from the numbers to the organiser's next move.</p>
+        <article class="next-move-panel">
+          <div class="next-move-head">
+            <div>
+              <div class="section-title compact-section-title">Next moves</div>
+              <h3>Three focused moves for today</h3>
+            </div>
+            <span>Ranked by impact</span>
           </div>
-          <div class="smart-action-list">
-            <button class="smart-action-row" type="button" @click="showManage('share')">
-              <div class="smart-action-icon teal">
-                <svg viewBox="0 0 24 24"><path d="M7 17L17 7" /><path d="M7 7h10v10" /></svg>
-              </div>
-              <div class="smart-action-copy">
-                <h3>Share on WhatsApp</h3>
-                <p>44% of buyers came from here. Keep using what is already working.</p>
-              </div>
-              <svg class="action-arrow" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6" /></svg>
+
+          <div class="next-move-list">
+            <button class="next-move-item" type="button" @click="showManage('share')">
+              <span class="next-move-num">01</span>
+              <span class="next-move-copy">
+                <strong>Share the VIP scarcity angle</strong>
+                <small>WhatsApp is already bringing 44% of buyers. Use that channel again while premium spots still feel scarce.</small>
+              </span>
+              <span class="next-move-destination">Promote</span>
             </button>
 
-            <button class="smart-action-row" type="button" @click="showManage('promo')">
-              <div class="smart-action-icon amber">
-                <svg viewBox="0 0 24 24"><line x1="19" y1="5" x2="5" y2="19" /><circle cx="7" cy="7" r="2" /><circle cx="17" cy="17" r="2" /></svg>
-              </div>
-              <div class="smart-action-copy">
-                <h3>Move General Admission</h3>
-                <p>323 spots are still open. A short discount can help buyers decide faster.</p>
-              </div>
-              <svg class="action-arrow" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6" /></svg>
+            <button class="next-move-item urgent" type="button" @click="showManage('promo')">
+              <span class="next-move-num">02</span>
+              <span class="next-move-copy">
+                <strong>Move General Admission</strong>
+                <small>323 spots are still open. A short, time-boxed offer gives regular buyers a reason to decide.</small>
+              </span>
+              <span class="next-move-destination">Discount</span>
             </button>
 
-            <button class="smart-action-row" type="button" @click="showManage('email')">
-              <div class="smart-action-icon red">
-                <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>
-              </div>
-              <div class="smart-action-copy">
-                <h3>Remind attendees</h3>
-                <p>Send one message with arrival time, parking, and what to bring.</p>
-              </div>
-              <svg class="action-arrow" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6" /></svg>
+            <button class="next-move-item" type="button" @click="showManage('email')">
+              <span class="next-move-num">03</span>
+              <span class="next-move-copy">
+                <strong>Send the event-day note</strong>
+                <small>One clean message: arrival time, parking, entry instructions, and what attendees should bring.</small>
+              </span>
+              <span class="next-move-destination">Message</span>
             </button>
           </div>
         </article>

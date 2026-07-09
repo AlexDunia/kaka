@@ -1,4 +1,7 @@
 <script setup>
+import { computed, onMounted, ref } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+
 defineProps({
   isEditMode: {
     type: Boolean,
@@ -10,62 +13,81 @@ defineProps({
   },
 })
 
-const emit = defineEmits(['enter-edit-mode', 'exit-edit-mode', 'select-step'])
+defineEmits(['enter-edit-mode', 'exit-edit-mode', 'select-step'])
 
-const enterEditMode = () => emit('enter-edit-mode')
-const exitEditMode = () => emit('exit-edit-mode')
-const goToStep = (step) => emit('select-step', step)
+const authStore = useAuthStore()
+const storedUser = ref(null)
+
+const readStoredUser = () => {
+  try {
+    const userJson = localStorage.getItem('user')
+    storedUser.value = userJson ? JSON.parse(userJson) : null
+  } catch {
+    storedUser.value = null
+  }
+}
+
+onMounted(() => {
+  readStoredUser()
+})
+
+const dashboardUser = computed(() => authStore.user || storedUser.value || {})
+
+const displayName = computed(() => {
+  const user = dashboardUser.value
+  const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ')
+  return user.display_name || user.name || fullName || user.email || 'Organiser'
+})
+
+const avatarUrl = computed(() => {
+  const user = dashboardUser.value
+  return (
+    user.avatar_url ||
+    user.avatar ||
+    user.photo ||
+    user.photoURL ||
+    user.picture ||
+    user.image ||
+    user.profile_image ||
+    user.profileImage ||
+    ''
+  )
+})
+
+const userInitials = computed(() => {
+  const source = displayName.value.includes('@')
+    ? displayName.value.split('@')[0]
+    : displayName.value
+
+  const initials = source
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('')
+
+  return initials || 'U'
+})
 </script>
 
 <template>
-  <header class="topbar">
-    <div class="topbar-manage" id="topbar-manage" :style="{ display: isEditMode ? 'none' : 'flex' }">
-      <div class="topbar-left">
-        <span class="topbar-event-name">Comedy Meets Dance</span>
-        <span class="topbar-status live">
-          <span class="status-dot"></span>
-          Live
-        </span>
-        <span class="topbar-countdown">12 days to go</span>
+  <header class="topbar" aria-label="Dashboard header">
+    <div class="topbar-manage dashboard-header-shell" id="topbar-manage">
+      <div class="dashboard-header-title-wrap">
+        <span class="dashboard-header-kicker">Organiser workspace</span>
+        <h1 class="dashboard-header-title">Dashboard</h1>
       </div>
-      <div class="topbar-right">
-        <div class="btn btn-ghost">
-          <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-          View public page
+
+      <div class="dashboard-auth" :aria-label="`Authenticated as ${displayName}`">
+        <div class="dashboard-auth-copy">
+          <span>Signed in</span>
+          <strong>{{ displayName }}</strong>
         </div>
-        <div class="btn btn-edit" @click="enterEditMode">
-          <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          Edit event
+        <div class="dashboard-avatar" aria-hidden="true">
+          <img v-if="avatarUrl" :src="avatarUrl" :alt="displayName" />
+          <span v-else>{{ userInitials }}</span>
         </div>
-      </div>
-    </div>
-    <div class="topbar-edit" id="topbar-edit" :style="{ display: isEditMode ? 'flex' : 'none' }">
-      <div style="font-size:.75rem;font-weight:600;color:var(--t-lo);white-space:nowrap;flex-shrink:0;">Editing event</div>
-      <div class="step-prog">
-        <div class="step-item" :class="{ active: currentStep === 1, done: currentStep > 1 }" id="tp1" @click="goToStep(1)">
-          <div class="step-num"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-          <span class="step-label">Basics</span>
-        </div>
-        <div class="step-connector" :class="{ done: currentStep > 1 }" id="sc1"></div>
-        <div class="step-item" :class="{ active: currentStep === 2, done: currentStep > 2 }" id="tp2" @click="goToStep(2)">
-          <div class="step-num">2</div>
-          <span class="step-label">Details</span>
-        </div>
-        <div class="step-connector" :class="{ done: currentStep > 2 }" id="sc2"></div>
-        <div class="step-item" :class="{ active: currentStep === 3, done: currentStep > 3 }" id="tp3" @click="goToStep(3)">
-          <div class="step-num">3</div>
-          <span class="step-label">Tickets</span>
-        </div>
-        <div class="step-connector" :class="{ done: currentStep > 3 }" id="sc3"></div>
-        <div class="step-item" :class="{ active: currentStep === 4, done: currentStep > 4 }" id="tp4" @click="goToStep(4)">
-          <div class="step-num">4</div>
-          <span class="step-label">Attendees</span>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:var(--s3);flex-shrink:0;">
-        <div class="saved-badge"><svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12"/></svg>Saved</div>
-        <div class="btn btn-ghost" @click="exitEditMode">Cancel</div>
-        <div class="btn btn-primary">Save changes</div>
       </div>
     </div>
   </header>

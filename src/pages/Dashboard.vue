@@ -1,12 +1,10 @@
 <script setup>
-import { computed, inject, ref } from 'vue'
+import { ref } from 'vue'
 import DashboardEditContent from '@/components/dashboard/DashboardEditContent.vue'
 import DashboardManageContent from '@/components/dashboard/DashboardManageContent.vue'
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar.vue'
 import DashboardTopbar from '@/components/dashboard/DashboardTopbar.vue'
 
-const themeController = inject('themeController', null)
-const theme = computed(() => themeController?.theme?.value || 'dark')
 const dropdownOpen = ref(false)
 const isEditMode = ref(false)
 const currentStep = ref(1)
@@ -47,7 +45,7 @@ const goBack = () => {
 </script>
 
 <template>
-  <div class="event-dashboard" :class="{ 'light-mode': theme === 'light' }">
+  <div class="event-dashboard">
     <DashboardSidebar
       :dropdown-open="dropdownOpen"
       :is-edit-mode="isEditMode"

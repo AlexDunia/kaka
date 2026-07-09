@@ -25,13 +25,12 @@ const showManage = (view) => emit('select-view', view)
 
 <template>
   <div class="manage-content" id="manage-content">
-    <DashboardEventHero />
-    <DashboardStatStrip />
+    <template v-if="currentManageView === 'overview'">
+      <DashboardEventHero />
+      <DashboardStatStrip />
+      <DashboardOverviewView @select-view="showManage" />
+    </template>
 
-    <DashboardOverviewView
-      v-if="currentManageView === 'overview'"
-      @select-view="showManage"
-    />
     <DashboardAttendeesView v-else-if="currentManageView === 'attendees'" />
     <DashboardInsightsView v-else-if="currentManageView === 'insights'" />
     <DashboardCheckinView v-else-if="currentManageView === 'checkin'" />
