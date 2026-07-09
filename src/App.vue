@@ -36,7 +36,8 @@ const routeSkeletonVariant = computed(() => {
   const targetRoute = skeletonRoute.value || route
   if (targetRoute.name === 'CreateEvent') return 'create-event'
   if (['event-details', 'event-details-legacy'].includes(targetRoute.name)) return 'detail'
-  if (['admin', 'dashboard', 'transactions'].includes(targetRoute.name)) return 'dashboard'
+  if (targetRoute.name === 'dashboard') return 'dashboard-overview'
+  if (['admin', 'transactions'].includes(targetRoute.name)) return 'dashboard'
   if (['login', 'register', 'forgot-password', 'google-callback'].includes(targetRoute.name))
     return 'auth'
   if (targetRoute.name === 'contact') return 'contact'
@@ -485,7 +486,7 @@ onUnmounted(() => {
 
     <main class="app-content">
       <RouterView v-slot="{ Component }">
-        <transition name="fade" mode="out-in">
+        <transition name="fade">
           <PageSkeleton
             v-if="isRouteLoading && routeSkeletonEnabled"
             :key="`route-skeleton-${skeletonRoute.fullPath || route.fullPath}`"

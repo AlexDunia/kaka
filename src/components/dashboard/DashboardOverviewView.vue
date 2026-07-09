@@ -9,89 +9,92 @@ const showManage = (view) => emit('select-view', view)
       <section>
         <article class="overview-pulse-card">
           <div class="section-title">Event pulse</div>
-          <h2>Your event is moving. General Admission needs the next push.</h2>
+          <h2>Your event is moving. General Admission needs one clear push.</h2>
           <p>
-            72% sold. VIP and Gold Table are selling fastest, and WhatsApp is bringing in the most buyers.
-            Keep the dashboard focused on what is happening, what needs attention, and what to do next.
+            72% sold. Premium seats are doing their job. The simple job now is to move regular buyers
+            before the event gets too close.
           </p>
           <div class="decision-line">
-            <strong>Best next move:</strong> share the event on WhatsApp today and mention the final VIP spots.
+            <strong>Best next move:</strong> run a short General Admission offer and share it on WhatsApp today.
           </div>
         </article>
       </section>
 
-      <section class="overview-command-grid">
-        <article class="event-health-panel">
+      <section class="overview-command-grid overview-command-grid--calm">
+        <article class="event-health-panel health-readout-panel">
           <div class="health-panel-head">
             <div>
               <div class="section-title compact-section-title">Event health</div>
-              <h3>Strong momentum</h3>
+              <h3>On track, with one thing to fix</h3>
             </div>
-            <span class="health-status-pill">Watch GA</span>
+            <span class="health-status-pill health-status-pill--clear">82 score</span>
           </div>
 
-          <div class="health-focus">
-            <div class="health-radial" aria-label="Event health score 82 percent">
-              <div class="health-radial-core">
-                <strong>82%</strong>
-                <span>Event health</span>
+          <div class="health-readout-main">
+            <div class="health-readout-status">
+              <span>Overall</span>
+              <strong>Strong momentum</strong>
+              <p>Premium demand is healthy. Keep the regular ticket moving.</p>
+            </div>
+            <div class="health-readout-list" aria-label="Event health summary">
+              <div class="health-readout-item good">
+                <span></span>
+                <div>
+                  <strong>VIP and tables are almost doing the selling for you.</strong>
+                  <p>Scarcity is real, so use it in your next message.</p>
+                </div>
               </div>
-            </div>
-            <p>
-              Sales pace is healthy and premium spots feel scarce. The only drag is General Admission,
-              where 323 seats still need a cleaner push.
-            </p>
-          </div>
-
-          <div class="health-signal-grid">
-            <div class="health-signal">
-              <span>Sold out pace</span>
-              <strong>72%</strong>
-            </div>
-            <div class="health-signal">
-              <span>Best buyer source</span>
-              <strong>WhatsApp</strong>
-            </div>
-            <div class="health-signal needs-attention">
-              <span>Needs attention</span>
-              <strong>General Admission</strong>
+              <div class="health-readout-item good">
+                <span></span>
+                <div>
+                  <strong>WhatsApp is the buyer channel.</strong>
+                  <p>44% of buyers came from there. Do not overthink the next share.</p>
+                </div>
+              </div>
+              <div class="health-readout-item warn">
+                <span></span>
+                <div>
+                  <strong>General Admission is the drag.</strong>
+                  <p>323 spots left. Give people a simple reason to buy this week.</p>
+                </div>
+              </div>
             </div>
           </div>
         </article>
 
-        <article class="next-move-panel">
+        <article class="next-move-panel next-move-panel--calm">
           <div class="next-move-head">
             <div>
               <div class="section-title compact-section-title">Next moves</div>
-              <h3>Three focused moves for today</h3>
+              <h3>Do these in this order</h3>
             </div>
-            <span>Ranked by impact</span>
+            <span>Today</span>
           </div>
 
           <div class="next-move-list">
-            <button class="next-move-item" type="button" @click="showManage('share')">
+            <button class="next-move-item urgent" type="button" @click="showManage('promo')">
               <span class="next-move-num">01</span>
               <span class="next-move-copy">
-                <strong>Share the VIP scarcity angle</strong>
-                <small>WhatsApp is already bringing 44% of buyers. Use that channel again while premium spots still feel scarce.</small>
-              </span>
-              <span class="next-move-destination">Promote</span>
-            </button>
-
-            <button class="next-move-item urgent" type="button" @click="showManage('promo')">
-              <span class="next-move-num">02</span>
-              <span class="next-move-copy">
-                <strong>Move General Admission</strong>
-                <small>323 spots are still open. A short, time-boxed offer gives regular buyers a reason to decide.</small>
+                <strong>Create a short GA discount</strong>
+                <small>Make the regular ticket decision easy. A 48-hour code is enough.</small>
               </span>
               <span class="next-move-destination">Discount</span>
+            </button>
+
+            <button class="next-move-item" type="button" @click="showManage('share')">
+              <span class="next-move-num">02</span>
+              <span class="next-move-copy">
+                <strong>Share the offer on WhatsApp</strong>
+                <small>This is already where your buyers are coming from.</small>
+              </span>
+              <span class="next-move-destination">Promote</span>
             </button>
 
             <button class="next-move-item" type="button" @click="showManage('email')">
               <span class="next-move-num">03</span>
               <span class="next-move-copy">
                 <strong>Send the event-day note</strong>
-                <small>One clean message: arrival time, parking, entry instructions, and what attendees should bring.</small>
+                <small>Arrival time, parking, entry instructions. One clean message.</small>
               </span>
               <span class="next-move-destination">Message</span>
             </button>
@@ -100,90 +103,68 @@ const showManage = (view) => emit('select-view', view)
       </section>
 
       <section class="overview-content-grid">
-        <article class="card">
-          <div class="overview-card-head">
-            <h3>Ticket performance</h3>
-            <p>Fast answer: what is selling, what is nearly full, and what needs help.</p>
+        <article class="card ticket-performance-card">
+          <div class="overview-card-head ticket-card-head">
+            <div>
+              <h3>Ticket performance</h3>
+              <p>Start with the ticket that needs action. Everything else is secondary.</p>
+            </div>
           </div>
-          <div class="tkt-rows compact-ticket-rows">
-            <div class="tkt-row">
-              <div class="tkt-icon" style="background:var(--teal-bg);border:1px solid var(--teal-border);">
-                <svg viewBox="0 0 24 24" style="stroke:var(--teal)"><path d="M20 6L9 17l-5-5" /></svg>
+
+          <div class="ga-focus-card">
+            <div class="ga-focus-top">
+              <div>
+                <span class="ga-kicker">Needs attention</span>
+                <h4>General Admission</h4>
+                <p>177 sold. 323 still open.</p>
               </div>
-              <div class="tkt-mid">
-                <div class="tkt-name-row">
-                  <div class="tkt-name">Early Bird</div>
-                  <div class="tkt-sold-tag" style="background:var(--teal-bg);border:1px solid var(--teal-border);color:var(--teal);">Healthy</div>
-                </div>
-                <div class="tkt-progress-row">
-                  <div class="tkt-prog-track"><div class="tkt-prog-fill fill-teal" style="width:41%"></div></div>
-                  <div class="tkt-prog-label">61 sold, 89 left</div>
-                </div>
-              </div>
-              <div class="tkt-right">
-                <div class="tkt-price">₦5,000</div>
-                <div class="tkt-revenue">₦305,000 earned</div>
+              <div class="ga-price-block">
+                <strong>₦10,000</strong>
+                <span>₦1,770,000 earned</span>
               </div>
             </div>
 
-            <div class="tkt-row attention-row">
-              <div class="tkt-icon" style="background:var(--blue-bg);border:1px solid var(--blue-border);">
-                <svg viewBox="0 0 24 24" style="stroke:var(--blue)"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" /></svg>
+            <div class="ga-progress-block">
+              <div class="ga-progress-copy">
+                <span>35% sold</span>
+                <span>500 total</span>
               </div>
-              <div class="tkt-mid">
-                <div class="tkt-name-row">
-                  <div class="tkt-name">General Admission</div>
-                  <div class="tkt-sold-tag" style="background:var(--amber-bg);border:1px solid var(--amber-border);color:var(--amber);">Needs push</div>
-                </div>
-                <div class="tkt-progress-row">
-                  <div class="tkt-prog-track"><div class="tkt-prog-fill fill-blue" style="width:35%"></div></div>
-                  <div class="tkt-prog-label">177 sold, 323 left</div>
-                </div>
-              </div>
-              <div class="tkt-right">
-                <div class="tkt-price">₦10,000</div>
-                <div class="tkt-revenue">₦1,770,000 earned</div>
-              </div>
+              <div class="ga-progress-track"><div class="ga-progress-fill"></div></div>
             </div>
 
-            <div class="tkt-row">
-              <div class="tkt-icon" style="background:var(--amber-bg);border:1px solid var(--amber-border);">
-                <svg viewBox="0 0 24 24" style="stroke:var(--amber)"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+            <div class="ga-action-strip">
+              <div>
+                <strong>Make this obvious for buyers.</strong>
+                <span>Try a 48-hour code like GA2KOFF, then share it on WhatsApp.</span>
               </div>
-              <div class="tkt-mid">
-                <div class="tkt-name-row">
-                  <div class="tkt-name">VIP</div>
-                  <div class="tkt-sold-tag" style="background:var(--teal-bg);border:1px solid var(--teal-border);color:var(--teal);">Selling fast</div>
-                </div>
-                <div class="tkt-progress-row">
-                  <div class="tkt-prog-track"><div class="tkt-prog-fill fill-amber" style="width:76%"></div></div>
-                  <div class="tkt-prog-label">Only 12 left</div>
-                </div>
-              </div>
-              <div class="tkt-right">
-                <div class="tkt-price">₦30,000</div>
-                <div class="tkt-revenue">₦1,140,000 earned</div>
-              </div>
+              <button type="button" @click="showManage('promo')">Create code</button>
             </div>
+          </div>
 
-            <div class="tkt-row">
-              <div class="tkt-icon" style="background:var(--red-bg);border:1px solid var(--red-border);">
-                <svg viewBox="0 0 24 24" style="stroke:var(--red)"><path d="M3 7h18M5 7l1 12h12l1-12" /></svg>
+          <div class="ticket-rest-list" aria-label="Other ticket types">
+            <div class="ticket-rest-row">
+              <div>
+                <strong>Early Bird</strong>
+                <span>61 sold, 89 left</span>
               </div>
-              <div class="tkt-mid">
-                <div class="tkt-name-row">
-                  <div class="tkt-name">Gold Table</div>
-                  <div class="tkt-sold-tag" style="background:var(--red-bg);border:1px solid var(--red-border);color:var(--red);">Almost full</div>
-                </div>
-                <div class="tkt-progress-row">
-                  <div class="tkt-prog-track"><div class="tkt-prog-fill fill-red" style="width:93%"></div></div>
-                  <div class="tkt-prog-label" style="color:var(--red);font-weight:800;">Only 5 tables left</div>
-                </div>
+              <em class="ticket-state good">Healthy</em>
+              <p>₦305,000</p>
+            </div>
+            <div class="ticket-rest-row">
+              <div>
+                <strong>VIP</strong>
+                <span>Only 12 left</span>
               </div>
-              <div class="tkt-right">
-                <div class="tkt-price">₦250,000</div>
-                <div class="tkt-revenue">₦4,200,000 earned</div>
+              <em class="ticket-state good">Selling fast</em>
+              <p>₦1,140,000</p>
+            </div>
+            <div class="ticket-rest-row">
+              <div>
+                <strong>Gold Table</strong>
+                <span>Only 5 tables left</span>
               </div>
+              <em class="ticket-state hot">Almost full</em>
+              <p>₦4,200,000</p>
             </div>
           </div>
         </article>
@@ -250,9 +231,9 @@ const showManage = (view) => emit('select-view', view)
               </div>
             </div>
             <svg class="chart-svg" viewBox="0 0 580 130" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <line x1="0" y1="110" x2="580" y2="110" stroke="rgba(255,255,255,.05)" stroke-width="1" />
-              <line x1="0" y1="80" x2="580" y2="80" stroke="rgba(255,255,255,.05)" stroke-width="1" />
-              <line x1="0" y1="50" x2="580" y2="50" stroke="rgba(255,255,255,.05)" stroke-width="1" />
+              <line x1="0" y1="110" x2="580" y2="110" stroke="rgba(255,255,255,.08)" stroke-width="1" />
+              <line x1="0" y1="80" x2="580" y2="80" stroke="rgba(255,255,255,.08)" stroke-width="1" />
+              <line x1="0" y1="50" x2="580" y2="50" stroke="rgba(255,255,255,.08)" stroke-width="1" />
               <defs>
                 <linearGradient id="overviewSalesGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stop-color="#29B89A" stop-opacity=".22" />

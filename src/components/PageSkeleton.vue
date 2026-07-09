@@ -11,6 +11,7 @@ const props = defineProps({
         'grid',
         'detail',
         'dashboard',
+        'dashboard-overview',
         'form',
         'auth',
         'contact',
@@ -35,8 +36,135 @@ const rowCount = computed(() => Math.max(1, props.rows))
 </script>
 
 <template>
+  <section v-if="variant === 'dashboard-overview'" class="dashboard-overview-skeleton" aria-hidden="true">
+    <aside class="dashboard-skel-sidebar">
+      <div class="dashboard-skel-brand skeleton-block"></div>
+      <div class="dashboard-skel-back skeleton-block"></div>
+      <div class="dashboard-skel-switcher">
+        <div class="dashboard-skel-thumb skeleton-block"></div>
+        <div class="dashboard-skel-switcher-copy">
+          <div class="dashboard-skel-line sm skeleton-block"></div>
+          <div class="dashboard-skel-line xs skeleton-block"></div>
+        </div>
+      </div>
+      <div class="dashboard-skel-nav">
+        <template v-for="group in 5" :key="`dashboard-skel-nav-${group}`">
+          <div class="dashboard-skel-label skeleton-block"></div>
+          <div
+            v-for="item in group === 2 ? 3 : group === 1 ? 2 : 1"
+            :key="`dashboard-skel-nav-${group}-${item}`"
+            class="dashboard-skel-nav-item"
+          >
+            <div class="dashboard-skel-nav-icon skeleton-block"></div>
+            <div class="dashboard-skel-line nav skeleton-block"></div>
+          </div>
+        </template>
+      </div>
+      <div class="dashboard-skel-user">
+        <div class="dashboard-skel-avatar skeleton-block"></div>
+        <div class="dashboard-skel-user-copy">
+          <div class="dashboard-skel-line sm skeleton-block"></div>
+          <div class="dashboard-skel-line xs skeleton-block"></div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="dashboard-skel-main">
+      <header class="dashboard-skel-topbar">
+        <div>
+          <div class="dashboard-skel-kicker skeleton-block"></div>
+          <div class="dashboard-skel-title skeleton-block"></div>
+        </div>
+        <div class="dashboard-skel-auth">
+          <div class="dashboard-skel-auth-copy">
+            <div class="dashboard-skel-line xs skeleton-block"></div>
+            <div class="dashboard-skel-line sm skeleton-block"></div>
+          </div>
+          <div class="dashboard-skel-avatar skeleton-block"></div>
+        </div>
+      </header>
+
+      <div class="dashboard-skel-scroll">
+        <section class="dashboard-skel-hero">
+          <div class="dashboard-skel-time">
+            <div class="dashboard-skel-line xs skeleton-block"></div>
+            <div class="dashboard-skel-number skeleton-block"></div>
+            <div class="dashboard-skel-line sm skeleton-block"></div>
+            <div class="dashboard-skel-number muted skeleton-block"></div>
+          </div>
+          <div class="dashboard-skel-hero-bottom">
+            <div class="dashboard-skel-event-title skeleton-block"></div>
+            <div class="dashboard-skel-meta-row">
+              <div class="dashboard-skel-pill skeleton-block"></div>
+              <div class="dashboard-skel-pill wide skeleton-block"></div>
+              <div class="dashboard-skel-pill skeleton-block"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="dashboard-skel-stats">
+          <article v-for="stat in 4" :key="`dashboard-overview-stat-${stat}`" class="dashboard-skel-stat-card">
+            <div class="dashboard-skel-line xs skeleton-block"></div>
+            <div class="dashboard-skel-stat-value skeleton-block"></div>
+            <div class="dashboard-skel-line sm skeleton-block"></div>
+            <div class="dashboard-skel-progress skeleton-block"></div>
+          </article>
+        </section>
+
+        <section class="dashboard-skel-content-grid">
+          <article class="dashboard-skel-panel dashboard-skel-sales">
+            <div class="dashboard-skel-panel-head">
+              <div class="dashboard-skel-line md skeleton-block"></div>
+              <div class="dashboard-skel-pill skeleton-block"></div>
+            </div>
+            <div class="dashboard-skel-chart">
+              <span v-for="bar in 13" :key="`dashboard-skel-bar-${bar}`" class="dashboard-skel-bar skeleton-block"></span>
+            </div>
+          </article>
+          <article class="dashboard-skel-panel dashboard-skel-ticket-types">
+            <div class="dashboard-skel-panel-head">
+              <div class="dashboard-skel-line md skeleton-block"></div>
+              <div class="dashboard-skel-line xs skeleton-block"></div>
+            </div>
+            <div v-for="row in 4" :key="`dashboard-skel-ticket-${row}`" class="dashboard-skel-ticket-row">
+              <div class="dashboard-skel-nav-icon skeleton-block"></div>
+              <div class="dashboard-skel-line nav skeleton-block"></div>
+              <div class="dashboard-skel-pill skeleton-block"></div>
+            </div>
+          </article>
+          <article class="dashboard-skel-panel dashboard-skel-health">
+            <div class="dashboard-skel-panel-head">
+              <div class="dashboard-skel-line md skeleton-block"></div>
+              <div class="dashboard-skel-pill skeleton-block"></div>
+            </div>
+            <div class="dashboard-skel-health-body">
+              <div class="dashboard-skel-ring skeleton-block"></div>
+              <div class="dashboard-skel-health-copy">
+                <div class="dashboard-skel-line lg skeleton-block"></div>
+                <div class="dashboard-skel-line md skeleton-block"></div>
+                <div class="dashboard-skel-line sm skeleton-block"></div>
+              </div>
+            </div>
+          </article>
+          <article class="dashboard-skel-panel dashboard-skel-actions">
+            <div class="dashboard-skel-panel-head">
+              <div class="dashboard-skel-line md skeleton-block"></div>
+              <div class="dashboard-skel-pill skeleton-block"></div>
+            </div>
+            <div v-for="action in 3" :key="`dashboard-skel-action-${action}`" class="dashboard-skel-action-row">
+              <div class="dashboard-skel-step skeleton-block"></div>
+              <div class="dashboard-skel-action-copy">
+                <div class="dashboard-skel-line md skeleton-block"></div>
+                <div class="dashboard-skel-line lg skeleton-block"></div>
+              </div>
+            </div>
+          </article>
+        </section>
+      </div>
+    </main>
+  </section>
   <section
-    v-if="variant === 'create-event'"
+    v-else-if="variant === 'create-event'"
     class="create-event-page create-event-skeleton"
     aria-hidden="true"
   >
@@ -1010,6 +1138,374 @@ const rowCount = computed(() => Math.max(1, props.rows))
   gap: 12px;
 }
 
+.dashboard-overview-skeleton {
+  --color-skeleton-base: rgba(255, 255, 255, .055);
+  --color-skeleton-highlight: rgba(255, 255, 255, .13);
+  --color-skeleton-surface: #151518;
+  --color-skeleton-border: rgba(255, 255, 255, .075);
+  display: grid;
+  grid-template-columns: 252px minmax(0, 1fr);
+  min-height: 100vh;
+  background: #0c0c0e;
+  color: #f4f4f5;
+  font-family: 'Figtree', system-ui, sans-serif;
+  overflow: hidden;
+}
+
+.dashboard-skel-sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #111113;
+  border-right: 1px solid rgba(255, 255, 255, .075);
+}
+
+.dashboard-skel-brand {
+  width: 150px;
+  height: 52px;
+  margin: 15px 20px;
+  border-radius: 10px;
+}
+
+.dashboard-skel-back {
+  width: 92px;
+  height: 14px;
+  margin: 8px 20px 18px;
+  border-radius: 999px;
+}
+
+.dashboard-skel-switcher,
+.dashboard-skel-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid rgba(255, 255, 255, .055);
+  border-bottom: 1px solid rgba(255, 255, 255, .055);
+}
+
+.dashboard-skel-thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 7px;
+  flex: 0 0 auto;
+}
+
+.dashboard-skel-switcher-copy,
+.dashboard-skel-user-copy,
+.dashboard-skel-action-copy,
+.dashboard-skel-health-copy {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+}
+
+.dashboard-skel-nav {
+  flex: 1;
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  padding: 18px 12px;
+  overflow: hidden;
+}
+
+.dashboard-skel-label {
+  width: 54px;
+  height: 8px;
+  margin: 16px 8px 3px;
+  border-radius: 999px;
+}
+
+.dashboard-skel-nav-item {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .025);
+}
+
+.dashboard-skel-nav-icon,
+.dashboard-skel-step {
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+}
+
+.dashboard-skel-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.dashboard-skel-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 100vh;
+}
+
+.dashboard-skel-topbar {
+  min-height: 82px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 12px 32px;
+  background: rgba(24, 24, 30, .88);
+  border-bottom: 1px solid rgba(255, 255, 255, .075);
+}
+
+.dashboard-skel-auth {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboard-skel-auth-copy {
+  display: grid;
+  justify-items: end;
+  gap: 7px;
+}
+
+.dashboard-skel-scroll {
+  overflow: hidden;
+  padding-bottom: 42px;
+}
+
+.dashboard-skel-hero {
+  position: relative;
+  height: 282px;
+  margin: 24px 32px 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .075);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 66% 18%, rgba(255, 255, 255, .11), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, .055), rgba(255, 255, 255, .018));
+}
+
+.dashboard-skel-time {
+  position: absolute;
+  top: 38px;
+  left: 44px;
+  display: grid;
+  gap: 10px;
+  width: 160px;
+}
+
+.dashboard-skel-hero-bottom {
+  position: absolute;
+  left: 44px;
+  right: 44px;
+  bottom: 34px;
+  display: grid;
+  gap: 18px;
+}
+
+.dashboard-skel-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.dashboard-skel-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  padding: 20px 32px 0;
+}
+
+.dashboard-skel-stat-card,
+.dashboard-skel-panel {
+  border: 1px solid rgba(255, 255, 255, .075);
+  border-radius: 14px;
+  background: #151518;
+}
+
+.dashboard-skel-stat-card {
+  display: grid;
+  gap: 12px;
+  min-height: 128px;
+  padding: 20px;
+}
+
+.dashboard-skel-content-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, .65fr);
+  gap: 18px;
+  padding: 20px 32px 0;
+}
+
+.dashboard-skel-panel {
+  min-width: 0;
+  padding: 20px;
+}
+
+.dashboard-skel-health,
+.dashboard-skel-actions {
+  min-height: 240px;
+}
+
+.dashboard-skel-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.dashboard-skel-chart {
+  display: grid;
+  grid-template-columns: repeat(13, 1fr);
+  align-items: end;
+  gap: 8px;
+  height: 180px;
+  padding-top: 24px;
+}
+
+.dashboard-skel-bar {
+  width: 100%;
+  min-height: 34px;
+  border-radius: 999px 999px 4px 4px;
+}
+
+.dashboard-skel-bar:nth-child(2n) { height: 44%; }
+.dashboard-skel-bar:nth-child(3n) { height: 64%; }
+.dashboard-skel-bar:nth-child(5n) { height: 78%; }
+.dashboard-skel-bar:nth-child(7n) { height: 92%; }
+
+.dashboard-skel-ticket-row,
+.dashboard-skel-action-row {
+  display: grid;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 0;
+  border-top: 1px solid rgba(255, 255, 255, .055);
+}
+
+.dashboard-skel-ticket-row {
+  grid-template-columns: 24px minmax(0, 1fr) 72px;
+}
+
+.dashboard-skel-action-row {
+  grid-template-columns: 34px minmax(0, 1fr);
+}
+
+.dashboard-skel-health-body {
+  display: grid;
+  grid-template-columns: 142px minmax(0, 1fr);
+  align-items: center;
+  gap: 22px;
+}
+
+.dashboard-skel-ring {
+  width: 142px;
+  height: 142px;
+  border-radius: 50%;
+}
+
+.dashboard-skel-line,
+.dashboard-skel-kicker,
+.dashboard-skel-title,
+.dashboard-skel-number,
+.dashboard-skel-event-title,
+.dashboard-skel-pill,
+.dashboard-skel-stat-value,
+.dashboard-skel-progress {
+  border-radius: 999px;
+}
+
+.dashboard-skel-kicker { width: 146px; height: 10px; margin-bottom: 9px; }
+.dashboard-skel-title { width: 96px; height: 18px; }
+.dashboard-skel-line.xs { width: 58px; height: 9px; }
+.dashboard-skel-line.sm { width: 96px; height: 11px; }
+.dashboard-skel-line.md { width: 142px; height: 14px; }
+.dashboard-skel-line.lg { width: 100%; height: 13px; }
+.dashboard-skel-line.nav { width: 78%; height: 11px; }
+.dashboard-skel-number { width: 110px; height: 48px; }
+.dashboard-skel-number.muted { opacity: .45; }
+.dashboard-skel-event-title { width: min(340px, 80%); height: 30px; }
+.dashboard-skel-pill { width: 78px; height: 24px; }
+.dashboard-skel-pill.wide { width: 160px; }
+.dashboard-skel-stat-value { width: 96px; height: 34px; }
+.dashboard-skel-progress { width: 100%; height: 5px; align-self: end; }
+
+@media (max-width: 980px) {
+  .dashboard-overview-skeleton {
+    grid-template-columns: 92px minmax(0, 1fr);
+  }
+
+  .dashboard-skel-brand {
+    width: 54px;
+    height: 38px;
+    margin-inline: auto;
+  }
+
+  .dashboard-skel-back,
+  .dashboard-skel-switcher-copy,
+  .dashboard-skel-label,
+  .dashboard-skel-user-copy,
+  .dashboard-skel-auth-copy {
+    display: none;
+  }
+
+  .dashboard-skel-switcher,
+  .dashboard-skel-user,
+  .dashboard-skel-nav-item {
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .dashboard-skel-nav-item {
+    grid-template-columns: 16px;
+  }
+
+  .dashboard-skel-stats,
+  .dashboard-skel-content-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-overview-skeleton {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+
+  .dashboard-skel-topbar {
+    padding-inline: 16px;
+  }
+
+  .dashboard-skel-hero,
+  .dashboard-skel-stats,
+  .dashboard-skel-content-grid {
+    margin-inline: 16px;
+    padding-inline: 0;
+  }
+
+  .dashboard-skel-hero {
+    height: 240px;
+  }
+
+  .dashboard-skel-time,
+  .dashboard-skel-hero-bottom {
+    left: 22px;
+    right: 22px;
+  }
+
+  .dashboard-skel-health-body {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-skel-ring {
+    width: 118px;
+    height: 118px;
+  }
+}
 @keyframes pageSkeletonShimmer {
   0% {
     background-position: 180% 0;

@@ -146,7 +146,7 @@ const router = createRouter({
         title: 'My Dashboard',
         description: 'Manage event performance, tickets, guests, payouts, and settings.',
         requiresAuth: true,
-        disableRouteSkeleton: true,
+        disableRouteSkeleton: false,
         fullScreenShell: true,
       },
     },

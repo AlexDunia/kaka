@@ -1,5 +1,5 @@
 <script setup>
-import { RUSH_HOUR_LIGHT_LOGO } from '@/constants/brand'
+import { RUSH_HOUR_DARK_LOGO } from '@/constants/brand'
 
 defineProps({
   dropdownOpen: {
@@ -31,7 +31,7 @@ const goToStep = (step) => emit('select-step', step)
 <template>
   <aside class="sidebar">
     <div class="sidebar-brand">
-      <img :src="RUSH_HOUR_LIGHT_LOGO" alt="Rush Hour" class="sidebar-brand-logo" />
+      <img :src="RUSH_HOUR_DARK_LOGO" alt="Rush Hour" class="sidebar-brand-logo" />
     </div>
 
     <div class="back-link" @click="goBack">
