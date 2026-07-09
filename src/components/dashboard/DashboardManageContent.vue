@@ -1,4 +1,5 @@
 <script setup>
+import DashboardAttendeesView from './DashboardAttendeesView.vue'
 import DashboardCheckinView from './DashboardCheckinView.vue'
 import DashboardEmailView from './DashboardEmailView.vue'
 import DashboardEventHero from './DashboardEventHero.vue'
@@ -31,6 +32,7 @@ const showManage = (view) => emit('select-view', view)
       v-if="currentManageView === 'overview'"
       @select-view="showManage"
     />
+    <DashboardAttendeesView v-else-if="currentManageView === 'attendees'" />
     <DashboardInsightsView v-else-if="currentManageView === 'insights'" />
     <DashboardCheckinView v-else-if="currentManageView === 'checkin'" />
     <DashboardEmailView v-else-if="currentManageView === 'email'" />
