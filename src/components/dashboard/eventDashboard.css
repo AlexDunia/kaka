@@ -2962,3 +2962,41 @@
     max-width: 64px;
   }
 }
+/* Darker dashboard cards, while keeping text readable */
+.event-dashboard {
+  --bg-2: #101014;
+  --bg-3: #17171C;
+  --line: rgba(255, 255, 255, .058);
+  --line-soft: rgba(255, 255, 255, .03);
+  --line-mid: rgba(255, 255, 255, .105);
+  --pink-border: rgba(236, 72, 153, .17);
+  --green-border: rgba(56, 217, 139, .21);
+  --teal-border: rgba(255, 255, 255, .095);
+  --blue-border: rgba(255, 255, 255, .09);
+  --amber-border: rgba(255, 255, 255, .095);
+  --red-border: rgba(255, 255, 255, .095);
+}
+
+.card,
+.overview-pulse-card,
+.event-health-panel,
+.next-move-panel,
+.mini-metric-card,
+.event-readiness-card,
+.scard,
+.form-card,
+.more-grid-lite details {
+  background: linear-gradient(180deg, rgba(255,255,255,.009), rgba(255,255,255,.004)), var(--bg-2);
+}
+
+.health-readout-status {
+  background:
+    linear-gradient(180deg, rgba(56,217,139,.052), rgba(255,255,255,.006)),
+    var(--bg-3);
+}
+
+.ga-focus-card {
+  background:
+    linear-gradient(180deg, rgba(236,72,153,.06), rgba(255,255,255,.006)),
+    var(--bg-3);
+}
