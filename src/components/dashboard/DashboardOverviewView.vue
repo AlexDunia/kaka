@@ -1,24 +1,260 @@
 <script setup>
+import { ref } from 'vue'
+
 const emit = defineEmits(['select-view'])
 const showManage = (view) => emit('select-view', view)
+
+const baseLink = 'rushhour.ng/e/comedy-meets-dance'
+const linkPresets = [
+  { label: 'WhatsApp', source: 'wa', note: 'Best buyer channel', buyers: 271, clicks: 813 },
+  { label: 'Instagram', source: 'ig', note: 'Good for attention', buyers: 110, clicks: 486 },
+  { label: 'Direct link', source: 'direct', note: 'For bios and flyers', buyers: 148, clicks: 392 },
+]
+
+const linkImpactCards = [
+  { label: 'Ticket performance', copy: 'Sales from each link feed back into the ticket story.' },
+  { label: 'Buyer channels', copy: 'You see which crowd is actually buying, not just clicking.' },
+  { label: 'Next moves', copy: 'The dashboard can tell you where to push again.' },
+]
+
+const linksGenerated = ref(false)
+const isGeneratingLinks = ref(false)
+const customLabel = ref('')
+const showCustomLink = ref(false)
+const linkFeedback = ref('')
+const shareLinks = ref([])
+const linkModalOpen = ref(false)
+const linkModalStep = ref(1)
+
+const createSourceLink = (item) => ({
+  ...item,
+  url: `${baseLink}?src=${item.source}`,
+  sales: item.buyers,
+})
+
+const generateSourceLinks = () => {
+  if (isGeneratingLinks.value) return
+
+  isGeneratingLinks.value = true
+  linkFeedback.value = ''
+  linkModalStep.value = 1
+
+  window.setTimeout(() => {
+    shareLinks.value = linkPresets.map(createSourceLink)
+    linksGenerated.value = true
+    isGeneratingLinks.value = false
+    linkModalOpen.value = true
+    linkFeedback.value = 'Links generated. Copy the one that matches where you post.'
+  }, 650)
+}
+
+const closeLinkModal = () => {
+  linkModalOpen.value = false
+}
+
+const advanceLinkModal = () => {
+  if (linkModalStep.value < 3) {
+    linkModalStep.value += 1
+    return
+  }
+
+  closeLinkModal()
+}
+
+const copyLink = async (link) => {
+  const fullLink = `https://${link.url}`
+
+  try {
+    await navigator.clipboard?.writeText(fullLink)
+    linkFeedback.value = `${link.label} link copied.`
+  } catch {
+    linkFeedback.value = fullLink
+  }
+}
+
+const shareLink = (link) => {
+  const fullLink = `https://${link.url}`
+  const message = encodeURIComponent(`Grab your ticket: ${fullLink}`)
+  const source = link.source.toLowerCase()
+
+  if (source.includes('wa')) {
+    window.open(`https://wa.me/?text=${message}`, '_blank', 'noopener,noreferrer')
+    linkFeedback.value = 'Opening WhatsApp share.'
+    return
+  }
+
+  copyLink(link)
+}
+
+const addCustomLink = () => {
+  const label = customLabel.value.trim()
+  if (!label) return
+
+  const source = label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+    .slice(0, 24) || 'custom'
+
+  shareLinks.value = [
+    ...shareLinks.value,
+    { label, source, note: 'Custom tracker', buyers: 0, clicks: 0, sales: 0, url: `${baseLink}?src=${source}` },
+  ]
+  customLabel.value = ''
+  showCustomLink.value = false
+  linkFeedback.value = `${label} link added.`
+}
 </script>
 
 <template>
   <div class="manage-view active" id="mv-overview">
     <div class="sections-wrap overview-wrap">
-      <section>
-        <article class="overview-pulse-card">
-          <div class="section-title">Event pulse</div>
-          <h2>Your event is moving. General Admission needs one clear push.</h2>
-          <p>
-            72% sold. Premium seats are doing their job. The simple job now is to move regular buyers
-            before the event gets too close.
-          </p>
-          <div class="decision-line">
-            <strong>Best next move:</strong> run a short General Admission offer and share it on WhatsApp today.
+      <section class="link-flow-section">
+        <article class="link-generator-card link-generator-card--flow">
+          <div class="link-flow-hero">
+            <div class="link-flow-copy">
+              <div class="section-title compact-section-title">Promote</div>
+              <h2>{{ linksGenerated ? 'Your sharing links are ready' : 'Generate links before you share' }}</h2>
+              <p>
+                Every place you post should have its own link. WhatsApp gets one, Instagram gets one,
+                and your direct event link gets one too.
+              </p>
+            </div>
+
+            <div class="link-flow-action-panel">
+              <span>{{ linksGenerated ? `${shareLinks.length} links generated` : 'Ready when you are' }}</span>
+              <button
+                class="link-primary-action"
+                type="button"
+                :disabled="isGeneratingLinks"
+                @click="generateSourceLinks"
+              >
+                {{ isGeneratingLinks ? 'Generating...' : linksGenerated ? 'Generate again' : 'Generate my links' }}
+              </button>
+            </div>
+          </div>
+
+          <div class="link-flow-preview" aria-label="Where generated links help">
+            <div v-for="item in linkImpactCards" :key="item.label" class="link-flow-preview-item">
+              <strong>{{ item.label }}</strong>
+              <span>{{ item.copy }}</span>
+            </div>
           </div>
         </article>
       </section>
+
+      <section v-if="linksGenerated" class="link-workspace-section">
+        <article class="link-workspace-card">
+          <div class="link-workspace-head">
+            <div>
+              <div class="section-title compact-section-title">Links ready</div>
+              <h3>Use the right link in the right place</h3>
+              <p>Copy the exact link for where you are posting. That is how the dashboard knows what worked.</p>
+            </div>
+            <button type="button" class="link-workspace-help" @click="linkModalStep = 1; linkModalOpen = true">
+              See how it works
+            </button>
+          </div>
+
+          <div class="link-workspace-stats">
+            <div>
+              <strong>{{ shareLinks.length }}</strong>
+              <span>active links</span>
+            </div>
+            <div>
+              <strong>1,691</strong>
+              <span>tracked clicks</span>
+            </div>
+            <div>
+              <strong>529</strong>
+              <span>matched buyers</span>
+            </div>
+          </div>
+
+          <div class="share-link-list" aria-label="Generated event links">
+            <div v-for="link in shareLinks" :key="link.source" class="share-link-row">
+              <div>
+                <strong>{{ link.label }}</strong>
+                <span>{{ link.note }}</span>
+              </div>
+              <code>{{ link.url }}</code>
+              <div class="share-link-actions">
+                <button type="button" @click="copyLink(link)">Copy</button>
+                <button type="button" @click="shareLink(link)">Share</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="custom-link-box">
+            <button
+              v-if="!showCustomLink"
+              type="button"
+              class="custom-link-trigger"
+              @click="showCustomLink = true"
+            >
+              Track somewhere specific
+            </button>
+            <form v-else class="custom-link-form" @submit.prevent="addCustomLink">
+              <input v-model="customLabel" type="text" placeholder="e.g. church group, school alumni" />
+              <button type="submit">Create</button>
+              <button type="button" @click="showCustomLink = false; customLabel = ''">Cancel</button>
+            </form>
+          </div>
+
+          <p v-if="linkFeedback" class="link-feedback">{{ linkFeedback }}</p>
+        </article>
+      </section>
+
+      <div v-if="linkModalOpen" class="link-flow-overlay" role="dialog" aria-modal="true" aria-labelledby="linkFlowTitle">
+        <article class="link-flow-modal">
+          <button class="link-modal-close" type="button" aria-label="Close" @click="closeLinkModal">x</button>
+
+          <div class="link-modal-step">Step {{ linkModalStep }} of 3</div>
+
+          <div v-if="linkModalStep === 1" class="link-modal-body">
+            <h3 id="linkFlowTitle">Your links have been generated</h3>
+            <p>WhatsApp, Instagram, and Direct now have separate links. Use them separately so every sale has a source.</p>
+            <div class="link-modal-mini-list">
+              <span>WhatsApp link ready</span>
+              <span>Instagram link ready</span>
+              <span>Direct link ready</span>
+            </div>
+          </div>
+
+          <div v-else-if="linkModalStep === 2" class="link-modal-body">
+            <h3 id="linkFlowTitle">Post the matching link</h3>
+            <p>Use WhatsApp link on WhatsApp, Instagram link on Instagram, and Direct for bios, flyers, and simple sharing.</p>
+            <div class="link-modal-route">
+              <span>Copy</span>
+              <span>Share</span>
+              <span>Track</span>
+            </div>
+          </div>
+
+          <div v-else class="link-modal-body">
+            <h3 id="linkFlowTitle">Now the rest of the dashboard can speak clearly</h3>
+            <p>Ticket performance, buyer channels, and next moves can all point back to the links people actually used.</p>
+            <div class="link-modal-mini-list">
+              <span>Ticket performance gets clearer</span>
+              <span>Buyer channels stop guessing</span>
+              <span>Next move becomes obvious</span>
+            </div>
+          </div>
+
+          <div class="link-modal-dots" aria-hidden="true">
+            <span :class="{ active: linkModalStep === 1 }"></span>
+            <span :class="{ active: linkModalStep === 2 }"></span>
+            <span :class="{ active: linkModalStep === 3 }"></span>
+          </div>
+
+          <div class="link-modal-footer">
+            <button type="button" class="link-modal-quiet" @click="closeLinkModal">Skip</button>
+            <button type="button" class="link-modal-primary" @click="advanceLinkModal">
+              {{ linkModalStep === 3 ? 'Show my links' : 'Next' }}
+            </button>
+          </div>
+        </article>
+      </div>
 
       <section class="overview-command-grid overview-command-grid--calm">
         <article class="event-health-panel health-readout-panel">

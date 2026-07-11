@@ -75,18 +75,35 @@ const userInitials = computed(() => {
   <header class="topbar" aria-label="Dashboard header">
     <div class="topbar-manage dashboard-header-shell" id="topbar-manage">
       <div class="dashboard-header-title-wrap">
-        <span class="dashboard-header-kicker">Organiser workspace</span>
-        <h1 class="dashboard-header-title">Dashboard</h1>
+        <span class="dashboard-header-kicker">Event dashboard</span>
+        <div class="dashboard-title-row">
+          <h1 class="dashboard-header-title">Comedy Meets Dance</h1>
+          <span class="dashboard-header-status"><span class="status-dot"></span>Live</span>
+        </div>
+        <p class="dashboard-header-meta">May 12, 2026 &middot; 6:00 PM &middot; Eko Hotel &amp; Suites</p>
       </div>
 
-      <div class="dashboard-auth" :aria-label="`Authenticated as ${displayName}`">
-        <div class="dashboard-auth-copy">
-          <span>Signed in</span>
-          <strong>{{ displayName }}</strong>
+      <div class="dashboard-header-right">
+        <div v-if="!isEditMode" class="dashboard-header-actions">
+          <button type="button" class="btn btn-ghost dashboard-header-action">View public page</button>
+          <button type="button" class="btn btn-primary dashboard-header-action" @click="$emit('enter-edit-mode')">
+            Edit event
+          </button>
         </div>
-        <div class="dashboard-avatar" aria-hidden="true">
-          <img v-if="avatarUrl" :src="avatarUrl" :alt="displayName" />
-          <span v-else>{{ userInitials }}</span>
+
+        <button v-else type="button" class="btn btn-ghost dashboard-header-action" @click="$emit('exit-edit-mode')">
+          Back to dashboard
+        </button>
+
+        <div class="dashboard-auth" :aria-label="`Authenticated as ${displayName}`">
+          <div class="dashboard-auth-copy">
+            <span>Signed in</span>
+            <strong>{{ displayName }}</strong>
+          </div>
+          <div class="dashboard-avatar" aria-hidden="true">
+            <img v-if="avatarUrl" :src="avatarUrl" :alt="displayName" />
+            <span v-else>{{ userInitials }}</span>
+          </div>
         </div>
       </div>
     </div>
