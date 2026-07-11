@@ -49,10 +49,7 @@ const goToStep = (step) => emit('select-step', step)
         </div>
         <div class="switcher-info">
           <div class="switcher-name">Comedy Meets Dance</div>
-          <div class="switcher-status live">
-            <span class="status-dot"></span>
-            Live now
-          </div>
+          <div class="switcher-action">Change event</div>
         </div>
         <div class="switcher-arrow" :class="{ open: dropdownOpen }" id="arrow">
           <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9" /></svg>
