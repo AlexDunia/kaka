@@ -33,6 +33,7 @@ import {
   XMarkIcon,
 } from '@heroicons/vue/24/outline'
 import DateTimePickerInput from '@/components/DateTimePickerInput.vue'
+import CreateEventStepSkeleton from '@/components/CreateEventStepSkeleton.vue'
 import EventCard from '@/components/EventCard.vue'
 import { getRushHourLogo } from '@/constants/brand'
 import { playThemeToggleClick } from '@/utils/themeClickSound'
@@ -183,6 +184,9 @@ const brandLogoUrl = computed(() => getRushHourLogo(theme.value))
 let themeInstantToken = 0
 const currentStep = ref(1)
 const maxStepReached = ref(1)
+const isStepLoading = ref(false)
+const loadingStep = ref(1)
+let stepLoadingToken = 0
 const previewOn = ref(window.localStorage?.getItem('kaka-create-preview') !== 'false')
 const draftSaved = ref(false)
 const activeUploadTab = ref('files')
@@ -624,8 +628,18 @@ function toggleTheme() {
 
 function setStep(step) {
   if (step > maxStepReached.value) return
-  currentStep.value = step
+  if (step === currentStep.value || isStepLoading.value) return
+  const token = ++stepLoadingToken
+  const rtt = Number(navigator.connection?.rtt) || 120
+  const duration = Math.min(1450, Math.max(1050, 900 + rtt))
+  loadingStep.value = step
+  isStepLoading.value = true
   window.scrollTo({ top: 0, behavior: 'smooth' })
+  window.setTimeout(() => {
+    if (token !== stepLoadingToken) return
+    currentStep.value = step
+    isStepLoading.value = false
+  }, duration)
 }
 
 function goNext() {
@@ -1096,8 +1110,9 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
       </div>
 
       <div class="ce-columns" :class="{ 'preview-off': !previewOn }">
-        <section class="ce-form">
+        <section v-if="!isStepLoading" class="ce-form">
           <div v-if="currentStep === 1" class="screen">
+        <CreateEventStepSkeleton v-if="isStepLoading" :step="loadingStep" :preview-on="previewOn" />
             <div class="screen-head">
               <h1>
                 Let's build your<br /><em>event.</em>
@@ -1884,7 +1899,7 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
           </div>
         </section>
 
-        <aside v-if="previewOn" class="preview-col">
+        <aside v-if="previewOn && !isStepLoading" class="preview-col">
           <span class="side-label">Live preview</span>
           <EventCard :event="previewEvent" :show-details="false" />
           <div class="tip-card">
@@ -4036,5 +4051,35 @@ label span {
     flex-direction: column;
     align-items: stretch;
   }
+}
+
+/* Keep every onboarding control inside its responsive column. */
+@media (max-width: 720px) {
+  .create-event-page button,
+  .create-event-page input,
+  .create-event-page select,
+  .create-event-page textarea {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .pill-row,
+  .quick-chip-row,
+  .detail-chip-row,
+  .repeat-frequency-row,
+  .day-row,
+  .nav-actions {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .pill-row > button,
+  .quick-chip-row > button,
+  .detail-chip-row > button {
+    min-width: 0;
+    white-space: normal;
+  }
+
+  .nav-actions .primary-btn { min-width: 0; width: 100%; }
 }
 </style>

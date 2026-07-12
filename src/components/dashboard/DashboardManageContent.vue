@@ -18,9 +18,10 @@ defineProps({
   },
 })
 
-const emit = defineEmits(['select-view'])
+const emit = defineEmits(['select-view', 'link-created'])
 
 const showManage = (view) => emit('select-view', view)
+const linkCreated = (message) => emit('link-created', message)
 </script>
 
 <template>
@@ -28,7 +29,7 @@ const showManage = (view) => emit('select-view', view)
     <template v-if="currentManageView === 'overview'">
       <DashboardEventHero />
       <DashboardStatStrip />
-      <DashboardOverviewView @select-view="showManage" />
+      <DashboardOverviewView @select-view="showManage" @link-created="linkCreated" />
     </template>
 
     <DashboardAttendeesView v-else-if="currentManageView === 'attendees'" />
@@ -36,7 +37,7 @@ const showManage = (view) => emit('select-view', view)
     <DashboardCheckinView v-else-if="currentManageView === 'checkin'" />
     <DashboardEmailView v-else-if="currentManageView === 'email'" />
     <DashboardPromoView v-else-if="currentManageView === 'promo'" />
-    <DashboardShareView v-else-if="currentManageView === 'share'" @select-view="showManage" />
+    <DashboardShareView v-else-if="currentManageView === 'share'" @select-view="showManage" @link-created="linkCreated" />
     <DashboardPayoutView v-else-if="currentManageView === 'payout'" />
     <DashboardSettingsView v-else-if="currentManageView === 'settings'" />
   </div>

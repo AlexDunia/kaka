@@ -1,7 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 
-const emit = defineEmits(['select-view'])
+const emit = defineEmits(['select-view', 'link-created'])
 const showManage = (view) => emit('select-view', view)
 
 const baseLink = 'rushhour.ng/e/comedy-meets-dance'
@@ -10,7 +10,6 @@ const linkPresets = [
   { label: 'Instagram', source: 'ig', note: 'Good for attention', buyers: 110, clicks: 486 },
   { label: 'Direct link', source: 'direct', note: 'For bios and flyers', buyers: 148, clicks: 392 },
 ]
-
 
 const linksGenerated = ref(false)
 const isGeneratingLinks = ref(false)
@@ -40,6 +39,7 @@ const generateSourceLinks = () => {
     isGeneratingLinks.value = false
     linkModalOpen.value = true
     linkFeedback.value = 'Links generated. Copy the one that matches where you post.'
+    emit('link-created', 'Your event links are ready to share.')
   }, 650)
 }
 
@@ -85,19 +85,29 @@ const addCustomLink = () => {
   const label = customLabel.value.trim()
   if (!label) return
 
-  const source = label
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '')
-    .slice(0, 24) || 'custom'
+  const source =
+    label
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '')
+      .slice(0, 24) || 'custom'
 
   shareLinks.value = [
     ...shareLinks.value,
-    { label, source, note: 'Custom tracker', buyers: 0, clicks: 0, sales: 0, url: `${baseLink}?src=${source}` },
+    {
+      label,
+      source,
+      note: 'Custom tracker',
+      buyers: 0,
+      clicks: 0,
+      sales: 0,
+      url: `${baseLink}?src=${source}`,
+    },
   ]
   customLabel.value = ''
   showCustomLink.value = false
   linkFeedback.value = `${label} link added.`
+  emit('link-created', `${label} is ready to use.`)
 }
 </script>
 
@@ -132,34 +142,61 @@ const addCustomLink = () => {
           <div class="traffic-rows overview-traffic generated-ticket-rows">
             <div class="traffic-row">
               <div class="traffic-icon ticket-tier-icon hot">
-                <svg viewBox="0 0 24 24"><path d="M2 9a3 3 0 0 0 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 0 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2Z" /><path d="M12 5v14" /></svg>
+                <svg viewBox="0 0 24 24">
+                  <path
+                    d="M2 9a3 3 0 0 0 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 0 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2Z"
+                  />
+                  <path d="M12 5v14" />
+                </svg>
               </div>
               <div class="traffic-info">
                 <div class="traffic-name">Gold Table</div>
                 <div class="traffic-count">25 sold · 5 left</div>
-                <div class="traffic-bar-wrap"><div class="traffic-bar-track"><div class="traffic-bar-fill fill-red" style="width:93%"></div></div></div>
+                <div class="traffic-bar-wrap">
+                  <div class="traffic-bar-track">
+                    <div class="traffic-bar-fill fill-red" style="width: 93%"></div>
+                  </div>
+                </div>
               </div>
               <div class="traffic-pct">93%</div>
             </div>
             <div class="traffic-row">
               <div class="traffic-icon ticket-tier-icon good">
-                <svg viewBox="0 0 24 24"><path d="M2 9a3 3 0 0 0 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 0 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2Z" /><path d="M12 5v14" /></svg>
+                <svg viewBox="0 0 24 24">
+                  <path
+                    d="M2 9a3 3 0 0 0 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 0 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2Z"
+                  />
+                  <path d="M12 5v14" />
+                </svg>
               </div>
               <div class="traffic-info">
                 <div class="traffic-name">VIP</div>
                 <div class="traffic-count">38 sold · 12 left</div>
-                <div class="traffic-bar-wrap"><div class="traffic-bar-track"><div class="traffic-bar-fill fill-teal" style="width:76%"></div></div></div>
+                <div class="traffic-bar-wrap">
+                  <div class="traffic-bar-track">
+                    <div class="traffic-bar-fill fill-teal" style="width: 76%"></div>
+                  </div>
+                </div>
               </div>
               <div class="traffic-pct">76%</div>
             </div>
             <div class="traffic-row">
               <div class="traffic-icon ticket-tier-icon neutral">
-                <svg viewBox="0 0 24 24"><path d="M2 9a3 3 0 0 0 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 0 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2Z" /><path d="M12 5v14" /></svg>
+                <svg viewBox="0 0 24 24">
+                  <path
+                    d="M2 9a3 3 0 0 0 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 0 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2Z"
+                  />
+                  <path d="M12 5v14" />
+                </svg>
               </div>
               <div class="traffic-info">
                 <div class="traffic-name">General Admission</div>
                 <div class="traffic-count">177 sold · 323 left</div>
-                <div class="traffic-bar-wrap"><div class="traffic-bar-track"><div class="traffic-bar-fill fill-blue" style="width:35%"></div></div></div>
+                <div class="traffic-bar-wrap">
+                  <div class="traffic-bar-track">
+                    <div class="traffic-bar-fill fill-blue" style="width: 35%"></div>
+                  </div>
+                </div>
               </div>
               <div class="traffic-pct">35%</div>
             </div>
@@ -167,15 +204,26 @@ const addCustomLink = () => {
         </article>
       </section>
 
-      <div v-if="linkModalOpen" class="link-flow-overlay" role="dialog" aria-modal="true" aria-labelledby="linkFlowTitle">
+      <div
+        v-if="linkModalOpen"
+        class="link-flow-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="linkFlowTitle"
+      >
         <article class="link-flow-modal">
-          <button class="link-modal-close" type="button" aria-label="Close" @click="closeLinkModal">x</button>
+          <button class="link-modal-close" type="button" aria-label="Close" @click="closeLinkModal">
+            x
+          </button>
 
           <div class="link-modal-step">Step {{ linkModalStep }} of 3</div>
 
           <div v-if="linkModalStep === 1" class="link-modal-body">
             <h3 id="linkFlowTitle">Your links have been generated</h3>
-            <p>WhatsApp, Instagram, and Direct now have separate links. Use them separately so every sale has a source.</p>
+            <p>
+              WhatsApp, Instagram, and Direct now have separate links. Use them separately so every
+              sale has a source.
+            </p>
             <div class="link-modal-mini-list">
               <span>WhatsApp link ready</span>
               <span>Instagram link ready</span>
@@ -185,7 +233,10 @@ const addCustomLink = () => {
 
           <div v-else-if="linkModalStep === 2" class="link-modal-body">
             <h3 id="linkFlowTitle">Post the matching link</h3>
-            <p>Use WhatsApp link on WhatsApp, Instagram link on Instagram, and Direct for bios, flyers, and simple sharing.</p>
+            <p>
+              Use WhatsApp link on WhatsApp, Instagram link on Instagram, and Direct for bios,
+              flyers, and simple sharing.
+            </p>
             <div class="link-modal-route">
               <span>Copy</span>
               <span>Share</span>
@@ -195,7 +246,10 @@ const addCustomLink = () => {
 
           <div v-else class="link-modal-body">
             <h3 id="linkFlowTitle">Now the rest of the dashboard can speak clearly</h3>
-            <p>Ticket performance, buyer channels, and next moves can all point back to the links people actually used.</p>
+            <p>
+              Ticket performance, buyer channels, and next moves can all point back to the links
+              people actually used.
+            </p>
             <div class="link-modal-mini-list">
               <span>Ticket performance gets clearer</span>
               <span>Buyer channels stop guessing</span>
@@ -315,18 +369,54 @@ const addCustomLink = () => {
                 <div class="cpill">All</div>
               </div>
             </div>
-            <svg class="chart-svg" viewBox="0 0 580 130" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <line x1="0" y1="110" x2="580" y2="110" stroke="rgba(255,255,255,.08)" stroke-width="1" />
-              <line x1="0" y1="80" x2="580" y2="80" stroke="rgba(255,255,255,.08)" stroke-width="1" />
-              <line x1="0" y1="50" x2="580" y2="50" stroke="rgba(255,255,255,.08)" stroke-width="1" />
+            <svg
+              class="chart-svg"
+              viewBox="0 0 580 130"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <line
+                x1="0"
+                y1="110"
+                x2="580"
+                y2="110"
+                stroke="rgba(255,255,255,.08)"
+                stroke-width="1"
+              />
+              <line
+                x1="0"
+                y1="80"
+                x2="580"
+                y2="80"
+                stroke="rgba(255,255,255,.08)"
+                stroke-width="1"
+              />
+              <line
+                x1="0"
+                y1="50"
+                x2="580"
+                y2="50"
+                stroke="rgba(255,255,255,.08)"
+                stroke-width="1"
+              />
               <defs>
                 <linearGradient id="overviewSalesGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stop-color="#29B89A" stop-opacity=".22" />
                   <stop offset="100%" stop-color="#29B89A" stop-opacity="0" />
                 </linearGradient>
               </defs>
-              <path d="M15,105 L55,92 L95,88 L135,74 L175,70 L215,62 L255,54 L295,46 L335,42 L375,33 L415,26 L455,30 L495,22 L535,16 L555,12 L555,110 L15,110 Z" fill="url(#overviewSalesGradient)" />
-              <path d="M15,105 L55,92 L95,88 L135,74 L175,70 L215,62 L255,54 L295,46 L335,42 L375,33 L415,26 L455,30 L495,22 L535,16 L555,12" stroke="#29B89A" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+              <path
+                d="M15,105 L55,92 L95,88 L135,74 L175,70 L215,62 L255,54 L295,46 L335,42 L375,33 L415,26 L455,30 L495,22 L535,16 L555,12 L555,110 L15,110 Z"
+                fill="url(#overviewSalesGradient)"
+              />
+              <path
+                d="M15,105 L55,92 L95,88 L135,74 L175,70 L215,62 L255,54 L295,46 L335,42 L375,33 L415,26 L455,30 L495,22 L535,16 L555,12"
+                stroke="#29B89A"
+                stroke-width="2"
+                fill="none"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
               <circle cx="535" cy="16" r="4" fill="#29B89A" />
             </svg>
             <p class="chart-summary-copy">
@@ -357,7 +447,9 @@ const addCustomLink = () => {
             <h3>Event-day readiness</h3>
             <p>QR code ready. 612 expected. Check-in hasn't started.</p>
           </div>
-          <button class="btn btn-ghost" type="button" @click="showManage('checkin')">Prepare check-in</button>
+          <button class="btn btn-ghost" type="button" @click="showManage('checkin')">
+            Prepare check-in
+          </button>
         </article>
       </section>
     </div>

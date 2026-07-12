@@ -1,0 +1,47 @@
+<script setup>
+defineProps({ step: { type: Number, default: 1 }, previewOn: { type: Boolean, default: true } })
+</script>
+
+<template>
+  <div class="ces-layout" :class="{ 'preview-off': !previewOn }" aria-busy="true" aria-live="polite">
+    <section class="ces-form">
+      <div class="ces-head"><i></i><i></i><i></i></div>
+
+      <div v-if="step === 1" class="ces-card">
+        <div class="ces-field"><i class="ces-label"></i><i class="ces-input ces-input-xl"></i></div>
+        <div class="ces-divider"><i></i></div><div class="ces-pills"><i></i><i></i></div>
+        <div class="ces-divider"><i></i></div><div class="ces-grid"><div v-for="i in 2" :key="i" class="ces-field"><i class="ces-label"></i><i class="ces-input"></i></div></div>
+        <div class="ces-subpanel"><i class="ces-label"></i><div class="ces-pills"><i v-for="i in 3" :key="i"></i></div><div class="ces-grid"><i class="ces-choice"></i><i class="ces-choice"></i></div><i class="ces-schedule"></i></div>
+        <div class="ces-divider"><i></i></div><div class="ces-field"><i class="ces-label"></i><div class="ces-pills"><i v-for="i in 3" :key="i"></i></div></div><div class="ces-field"><i class="ces-label"></i><i class="ces-input"></i></div>
+        <div class="ces-divider"><i></i></div><div class="ces-field"><i class="ces-label"></i><i class="ces-input"></i></div>
+      </div>
+
+      <div v-else-if="step === 2" class="ces-card">
+        <div class="ces-field"><div class="ces-field-top"><i class="ces-label wide"></i><i class="ces-small-button"></i></div><div class="ces-tabs"><i></i><i></i></div><i class="ces-upload"></i><div class="ces-gallery"><i v-for="i in 3" :key="i"></i></div></div>
+        <div class="ces-divider"><i></i></div><div class="ces-field"><i class="ces-label"></i><i class="ces-textarea"></i></div>
+        <div class="ces-divider"><i></i></div><div class="ces-grid"><div v-for="i in 2" :key="i" class="ces-field"><i class="ces-label"></i><i class="ces-input"></i></div></div>
+        <div class="ces-divider"><i></i></div><i class="ces-hint"></i><div class="ces-pills"><i v-for="i in 4" :key="i"></i></div>
+        <div class="ces-divider"><i></i></div><div class="ces-field"><i class="ces-label"></i><i class="ces-input"></i></div>
+      </div>
+
+      <template v-else-if="step === 3">
+        <div class="ces-info"><i></i><div><i></i><i></i></div></div>
+        <div class="ces-card"><div class="ces-field"><i class="ces-label wide"></i><div class="ces-ticket-modes"><article v-for="i in 2" :key="i"><i></i><i></i><i></i></article></div></div><div class="ces-divider"><i></i></div><div class="ces-field-top"><div><i class="ces-label"></i><i class="ces-copy"></i></div><i class="ces-badge"></i></div><div class="ces-pills"><i v-for="i in 4" :key="i"></i></div><article v-for="ticket in 2" :key="ticket" class="ces-ticket"><div class="ces-ticket-head"><i></i><i></i><i></i></div><div v-for="row in 3" :key="row" class="ces-grid"><div v-for="i in 2" :key="i" class="ces-field"><i class="ces-label"></i><i class="ces-input"></i></div></div><i class="ces-toggle"></i></article></div>
+      </template>
+
+      <template v-else>
+        <div class="ces-info"><i></i><div><i></i><i></i></div></div>
+        <div class="ces-card compact"><div v-for="i in 5" :key="i" class="ces-attendee"><div><i></i><i></i></div><i></i></div></div>
+        <div class="ces-card compact"><div class="ces-email"><i></i><i></i><i></i><div><i></i><i></i><i></i></div></div></div>
+      </template>
+
+      <div class="ces-actions"><i v-if="step > 1" class="ces-back"></i><i class="ces-continue"></i></div>
+    </section>
+    <aside v-if="previewOn" class="ces-preview"><i class="ces-side-label"></i><div class="ces-event-card"><i class="ces-event-image"></i><div><i></i><i></i><i></i><i></i></div></div><div class="ces-tip"><i></i><i></i><i></i></div></aside>
+  </div>
+</template>
+
+<style scoped>
+.ces-layout{--b:rgba(255,255,255,.035);--l:rgba(255,255,255,.05);--h:rgba(255,255,255,.083);display:grid;grid-template-columns:minmax(0,1.32fr) minmax(260px,.68fr);gap:32px;width:100%;animation:ces-in .32s cubic-bezier(.22,1,.36,1) both}.ces-layout.preview-off{grid-template-columns:1fr}.ces-form{display:flex;min-width:0;flex-direction:column;gap:22px}.ces-head{display:flex;flex-direction:column;gap:12px}.ces-head i:nth-child(1){width:58%;height:45px}.ces-head i:nth-child(2){width:42%;height:45px}.ces-head i:nth-child(3){width:72%;height:14px}.ces-layout i,.ces-card,.ces-info,.ces-ticket-modes article,.ces-ticket{position:relative;display:block;overflow:hidden;border:1px solid var(--l);background:var(--b);border-radius:8px}.ces-layout i::after,.ces-card::after,.ces-info::after,.ces-ticket::after{content:'';position:absolute;inset:0;transform:translateX(-110%);background:linear-gradient(90deg,transparent 20%,var(--h),transparent 80%);animation:ces-shimmer 1.7s cubic-bezier(.4,0,.2,1) infinite}.ces-card{padding:24px;border-radius:14px;background:rgba(255,255,255,.014)}.ces-card>*{position:relative;z-index:1}.ces-field{display:flex;min-width:0;flex-direction:column;gap:10px;margin:18px 0}.ces-label{width:110px;height:11px;border-radius:999px}.ces-label.wide{width:190px}.ces-input{width:100%;height:46px}.ces-input-xl{height:56px}.ces-divider{display:flex;align-items:center;margin:25px 0 10px;border-bottom:1px solid var(--l)}.ces-divider i{width:80px;height:11px;margin-bottom:-6px}.ces-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}.ces-pills{display:flex;flex-wrap:wrap;gap:10px}.ces-pills i{width:116px;height:38px;border-radius:999px}.ces-subpanel{display:flex;flex-direction:column;gap:16px;margin-top:18px;padding:18px;border:1px solid var(--l);border-radius:10px}.ces-choice{height:64px}.ces-schedule{height:100px}.ces-field-top{display:flex;align-items:center;justify-content:space-between;gap:16px}.ces-small-button{width:100px;height:34px}.ces-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0}.ces-tabs i{height:38px}.ces-upload{height:230px}.ces-gallery{display:flex;gap:10px;margin-top:14px}.ces-gallery i{width:84px;height:64px}.ces-textarea{height:120px}.ces-hint{height:48px;margin:18px 0}.ces-info{display:grid;grid-template-columns:36px 1fr;gap:14px;padding:18px}.ces-info>i{width:34px;height:34px}.ces-info div i{height:11px;margin:4px 0 10px}.ces-info div i:first-child{width:45%}.ces-info div i:last-child{width:82%}.ces-ticket-modes{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px}.ces-ticket-modes article{display:flex;flex-direction:column;gap:12px;padding:20px}.ces-ticket-modes i:first-child{width:34px;height:34px}.ces-ticket-modes i:nth-child(2){width:50%;height:14px}.ces-ticket-modes i:last-child{width:86%;height:11px}.ces-copy{width:220px;height:11px;margin-top:9px}.ces-badge{width:74px;height:27px;border-radius:999px}.ces-ticket{display:flex;flex-direction:column;gap:10px;margin-top:18px;padding:18px;background:rgba(255,255,255,.01)}.ces-ticket>*{position:relative;z-index:1}.ces-ticket-head{display:grid;grid-template-columns:14px 1fr 30px;gap:12px}.ces-ticket-head i{height:14px}.ces-toggle{width:100%;height:52px}.ces-card.compact{padding:0}.ces-attendee{display:flex;align-items:center;justify-content:space-between;padding:20px 22px;border-bottom:1px solid var(--l)}.ces-attendee:last-child{border-bottom:0}.ces-attendee div{width:70%}.ces-attendee div i{height:12px;margin:5px 0}.ces-attendee div i:first-child{width:45%}.ces-attendee div i:last-child{width:80%}.ces-attendee>i{width:44px;height:24px;border-radius:999px}.ces-email{padding:22px}.ces-email>i{height:12px;margin-bottom:13px}.ces-email>i:nth-child(1){width:65%}.ces-email>i:nth-child(2){width:45%}.ces-email>i:nth-child(3){width:76%}.ces-email div{display:flex;flex-direction:column;gap:10px;margin-top:24px;padding:18px;border:1px solid var(--l);border-radius:8px}.ces-email div i{height:11px}.ces-actions{display:flex;gap:12px}.ces-back{width:48px;height:46px}.ces-continue{flex:1;height:46px}.ces-preview{display:flex;min-width:0;flex-direction:column;gap:14px}.ces-side-label{width:90px;height:11px}.ces-event-card{overflow:hidden;border:1px solid var(--l);border-radius:14px}.ces-event-image{height:210px;border:0;border-radius:0}.ces-event-card div{display:flex;flex-direction:column;gap:12px;padding:20px}.ces-event-card div i{height:12px}.ces-event-card div i:nth-child(1){width:80%}.ces-event-card div i:nth-child(2){width:52%}.ces-event-card div i:nth-child(3){width:68%}.ces-event-card div i:nth-child(4){width:35%}.ces-tip{display:flex;flex-direction:column;gap:10px;padding:18px;border:1px solid var(--l);border-radius:12px}.ces-tip i{height:11px}.ces-tip i:first-child{width:30%}.ces-tip i:nth-child(2){width:88%}.ces-tip i:last-child{width:65%}@keyframes ces-shimmer{to{transform:translateX(110%)}}@keyframes ces-in{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}@media(max-width:900px){.ces-layout{grid-template-columns:1fr}.ces-preview{display:none}}@media(max-width:620px){.ces-grid,.ces-ticket-modes{grid-template-columns:1fr}.ces-card{padding:18px}.ces-pills i{flex:1;min-width:92px}.ces-field-top{align-items:flex-start;flex-direction:column}.ces-actions{width:100%}.ces-continue{min-width:0}.ces-head i:nth-child(1),.ces-head i:nth-child(2){height:38px}}@media(prefers-reduced-motion:reduce){.ces-layout,.ces-layout i::after,.ces-card::after,.ces-info::after,.ces-ticket::after{animation:none}}
+.ces-layout{grid-column:1/-1}
+</style>

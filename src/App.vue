@@ -15,10 +15,29 @@ const currentYear = ref(new Date().getFullYear())
 const route = useRoute()
 const router = useRouter()
 const { updateMetaDescription, updateSocialMeta } = useSeo()
-const routeUsesShellSkeleton = (targetRoute) => !targetRoute?.meta?.disableRouteSkeleton
+const pageOwnedSkeletonRoutes = new Set([
+  'home',
+  'search',
+  'music',
+  'movies',
+  'theatre',
+  'sports',
+  'festivals',
+  'others',
+  'event-details',
+  'event-details-legacy',
+  'checkout',
+  'blog',
+  'blog-post',
+  'admin',
+  'transactions',
+  'dashboard',
+])
+const routeUsesShellSkeleton = (targetRoute) => !pageOwnedSkeletonRoutes.has(targetRoute?.name)
 const isRouteLoading = ref(routeUsesShellSkeleton(route))
 const skeletonRoute = ref(route)
-const routeSkeletonMinimumMs = 360
+const routeNetworkRtt = typeof navigator === 'undefined' ? 120 : Number(navigator.connection?.rtt) || 120
+const routeSkeletonMinimumMs = Math.min(1450, Math.max(1050, 900 + routeNetworkRtt))
 let routeLoadingStartedAt = Date.now()
 let routeLoadingReleaseTimer = null
 const chromeRoute = computed(() => (isRouteLoading.value ? skeletonRoute.value : route))

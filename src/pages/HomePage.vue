@@ -161,12 +161,6 @@ onUnmounted(() => {
 
 <template>
   <div class="home-page">
-    <!-- Loading Indicator for Initial Load -->
-    <div v-if="isLoading && !initialLoadComplete && !events.length" class="loading-container">
-      <SkeletonLoader type="rect" width="100%" height="40px" :color="skeletonColor" />
-      <p>Loading events...</p>
-    </div>
-
     <!-- Global Error Message -->
     <div v-if="error" class="error-message">
       <p>{{ error }}</p>

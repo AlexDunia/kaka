@@ -1,7 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 
-const emit = defineEmits(['select-view'])
+const emit = defineEmits(['select-view', 'link-created'])
 const showManage = (view) => emit('select-view', view)
 
 const baseLink = 'rushhour.ng/e/comedy-meets-dance'
@@ -80,6 +80,7 @@ const addCustomLink = () => {
   customLabel.value = ''
   showCustomLink.value = false
   linkFeedback.value = `${label} link added.`
+  emit('link-created', `${label} is ready to use.`)
 }
 </script>
 <template>
