@@ -11,11 +11,6 @@ const linkPresets = [
   { label: 'Direct link', source: 'direct', note: 'For bios and flyers', buyers: 148, clicks: 392 },
 ]
 
-const linkImpactCards = [
-  { label: 'Ticket performance', copy: 'Sales from each link feed back into the ticket story.' },
-  { label: 'Buyer channels', copy: 'You see which crowd is actually buying, not just clicking.' },
-  { label: 'Next moves', copy: 'The dashboard can tell you where to push again.' },
-]
 
 const linksGenerated = ref(false)
 const isGeneratingLinks = ref(false)
@@ -109,99 +104,66 @@ const addCustomLink = () => {
 <template>
   <div class="manage-view active" id="mv-overview">
     <div class="sections-wrap overview-wrap">
-      <section class="link-flow-section">
-        <article class="link-generator-card link-generator-card--flow">
-          <div class="link-flow-hero">
-            <div class="link-flow-copy">
-              <div class="section-title compact-section-title">Promote</div>
-              <h2>{{ linksGenerated ? 'Your sharing links are ready' : 'Generate links before you share' }}</h2>
-              <p>
-                Every place you post should have its own link. WhatsApp gets one, Instagram gets one,
-                and your direct event link gets one too.
-              </p>
+      <section v-if="!linksGenerated" class="link-flow-section link-flow-section--sales">
+        <article class="card ticket-performance-card sales-link-pregen-card">
+          <div class="overview-card-head ticket-card-head sales-link-pregen-head">
+            <div>
+              <h3>Alex, your event doesn't have a link yet</h3>
+              <p>Get all your links to sell your event &mdash; one click.</p>
             </div>
-
-            <div class="link-flow-action-panel">
-              <span>{{ linksGenerated ? `${shareLinks.length} links generated` : 'Ready when you are' }}</span>
-              <button
-                class="link-primary-action"
-                type="button"
-                :disabled="isGeneratingLinks"
-                @click="generateSourceLinks"
-              >
-                {{ isGeneratingLinks ? 'Generating...' : linksGenerated ? 'Generate again' : 'Generate my links' }}
-              </button>
-            </div>
-          </div>
-
-          <div class="link-flow-preview" aria-label="Where generated links help">
-            <div v-for="item in linkImpactCards" :key="item.label" class="link-flow-preview-item">
-              <strong>{{ item.label }}</strong>
-              <span>{{ item.copy }}</span>
-            </div>
+            <button
+              class="link-primary-action sales-link-pregen-action"
+              type="button"
+              :disabled="isGeneratingLinks"
+              @click="generateSourceLinks"
+            >
+              {{ isGeneratingLinks ? 'Generating...' : 'Generate event links' }}
+            </button>
           </div>
         </article>
       </section>
 
-      <section v-if="linksGenerated" class="link-workspace-section">
-        <article class="link-workspace-card">
-          <div class="link-workspace-head">
-            <div>
-              <div class="section-title compact-section-title">Links ready</div>
-              <h3>Use the right link in the right place</h3>
-              <p>Copy the exact link for where you are posting. That is how the dashboard knows what worked.</p>
-            </div>
-            <button type="button" class="link-workspace-help" @click="linkModalStep = 1; linkModalOpen = true">
-              See how it works
-            </button>
+      <section class="generated-ticket-performance-section">
+        <article class="card generated-ticket-performance-card">
+          <div class="overview-card-head">
+            <h3>Ticket performance</h3>
+            <p>Top selling ticket types from this event.</p>
           </div>
-
-          <div class="link-workspace-stats">
-            <div>
-              <strong>{{ shareLinks.length }}</strong>
-              <span>active links</span>
-            </div>
-            <div>
-              <strong>1,691</strong>
-              <span>tracked clicks</span>
-            </div>
-            <div>
-              <strong>529</strong>
-              <span>matched buyers</span>
-            </div>
-          </div>
-
-          <div class="share-link-list" aria-label="Generated event links">
-            <div v-for="link in shareLinks" :key="link.source" class="share-link-row">
-              <div>
-                <strong>{{ link.label }}</strong>
-                <span>{{ link.note }}</span>
+          <div class="traffic-rows overview-traffic generated-ticket-rows">
+            <div class="traffic-row">
+              <div class="traffic-icon ticket-tier-icon hot">
+                <svg viewBox="0 0 24 24"><path d="M2 9a3 3 0 0 0 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 0 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2Z" /><path d="M12 5v14" /></svg>
               </div>
-              <code>{{ link.url }}</code>
-              <div class="share-link-actions">
-                <button type="button" @click="copyLink(link)">Copy</button>
-                <button type="button" @click="shareLink(link)">Share</button>
+              <div class="traffic-info">
+                <div class="traffic-name">Gold Table</div>
+                <div class="traffic-count">25 sold · 5 left</div>
+                <div class="traffic-bar-wrap"><div class="traffic-bar-track"><div class="traffic-bar-fill fill-red" style="width:93%"></div></div></div>
               </div>
+              <div class="traffic-pct">93%</div>
+            </div>
+            <div class="traffic-row">
+              <div class="traffic-icon ticket-tier-icon good">
+                <svg viewBox="0 0 24 24"><path d="M2 9a3 3 0 0 0 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 0 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2Z" /><path d="M12 5v14" /></svg>
+              </div>
+              <div class="traffic-info">
+                <div class="traffic-name">VIP</div>
+                <div class="traffic-count">38 sold · 12 left</div>
+                <div class="traffic-bar-wrap"><div class="traffic-bar-track"><div class="traffic-bar-fill fill-teal" style="width:76%"></div></div></div>
+              </div>
+              <div class="traffic-pct">76%</div>
+            </div>
+            <div class="traffic-row">
+              <div class="traffic-icon ticket-tier-icon neutral">
+                <svg viewBox="0 0 24 24"><path d="M2 9a3 3 0 0 0 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 0 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2Z" /><path d="M12 5v14" /></svg>
+              </div>
+              <div class="traffic-info">
+                <div class="traffic-name">General Admission</div>
+                <div class="traffic-count">177 sold · 323 left</div>
+                <div class="traffic-bar-wrap"><div class="traffic-bar-track"><div class="traffic-bar-fill fill-blue" style="width:35%"></div></div></div>
+              </div>
+              <div class="traffic-pct">35%</div>
             </div>
           </div>
-
-          <div class="custom-link-box">
-            <button
-              v-if="!showCustomLink"
-              type="button"
-              class="custom-link-trigger"
-              @click="showCustomLink = true"
-            >
-              Track somewhere specific
-            </button>
-            <form v-else class="custom-link-form" @submit.prevent="addCustomLink">
-              <input v-model="customLabel" type="text" placeholder="e.g. church group, school alumni" />
-              <button type="submit">Create</button>
-              <button type="button" @click="showCustomLink = false; customLabel = ''">Cancel</button>
-            </form>
-          </div>
-
-          <p v-if="linkFeedback" class="link-feedback">{{ linkFeedback }}</p>
         </article>
       </section>
 
@@ -334,119 +296,6 @@ const addCustomLink = () => {
               </span>
               <span class="next-move-destination">Message</span>
             </button>
-          </div>
-        </article>
-      </section>
-
-      <section class="overview-content-grid">
-        <article class="card ticket-performance-card">
-          <div class="overview-card-head ticket-card-head">
-            <div>
-              <h3>Ticket performance</h3>
-              <p>Start with the ticket that needs action. Everything else is secondary.</p>
-            </div>
-          </div>
-
-          <div class="ga-focus-card">
-            <div class="ga-focus-top">
-              <div>
-                <span class="ga-kicker">Needs attention</span>
-                <h4>General Admission</h4>
-                <p>177 sold. 323 still open.</p>
-              </div>
-              <div class="ga-price-block">
-                <strong>₦10,000</strong>
-                <span>₦1,770,000 earned</span>
-              </div>
-            </div>
-
-            <div class="ga-progress-block">
-              <div class="ga-progress-copy">
-                <span>35% sold</span>
-                <span>500 total</span>
-              </div>
-              <div class="ga-progress-track"><div class="ga-progress-fill"></div></div>
-            </div>
-
-            <div class="ga-action-strip">
-              <div>
-                <strong>Make this obvious for buyers.</strong>
-                <span>Try a 48-hour code like GA2KOFF, then share it on WhatsApp.</span>
-              </div>
-              <button type="button" @click="showManage('promo')">Create code</button>
-            </div>
-          </div>
-
-          <div class="ticket-rest-list" aria-label="Other ticket types">
-            <div class="ticket-rest-row">
-              <div>
-                <strong>Early Bird</strong>
-                <span>61 sold, 89 left</span>
-              </div>
-              <em class="ticket-state good">Healthy</em>
-              <p>₦305,000</p>
-            </div>
-            <div class="ticket-rest-row">
-              <div>
-                <strong>VIP</strong>
-                <span>Only 12 left</span>
-              </div>
-              <em class="ticket-state good">Selling fast</em>
-              <p>₦1,140,000</p>
-            </div>
-            <div class="ticket-rest-row">
-              <div>
-                <strong>Gold Table</strong>
-                <span>Only 5 tables left</span>
-              </div>
-              <em class="ticket-state hot">Almost full</em>
-              <p>₦4,200,000</p>
-            </div>
-          </div>
-        </article>
-
-        <article class="card">
-          <div class="overview-card-head">
-            <h3>Top buyer channels</h3>
-            <p>These are purchases by source, so the traffic detail is not repeated elsewhere.</p>
-          </div>
-          <div class="traffic-rows overview-traffic">
-            <div class="traffic-row">
-              <div class="traffic-icon" style="background:rgba(37,211,102,.12);border:1px solid rgba(37,211,102,.22);">
-                <svg viewBox="0 0 24 24" style="stroke:#25d366"><circle cx="12" cy="12" r="9" /><path d="M8 12.5l2.2 2.2L16.5 8" /></svg>
-              </div>
-              <div class="traffic-info">
-                <div class="traffic-name">WhatsApp</div>
-                <div class="traffic-count">271 buyers</div>
-                <div class="traffic-bar-wrap"><div class="traffic-bar-track"><div class="traffic-bar-fill fill-teal" style="width:44%"></div></div></div>
-              </div>
-              <div class="traffic-pct">44%</div>
-            </div>
-            <div class="traffic-row">
-              <div class="traffic-icon" style="background:var(--blue-bg);border:1px solid var(--blue-border);">
-                <svg viewBox="0 0 24 24" style="stroke:var(--blue)"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" /></svg>
-              </div>
-              <div class="traffic-info">
-                <div class="traffic-name">Direct link</div>
-                <div class="traffic-count">148 buyers</div>
-                <div class="traffic-bar-wrap"><div class="traffic-bar-track"><div class="traffic-bar-fill fill-blue" style="width:24%"></div></div></div>
-              </div>
-              <div class="traffic-pct">24%</div>
-            </div>
-            <div class="traffic-row">
-              <div class="traffic-icon" style="background:rgba(228,64,95,.12);border:1px solid rgba(228,64,95,.22);">
-                <svg viewBox="0 0 24 24" style="stroke:var(--red)"><rect x="2" y="2" width="20" height="20" rx="5" /><circle cx="12" cy="12" r="4" /></svg>
-              </div>
-              <div class="traffic-info">
-                <div class="traffic-name">Instagram</div>
-                <div class="traffic-count">110 buyers</div>
-                <div class="traffic-bar-wrap"><div class="traffic-bar-track"><div class="traffic-bar-fill fill-red" style="width:18%"></div></div></div>
-              </div>
-              <div class="traffic-pct">18%</div>
-            </div>
-          </div>
-          <div class="overview-note">
-            Full sharing links, platform posts, and source setup stay inside Promote.
           </div>
         </article>
       </section>

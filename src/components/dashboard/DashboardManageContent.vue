@@ -36,7 +36,7 @@ const showManage = (view) => emit('select-view', view)
     <DashboardCheckinView v-else-if="currentManageView === 'checkin'" />
     <DashboardEmailView v-else-if="currentManageView === 'email'" />
     <DashboardPromoView v-else-if="currentManageView === 'promo'" />
-    <DashboardShareView v-else-if="currentManageView === 'share'" />
+    <DashboardShareView v-else-if="currentManageView === 'share'" @select-view="showManage" />
     <DashboardPayoutView v-else-if="currentManageView === 'payout'" />
     <DashboardSettingsView v-else-if="currentManageView === 'settings'" />
   </div>
