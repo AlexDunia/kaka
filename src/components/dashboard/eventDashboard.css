@@ -4850,3 +4850,32 @@
   border-color: var(--home-card-line);
   box-shadow: 0 10px 28px rgba(0, 0, 0, .14);
 }
+/* Dashboard body width: every manage tab uses the full available content container. */
+.event-dashboard {
+  --dashboard-content-max: 100%;
+}
+
+.event-dashboard .manage-content,
+.event-dashboard .manage-view {
+  width: 100%;
+}
+
+.event-dashboard .dashboard-header-shell,
+.event-dashboard .event-hero-content,
+.event-dashboard .stat-strip,
+.event-dashboard .sections-wrap,
+.event-dashboard .mv-wrap {
+  width: 100%;
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+  padding-left: var(--dashboard-content-pad);
+  padding-right: var(--dashboard-content-pad);
+  box-sizing: border-box;
+}
+
+.event-dashboard .event-hero-content {
+  left: 0;
+  right: 0;
+  transform: none;
+}
