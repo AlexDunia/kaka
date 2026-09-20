@@ -9,7 +9,7 @@
 defineProps({
   text: {
     type: String,
-    default: 'Loading...',
+    default: 'Getting things ready...',
   },
   showText: {
     type: Boolean,

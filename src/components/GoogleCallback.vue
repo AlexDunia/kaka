@@ -38,8 +38,8 @@ onMounted(() => {
 <template>
   <div style="display: flex; justify-content: center; align-items: center; height: 100vh">
     <div style="text-align: center">
-      <h2>Completing Google Sign-In...</h2>
-      <p>Please wait while we log you in.</p>
+      <h2>Getting your account ready...</h2>
+      <p>You’ll be taken to your dashboard in a moment.</p>
     </div>
   </div>
 </template>

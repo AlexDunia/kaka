@@ -164,7 +164,10 @@ const applyTheme = (value, { instant = true } = {}) => {
   theme.value = value
   if (typeof document !== 'undefined') {
     const updateDocumentTheme = () => {
-      document.documentElement.classList.toggle('light', value === 'light')
+      const root = document.documentElement
+      root.classList.toggle('light', value === 'light')
+      root.classList.toggle('dark', value === 'dark')
+      root.style.colorScheme = value === 'light' ? 'light' : 'dark'
     }
 
     if (instant) {
@@ -185,9 +188,8 @@ const initializeTheme = () => {
     applyTheme(stored)
     return
   }
-  const prefersLight =
-    window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches
-  applyTheme(prefersLight ? 'light' : 'dark')
+
+  applyTheme('dark')
 }
 
 const toggleTheme = () => {

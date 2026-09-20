@@ -15,7 +15,7 @@ const login = async () => {
   error.value = ''
 
   if (!email.value || !password.value) {
-    error.value = 'Please enter both email and password'
+    error.value = 'Enter your email and password to continue.'
     return
   }
 
@@ -30,7 +30,7 @@ const login = async () => {
       router.push('/dashboard')
     }
   } catch (err) {
-    error.value = err.message || 'Login failed. Please check your credentials.'
+    error.value = err.message || 'We couldn’t log you in. Check your details and try again.'
   } finally {
     loading.value = false
   }
@@ -53,7 +53,7 @@ const goToRegister = () => {
 
 <template>
   <div class="login-form">
-    <h2 class="login-form__title">Login to your account.</h2>
+    <h2 class="login-form__title">Welcome back</h2>
 
     <div v-if="error" class="login-form__error">
       {{ error }}
@@ -61,26 +61,26 @@ const goToRegister = () => {
 
     <form @submit.prevent="login" class="login-form__form">
       <div class="login-form__field">
-        <label for="email" class="login-form__label">Email:</label>
+        <label for="email" class="login-form__label">Email address</label>
         <input
           id="email"
           v-model="email"
           type="email"
           class="login-form__input"
-          placeholder="Your email"
+          placeholder="Enter your email"
           required
           autocomplete="email"
         />
       </div>
 
       <div class="login-form__field">
-        <label for="password" class="login-form__label">Password:</label>
+        <label for="password" class="login-form__label">Password</label>
         <input
           id="password"
           v-model="password"
           type="password"
           class="login-form__input"
-          placeholder="Your password"
+          placeholder="Enter your password"
           required
           autocomplete="current-password"
         />
@@ -88,18 +88,18 @@ const goToRegister = () => {
 
       <div class="login-form__forgot">
         <button type="button" class="login-form__forgot-link" @click="goToForgotPassword">
-          Forgot Password
+          Forgot your password?
         </button>
       </div>
 
       <button type="submit" class="login-form__submit" :disabled="loading">
-        <span v-if="loading">Loading...</span>
-        <span v-else>Log In</span>
+        <span v-if="loading">Getting things ready...</span>
+        <span v-else>Log in</span>
       </button>
 
       <!-- ✅ NEW: Divider -->
       <div class="login-form__divider">
-        <span>OR</span>
+        <span>or</span>
       </div>
 
       <!-- ✅ NEW: Google Sign-In Button -->
@@ -126,9 +126,9 @@ const goToRegister = () => {
       </button>
 
       <div class="login-form__register">
-        Don't have an account?
+        New to Rush Hour?
         <button type="button" class="login-form__register-link" @click="goToRegister">
-          Register
+          Create an account
         </button>
       </div>
     </form>

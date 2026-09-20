@@ -1,5 +1,6 @@
 // import { v4 as uuidv4 } from 'uuid'
 import axios from 'axios'
+import fallbackEventsData from '../../public/events.json'
 
 // Configuration
 // const EVENTS_API_URL = '/api/events.php'
@@ -257,6 +258,50 @@ if (storedToken) {
   setAuthToken(storedToken)
 }
 
+const normalizeFallbackEvent = (event) => ({
+  ...event,
+  date: event.date || event.event_date || null,
+  location: event.location || event.address?.venue_name || 'Venue TBA',
+  price: Number(event.price) || 0,
+  rating: event.rating || 4.5,
+  category: event.category || 'others',
+})
+
+const getFallbackEvents = (page = 1, limit = 12) => {
+  const events = Array.isArray(fallbackEventsData?.events)
+    ? fallbackEventsData.events.map(normalizeFallbackEvent)
+    : []
+
+  const startIndex = (page - 1) * limit
+  const pageItems = events.slice(startIndex, startIndex + limit)
+
+  return {
+    data: pageItems,
+    pagination: {
+      total: events.length,
+      pages: Math.max(1, Math.ceil(events.length / limit)),
+      current: page,
+      per_page: limit,
+    },
+  }
+}
+
+const getFallbackFeaturedEvents = (limit = 6) => {
+  const events = Array.isArray(fallbackEventsData?.events)
+    ? fallbackEventsData.events.map(normalizeFallbackEvent)
+    : []
+
+  return {
+    data: events.slice(0, limit),
+    pagination: {
+      total: events.length,
+      pages: Math.max(1, Math.ceil(events.length / limit)),
+      current: 1,
+      per_page: limit,
+    },
+  }
+}
+
 // Handle data storage (localStorage or API)
 const dataService = {
   // Make API_URL accessible for advanced queries
@@ -264,6 +309,12 @@ const dataService = {
 
   // EVENTS
   async getAllEvents(page = 1, limit = 12) {
+    const cacheKey = `events:${page}:${limit}`
+    const cachedResult = cacheManager.get(cacheKey)
+    if (cachedResult) {
+      return cachedResult
+    }
+
     try {
       const url = `${EVENTS_API_URL}?page=${page}&_=${Date.now()}`
       console.log('🔵 Fetching from:', url)
@@ -287,11 +338,16 @@ const dataService = {
           : null,
       }
 
+      if (!transformedData.data?.length) {
+        return getFallbackEvents(page, limit)
+      }
+
+      cacheManager.set(cacheKey, transformedData)
       console.log('🟢 Returning transformed data:', transformedData)
       return transformedData
     } catch (error) {
       console.error('❌ Error fetching events:', error)
-      throw error
+      return getFallbackEvents(page, limit)
     }
   },
 
@@ -353,6 +409,12 @@ const dataService = {
   },
 
   async getFeaturedEvents(limit = 6) {
+    const cacheKey = `featured:${limit}`
+    const cachedResult = cacheManager.get(cacheKey)
+    if (cachedResult) {
+      return cachedResult
+    }
+
     try {
       const cacheBuster = Date.now()
       console.log('🔵 Fetching featured from:', `${EVENTS_API_URL}?featured=1&limit=${limit}`)
@@ -377,11 +439,16 @@ const dataService = {
           : null,
       }
 
+      if (!transformedData.data?.length) {
+        return getFallbackFeaturedEvents(limit)
+      }
+
+      cacheManager.set(cacheKey, transformedData)
       console.log('🟢 Featured transformed data:', transformedData)
       return transformedData
     } catch (error) {
       console.error('❌ Error fetching featured events:', error)
-      throw error
+      return getFallbackFeaturedEvents(limit)
     }
   },
 

@@ -73,7 +73,7 @@ onBeforeUnmount(() => { loadingToken += 1; window.clearTimeout(toastTimer) })
     <Transition name="dashboard-toast">
       <div v-if="toast" :key="toast.key" class="dashboard-success-toast" role="status" aria-live="polite">
         <span class="dashboard-success-toast__icon" aria-hidden="true">&#10003;</span>
-        <div><strong>Link created successfully</strong><p>{{ toast.message }}</p></div>
+        <div><strong>Your link is ready</strong><p>{{ toast.message }}</p></div>
         <span class="dashboard-success-toast__progress" aria-hidden="true"></span>
       </div>
     </Transition>

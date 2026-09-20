@@ -3,8 +3,8 @@
                 <div class="mv-wrap">
                   <div class="mv-header">
                     <div class="mv-eyebrow" style="color:var(--blue)"><svg viewBox="0 0 24 24" style="stroke:var(--blue)"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>Insights</div>
-                    <div class="mv-h1">How it's <em style="color:var(--blue)">going.</em></div>
-                    <div class="mv-p">Live data for Comedy Meets Dance. Updates every few minutes.</div>
+                    <div class="mv-h1">See your event <em style="color:var(--blue)">grow.</em></div>
+                    <div class="mv-p">Follow how Comedy Meets Dance is doing, with fresh numbers every few minutes.</div>
                   </div>
                   <div class="stat-grid-4">
                     <div class="scard"><div class="scard-label">Tickets sold</div><div class="scard-val">612</div><div class="scard-sub up"><svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>+18% this week</div></div>

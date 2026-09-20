@@ -3,8 +3,8 @@
     <div class="mv-wrap">
       <div class="mv-header">
         <div class="mv-eyebrow" style="color:var(--teal)"><svg viewBox="0 0 24 24" style="stroke:var(--teal)"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Earnings</div>
-        <div class="mv-h1">Your <em style="color:var(--teal)">earnings.</em></div>
-        <div class="mv-p">Revenue from this event. Track what came in, what was deducted, and what is ready for payout.</div>
+        <div class="mv-h1">Your event is <em style="color:var(--teal)">earning.</em></div>
+        <div class="mv-p">See what your event has earned, the fees covered, and what is ready to withdraw.</div>
       </div>
       <div class="payout-hero-card">
         <div><div class="payout-lbl">Available to withdraw</div><div class="payout-amt">₦7,415,000</div><div class="payout-sub">After 5% platform fee · ₦390,263 deducted</div></div>

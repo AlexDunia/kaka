@@ -3,8 +3,8 @@
     <div class="mv-wrap">
       <div class="mv-header">
         <div class="mv-eyebrow" style="color:var(--amber)"><svg viewBox="0 0 24 24" style="stroke:var(--amber)"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Promo codes</div>
-        <div class="mv-h1">Your <em style="color:var(--amber)">discounts.</em></div>
-        <div class="mv-p">Create codes to give people a discount when they buy tickets.</div>
+        <div class="mv-h1">Give sales a <em style="color:var(--amber)">little boost.</em></div>
+        <div class="mv-p">Create a promo code that gives more people a reason to join you.</div>
       </div>
       <div class="stat-grid-3">
         <div class="scard"><div class="scard-label">Active codes</div><div class="scard-val">3</div></div>

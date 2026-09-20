@@ -6,8 +6,8 @@
           <svg viewBox="0 0 24 24" style="stroke:var(--blue)"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87" /></svg>
           Attendees
         </div>
-        <div class="mv-h1">Know your <em style="color:var(--blue)">people.</em></div>
-        <div class="mv-p">A simple look at who bought tickets and what they need before event day.</div>
+        <div class="mv-h1">Meet your <em style="color:var(--blue)">attendees.</em></div>
+        <div class="mv-p">See who is coming and help everyone feel ready for event day.</div>
       </div>
 
       <div class="stat-grid-3">
@@ -19,7 +19,7 @@
       <div class="card">
         <div style="padding:var(--s5) var(--s6);border-bottom:1px solid var(--line-soft)">
           <div class="chart-head-title">Recent buyers</div>
-          <div class="chart-head-sub">Use Door Check-in when it is time to scan tickets.</div>
+          <div class="chart-head-sub">When doors open, head to Door Check-in to welcome everyone in.</div>
         </div>
         <div class="att-row"><div class="att-av" style="background:linear-gradient(135deg,var(--pink),var(--blue))">AO</div><div class="att-name">Adaeze Okonkwo</div><div class="att-tkt">VIP - #8821</div><div class="ci-badge in">Paid</div></div>
         <div class="att-row"><div class="att-av" style="background:linear-gradient(135deg,var(--amber),var(--red))">BM</div><div class="att-name">Biodun Martins</div><div class="att-tkt">General - #8822</div><div class="ci-badge in">Paid</div></div>

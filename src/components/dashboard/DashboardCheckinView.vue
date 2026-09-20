@@ -3,8 +3,8 @@
     <div class="mv-wrap">
       <div class="mv-header">
         <div class="mv-eyebrow" style="color:var(--teal)"><svg viewBox="0 0 24 24" style="stroke:var(--teal)"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Door check-in</div>
-        <div class="mv-h1">Who's <em style="color:var(--teal)">here?</em></div>
-        <div class="mv-p">Check in QR tickets at the door, or start by searching a guest name.</div>
+        <div class="mv-h1">Welcome them <em style="color:var(--teal)">in.</em></div>
+        <div class="mv-p">Scan ticket QR codes at the door, or find an attendee by name.</div>
       </div>
       <div class="stat-grid-3">
         <div class="scard" style="text-align:center"><div class="scard-label">Checked in</div><div class="scard-val" style="color:var(--teal)">312</div></div>
@@ -15,7 +15,7 @@
         <div style="padding:var(--s5) var(--s6);border-bottom:1px solid var(--line-soft)"><div class="sdiv">Event QR code</div>
           <div class="qr-zone">
             <div class="qr-frame"><div class="qr-inner"></div></div>
-            <div class="qr-cap">Print or display at the entrance. Guests scan it to check in.</div>
+            <div class="qr-cap">Print or display this at the entrance so attendees can check in with ease.</div>
             <div class="qr-btns">
               <div class="qr-btn blue"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download QR</div>
               <div class="qr-btn pink"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>Print page</div>

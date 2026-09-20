@@ -21,17 +21,17 @@ const register = async () => {
 
   // Validate inputs
   if (!name.value || !email.value || !password.value || !confirmPassword.value) {
-    error.value = 'Please fill in all fields'
+    error.value = 'Complete each field to create your account.'
     return
   }
 
   if (password.value !== confirmPassword.value) {
-    error.value = 'Passwords do not match'
+    error.value = 'Your passwords don’t match yet. Try entering them again.'
     return
   }
 
   if (password.value.length < 6) {
-    error.value = 'Password must be at least 6 characters long'
+    error.value = 'Choose a password with at least 6 characters.'
     return
   }
 
@@ -60,7 +60,7 @@ const register = async () => {
       router.push('/login')
     }, 2000)
   } catch (err) {
-    error.value = err.message || 'Registration failed. Please try again.'
+    error.value = err.message || 'We couldn’t create your account. Please try again.'
   } finally {
     loading.value = false
   }
@@ -73,19 +73,19 @@ const goToLogin = () => {
 
 <template>
   <div class="register-form">
-    <h2 class="register-form__title">Create a new account</h2>
+    <h2 class="register-form__title">Let’s get you started</h2>
 
     <div v-if="error" class="register-form__error">
       {{ error }}
     </div>
 
     <div v-if="success" class="register-form__success">
-      Registration successful! Redirecting to login page...
+      You’re all set. Taking you to log in...
     </div>
 
     <form v-if="!success" @submit.prevent="register" class="register-form__form">
       <div class="register-form__field">
-        <label for="name" class="register-form__label">Name:</label>
+        <label for="name" class="register-form__label">Full name</label>
         <input
           id="name"
           v-model="name"
@@ -98,7 +98,7 @@ const goToLogin = () => {
       </div>
 
       <div class="register-form__field">
-        <label for="email" class="register-form__label">Email:</label>
+        <label for="email" class="register-form__label">Email address</label>
         <input
           id="email"
           v-model="email"
@@ -111,7 +111,7 @@ const goToLogin = () => {
       </div>
 
       <div class="register-form__field">
-        <label for="password" class="register-form__label">Password:</label>
+        <label for="password" class="register-form__label">Create a password</label>
         <input
           id="password"
           v-model="password"
@@ -124,7 +124,7 @@ const goToLogin = () => {
       </div>
 
       <div class="register-form__field">
-        <label for="confirm-password" class="register-form__label">Confirm Password:</label>
+        <label for="confirm-password" class="register-form__label">Confirm your password</label>
         <input
           id="confirm-password"
           v-model="confirmPassword"
@@ -137,8 +137,8 @@ const goToLogin = () => {
       </div>
 
       <button type="submit" class="register-form__submit" :disabled="loading">
-        <span v-if="loading">Processing...</span>
-        <span v-else>Register</span>
+        <span v-if="loading">Creating your account...</span>
+        <span v-else>Create account</span>
       </button>
 
       <div class="register-form__login">
@@ -227,4 +227,3 @@ const goToLogin = () => {
   margin-left: 0.5rem;
 }
 </style>
- 

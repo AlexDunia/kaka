@@ -3,10 +3,10 @@
     <div class="mv-wrap">
       <div class="mv-header">
         <div class="mv-eyebrow" style="color:var(--red)"><svg viewBox="0 0 24 24" style="stroke:var(--red)"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Message attendees</div>
-        <div class="mv-h1">Send a <em style="color:var(--red)">message.</em></div>
-        <div class="mv-p">Reach all 612 people who bought tickets.</div>
+        <div class="mv-h1">Keep everyone <em style="color:var(--red)">in the loop.</em></div>
+        <div class="mv-p">Share an update with all 612 people coming to your event.</div>
       </div>
-      <div class="banner amber"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Emails go to all 612 people. Double-check before you send.</div>
+      <div class="banner amber"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>This email will reach all 612 attendees. Give it one last look before sending.</div>
       <div class="compose">
         <div class="compose-row"><span class="compose-lbl">To</span><span class="email-tag"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>All attendees (612)</span></div>
         <div class="compose-row"><span class="compose-lbl">Subject</span><input class="compose-input" type="text" placeholder="Write a subject line..." value="Quick update about Comedy Meets Dance"></div>

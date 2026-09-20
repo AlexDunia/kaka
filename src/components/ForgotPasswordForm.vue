@@ -18,7 +18,7 @@ const sendResetLink = async () => {
 
   // Validate email
   if (!email.value) {
-    error.value = 'Please enter your email address'
+    error.value = 'Enter the email address linked to your account.'
     return
   }
 
@@ -35,7 +35,7 @@ const sendResetLink = async () => {
     // Reset email field
     email.value = ''
   } catch (err) {
-    error.value = err.message || 'Failed to send reset link. Please try again.'
+    error.value = err.message || 'We couldn’t send the reset link. Please try again.'
   } finally {
     loading.value = false
   }
@@ -48,10 +48,10 @@ const goToLogin = () => {
 
 <template>
   <div class="forgot-password-form">
-    <h2 class="forgot-password-form__title">Forgot password ?</h2>
+    <h2 class="forgot-password-form__title">Let’s get you back in</h2>
 
     <p class="forgot-password-form__description">
-      Enter the email you used to register and we will send a link to reset your password
+      Enter the email linked to your account and we’ll send you a password reset link.
     </p>
 
     <div v-if="error" class="forgot-password-form__error">
@@ -59,12 +59,12 @@ const goToLogin = () => {
     </div>
 
     <div v-if="success" class="forgot-password-form__success">
-      Reset link sent! Please check your email inbox.
+      Your reset link is on its way. Check your inbox to continue.
     </div>
 
     <form v-if="!success" @submit.prevent="sendResetLink" class="forgot-password-form__form">
       <div class="forgot-password-form__field">
-        <label for="email" class="forgot-password-form__label">Your Email</label>
+        <label for="email" class="forgot-password-form__label">Email address</label>
         <input
           id="email"
           v-model="email"
@@ -77,13 +77,13 @@ const goToLogin = () => {
       </div>
 
       <button type="submit" class="forgot-password-form__submit" :disabled="loading">
-        <span v-if="loading">Sending...</span>
-        <span v-else>Send Link</span>
+        <span v-if="loading">Sending your link...</span>
+        <span v-else>Send reset link</span>
       </button>
 
       <div class="forgot-password-form__back">
         <button type="button" class="forgot-password-form__back-link" @click="goToLogin">
-          Back to Login
+          Back to log in
         </button>
       </div>
     </form>
@@ -174,4 +174,3 @@ const goToLogin = () => {
   font-size: 0.9rem;
 }
 </style>
- 

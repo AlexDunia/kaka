@@ -540,7 +540,7 @@ const closeModal = () => {
         @click="purchaseTickets"
         :disabled="loading || !isValidSelection"
       >
-        <span v-if="loading">Processing...</span>
+        <span v-if="loading">Getting your tickets ready...</span>
         <span v-else>Complete Purchase</span>
       </button>
       <button v-else type="button" class="purchase-modal__close" @click="closeModal">Done</button>

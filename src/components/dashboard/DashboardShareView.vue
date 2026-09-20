@@ -6,9 +6,9 @@ const showManage = (view) => emit('select-view', view)
 
 const baseLink = 'rushhour.ng/e/comedy-meets-dance'
 const linkPresets = [
-  { label: 'WhatsApp', source: 'wa', note: 'Best buyer channel', buyers: 271, clicks: 813 },
-  { label: 'Instagram', source: 'ig', note: 'Good for attention', buyers: 110, clicks: 486 },
-  { label: 'Direct link', source: 'direct', note: 'For bios and flyers', buyers: 148, clicks: 392 },
+  { label: 'WhatsApp', source: 'wa', note: 'Where most buyers find you', buyers: 271, clicks: 813 },
+  { label: 'Instagram', source: 'ig', note: 'Helping new people discover you', buyers: 110, clicks: 486 },
+  { label: 'Direct link', source: 'direct', note: 'Handy for bios and flyers', buyers: 148, clicks: 392 },
 ]
 
 const customLabel = ref('')
@@ -56,7 +56,7 @@ const shareLink = (link) => {
 
   if (source.includes('wa')) {
     window.open(`https://wa.me/?text=${message}`, '_blank', 'noopener,noreferrer')
-    linkFeedback.value = 'Opening WhatsApp share.'
+    linkFeedback.value = 'Opening WhatsApp so you can share your event.'
     return
   }
 
@@ -88,17 +88,17 @@ const addCustomLink = () => {
     <div class="mv-wrap">
       <div class="mv-header">
         <div class="mv-eyebrow" style="color:var(--teal)"><svg viewBox="0 0 24 24" style="stroke:var(--teal)"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>Share event</div>
-        <div class="mv-h1">Spread the <em style="color:var(--teal)">word.</em></div>
-        <div class="mv-p">Share your event link. More reach, more tickets sold.</div>
+        <div class="mv-h1">Share your <em style="color:var(--teal)">event.</em></div>
+        <div class="mv-p">Choose where to share and help more people find their way to your event.</div>
       </div>
-      <div class="banner teal"><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>WhatsApp gets 3x more conversions for Nigerian events. Share there first.</div>
+      <div class="banner teal"><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Your buyers respond especially well on WhatsApp. It is a great place to start sharing.</div>
       <section class="link-workspace-section">
         <article class="link-workspace-card">
           <div class="link-workspace-head">
             <div>
               <div class="section-title compact-section-title">Links ready</div>
-              <h3>Use the right link in the right place</h3>
-              <p>Copy the exact link for where you are posting. That is how the dashboard knows what worked.</p>
+              <h3>Choose a link for every place you share</h3>
+              <p>Each link helps you see where people discovered your event.</p>
             </div>
             <button type="button" class="link-workspace-help" @click="linkModalStep = 1; linkModalOpen = true">
               See how it works
@@ -141,7 +141,7 @@ const addCustomLink = () => {
               class="custom-link-trigger"
               @click="showCustomLink = true"
             >
-              Track somewhere specific
+              Create a link for another group
             </button>
             <form v-else class="custom-link-form" @submit.prevent="addCustomLink">
               <input v-model="customLabel" type="text" placeholder="e.g. church group, school alumni" />
@@ -161,8 +161,8 @@ const addCustomLink = () => {
           <div class="link-modal-step">Step {{ linkModalStep }} of 3</div>
 
           <div v-if="linkModalStep === 1" class="link-modal-body">
-            <h3 id="linkFlowTitle">Your links have been generated</h3>
-            <p>WhatsApp, Instagram, and Direct now have separate links. Use them separately so every sale has a source.</p>
+            <h3 id="linkFlowTitle">Your sharing links are ready</h3>
+            <p>You now have a link for WhatsApp, Instagram, and direct sharing. Use each one in its matching place to see where your buyers find you.</p>
             <div class="link-modal-mini-list">
               <span>WhatsApp link ready</span>
               <span>Instagram link ready</span>
@@ -171,8 +171,8 @@ const addCustomLink = () => {
           </div>
 
           <div v-else-if="linkModalStep === 2" class="link-modal-body">
-            <h3 id="linkFlowTitle">Post the matching link</h3>
-            <p>Use WhatsApp link on WhatsApp, Instagram link on Instagram, and Direct for bios, flyers, and simple sharing.</p>
+            <h3 id="linkFlowTitle">Share each link in the right place</h3>
+            <p>Choose WhatsApp for chats and groups, Instagram for your profile and posts, and Direct for bios, flyers, and anywhere else you share.</p>
             <div class="link-modal-route">
               <span>Copy</span>
               <span>Share</span>
@@ -181,12 +181,12 @@ const addCustomLink = () => {
           </div>
 
           <div v-else class="link-modal-body">
-            <h3 id="linkFlowTitle">Now the rest of the dashboard can speak clearly</h3>
-            <p>Ticket performance, buyer channels, and next moves can all point back to the links people actually used.</p>
+            <h3 id="linkFlowTitle">See what brings people to your event</h3>
+            <p>As people use your links, your dashboard will show which channels are helping your event grow.</p>
             <div class="link-modal-mini-list">
-              <span>Ticket performance gets clearer</span>
-              <span>Buyer channels stop guessing</span>
-              <span>Next move becomes obvious</span>
+              <span>See how tickets are selling</span>
+              <span>Learn where buyers find you</span>
+              <span>Choose what to do next</span>
             </div>
           </div>
 
@@ -210,14 +210,14 @@ const addCustomLink = () => {
           <div class="overview-card-head ticket-card-head">
             <div>
               <h3>Ticket performance</h3>
-              <p>Start with the ticket that needs action. Everything else is secondary.</p>
+              <p>See which tickets are moving and where a little extra sharing could help.</p>
             </div>
           </div>
 
           <div class="ga-focus-card">
             <div class="ga-focus-top">
               <div>
-                <span class="ga-kicker">Needs attention</span>
+                <span class="ga-kicker">Ready for a boost</span>
                 <h4>General Admission</h4>
                 <p>177 sold. 323 still open.</p>
               </div>
@@ -237,8 +237,8 @@ const addCustomLink = () => {
 
             <div class="ga-action-strip">
               <div>
-                <strong>Make this obvious for buyers.</strong>
-                <span>Try a 48-hour code like GA2KOFF, then share it on WhatsApp.</span>
+                <strong>Give people another reason to join you.</strong>
+                <span>Try a 48-hour code like GA2KOFF, then share it with your WhatsApp audience.</span>
               </div>
               <button type="button" @click="showManage('promo')">Create code</button>
             </div>
@@ -275,7 +275,7 @@ const addCustomLink = () => {
         <article class="card">
           <div class="overview-card-head">
             <h3>Top buyer channels</h3>
-            <p>These are purchases by source, so the traffic detail is not repeated elsewhere.</p>
+            <p>See where people found your event before they bought a ticket.</p>
           </div>
           <div class="traffic-rows overview-traffic">
             <div class="traffic-row">
@@ -313,7 +313,7 @@ const addCustomLink = () => {
             </div>
           </div>
           <div class="overview-note">
-            Full sharing links, platform posts, and source setup stay inside Promote.
+            You can find all your sharing links and channel options here in Promote.
           </div>
         </article>
       </section>

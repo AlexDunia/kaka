@@ -6,9 +6,21 @@ const showManage = (view) => emit('select-view', view)
 
 const baseLink = 'rushhour.ng/e/comedy-meets-dance'
 const linkPresets = [
-  { label: 'WhatsApp', source: 'wa', note: 'Best buyer channel', buyers: 271, clicks: 813 },
-  { label: 'Instagram', source: 'ig', note: 'Good for attention', buyers: 110, clicks: 486 },
-  { label: 'Direct link', source: 'direct', note: 'For bios and flyers', buyers: 148, clicks: 392 },
+  { label: 'WhatsApp', source: 'wa', note: 'Where most buyers find you', buyers: 271, clicks: 813 },
+  {
+    label: 'Instagram',
+    source: 'ig',
+    note: 'Helping new people discover you',
+    buyers: 110,
+    clicks: 486,
+  },
+  {
+    label: 'Direct link',
+    source: 'direct',
+    note: 'Handy for bios and flyers',
+    buyers: 148,
+    clicks: 392,
+  },
 ]
 
 const linksGenerated = ref(false)
@@ -38,8 +50,8 @@ const generateSourceLinks = () => {
     linksGenerated.value = true
     isGeneratingLinks.value = false
     linkModalOpen.value = true
-    linkFeedback.value = 'Links generated. Copy the one that matches where you post.'
-    emit('link-created', 'Your event links are ready to share.')
+    linkFeedback.value = 'Your links are ready. Choose the one that matches where you are sharing.'
+    emit('link-created', 'Your event is ready to share.')
   }, 650)
 }
 
@@ -74,7 +86,7 @@ const shareLink = (link) => {
 
   if (source.includes('wa')) {
     window.open(`https://wa.me/?text=${message}`, '_blank', 'noopener,noreferrer')
-    linkFeedback.value = 'Opening WhatsApp share.'
+    linkFeedback.value = 'Opening WhatsApp so you can share your event.'
     return
   }
 
@@ -118,8 +130,8 @@ const addCustomLink = () => {
         <article class="card ticket-performance-card sales-link-pregen-card">
           <div class="overview-card-head ticket-card-head sales-link-pregen-head">
             <div>
-              <h3>Alex, your event doesn't have a link yet</h3>
-              <p>Get all your links to sell your event &mdash; one click.</p>
+              <h3>Alex, let's get your event ready to share</h3>
+              <p>Create all the links you need in one click.</p>
             </div>
             <button
               class="link-primary-action sales-link-pregen-action"
@@ -136,8 +148,8 @@ const addCustomLink = () => {
       <section class="generated-ticket-performance-section">
         <article class="card generated-ticket-performance-card">
           <div class="overview-card-head">
-            <h3>Ticket performance</h3>
-            <p>Top selling ticket types from this event.</p>
+            <h3>How your tickets are doing</h3>
+            <p>See which ticket types people are choosing most.</p>
           </div>
           <div class="traffic-rows overview-traffic generated-ticket-rows">
             <div class="traffic-row">
@@ -219,10 +231,10 @@ const addCustomLink = () => {
           <div class="link-modal-step">Step {{ linkModalStep }} of 3</div>
 
           <div v-if="linkModalStep === 1" class="link-modal-body">
-            <h3 id="linkFlowTitle">Your links have been generated</h3>
+            <h3 id="linkFlowTitle">Your sharing links are ready</h3>
             <p>
-              WhatsApp, Instagram, and Direct now have separate links. Use them separately so every
-              sale has a source.
+              You now have a link for WhatsApp, Instagram, and direct sharing. Use each one in its
+              matching place to see where your buyers find you.
             </p>
             <div class="link-modal-mini-list">
               <span>WhatsApp link ready</span>
@@ -232,10 +244,10 @@ const addCustomLink = () => {
           </div>
 
           <div v-else-if="linkModalStep === 2" class="link-modal-body">
-            <h3 id="linkFlowTitle">Post the matching link</h3>
+            <h3 id="linkFlowTitle">Share each link in the right place</h3>
             <p>
-              Use WhatsApp link on WhatsApp, Instagram link on Instagram, and Direct for bios,
-              flyers, and simple sharing.
+              Choose WhatsApp for chats and groups, Instagram for your profile and posts, and Direct
+              for bios, flyers, and anywhere else you share.
             </p>
             <div class="link-modal-route">
               <span>Copy</span>
@@ -245,15 +257,15 @@ const addCustomLink = () => {
           </div>
 
           <div v-else class="link-modal-body">
-            <h3 id="linkFlowTitle">Now the rest of the dashboard can speak clearly</h3>
+            <h3 id="linkFlowTitle">See what brings people to your event</h3>
             <p>
-              Ticket performance, buyer channels, and next moves can all point back to the links
-              people actually used.
+              As people use your links, your dashboard will show which channels are helping your
+              event grow.
             </p>
             <div class="link-modal-mini-list">
-              <span>Ticket performance gets clearer</span>
-              <span>Buyer channels stop guessing</span>
-              <span>Next move becomes obvious</span>
+              <span>See how tickets are selling</span>
+              <span>Learn where buyers find you</span>
+              <span>Choose what to do next</span>
             </div>
           </div>
 
@@ -277,7 +289,7 @@ const addCustomLink = () => {
           <div class="health-panel-head">
             <div>
               <div class="section-title compact-section-title">Event health</div>
-              <h3>On track, with one thing to fix</h3>
+              <h3>Your event is moving nicely</h3>
             </div>
             <span class="health-status-pill health-status-pill--clear">82 score</span>
           </div>
@@ -285,29 +297,35 @@ const addCustomLink = () => {
           <div class="health-readout-main">
             <div class="health-readout-status">
               <span>Overall</span>
-              <strong>Strong momentum</strong>
-              <p>Premium demand is healthy. Keep the regular ticket moving.</p>
+              <strong>You're building great momentum</strong>
+              <p>
+                Premium tickets are moving well. General Admission could use a little more
+                attention.
+              </p>
             </div>
             <div class="health-readout-list" aria-label="Event health summary">
               <div class="health-readout-item good">
                 <span></span>
                 <div>
-                  <strong>VIP and tables are almost doing the selling for you.</strong>
-                  <p>Scarcity is real, so use it in your next message.</p>
+                  <strong>VIP and table tickets are filling up.</strong>
+                  <p>Let people know there are only a few spots left in your next message.</p>
                 </div>
               </div>
               <div class="health-readout-item good">
                 <span></span>
                 <div>
-                  <strong>WhatsApp is the buyer channel.</strong>
-                  <p>44% of buyers came from there. Do not overthink the next share.</p>
+                  <strong>WhatsApp is bringing in the most buyers.</strong>
+                  <p>44% of buyers came from there, so it is a great place to share again.</p>
                 </div>
               </div>
               <div class="health-readout-item warn">
                 <span></span>
                 <div>
-                  <strong>General Admission is the drag.</strong>
-                  <p>323 spots left. Give people a simple reason to buy this week.</p>
+                  <strong>General Admission has room to grow.</strong>
+                  <p>
+                    There are 323 spots left. A simple offer could help more people say yes this
+                    week.
+                  </p>
                 </div>
               </div>
             </div>
@@ -318,7 +336,7 @@ const addCustomLink = () => {
           <div class="next-move-head">
             <div>
               <div class="section-title compact-section-title">Next moves</div>
-              <h3>Do these in this order</h3>
+              <h3>A few things you can do next</h3>
             </div>
             <span>Today</span>
           </div>
@@ -327,8 +345,8 @@ const addCustomLink = () => {
             <button class="next-move-item urgent" type="button" @click="showManage('promo')">
               <span class="next-move-num">01</span>
               <span class="next-move-copy">
-                <strong>Create a short GA discount</strong>
-                <small>Make the regular ticket decision easy. A 48-hour code is enough.</small>
+                <strong>Give General Admission a little boost</strong>
+                <small>A simple 48-hour discount can make it easier for people to book.</small>
               </span>
               <span class="next-move-destination">Discount</span>
             </button>
@@ -336,8 +354,8 @@ const addCustomLink = () => {
             <button class="next-move-item" type="button" @click="showManage('share')">
               <span class="next-move-num">02</span>
               <span class="next-move-copy">
-                <strong>Share the offer on WhatsApp</strong>
-                <small>This is already where your buyers are coming from.</small>
+                <strong>Share your offer on WhatsApp</strong>
+                <small>It is already where most of your buyers are finding you.</small>
               </span>
               <span class="next-move-destination">Promote</span>
             </button>
@@ -345,8 +363,10 @@ const addCustomLink = () => {
             <button class="next-move-item" type="button" @click="showManage('email')">
               <span class="next-move-num">03</span>
               <span class="next-move-copy">
-                <strong>Send the event-day note</strong>
-                <small>Arrival time, parking, entry instructions. One clean message.</small>
+                <strong>Help attendees get ready</strong>
+                <small
+                  >Share arrival time, parking, and entry details in one helpful message.</small
+                >
               </span>
               <span class="next-move-destination">Message</span>
             </button>
@@ -420,7 +440,8 @@ const addCustomLink = () => {
               <circle cx="535" cy="16" r="4" fill="#29B89A" />
             </svg>
             <p class="chart-summary-copy">
-              Sales are up this week. Keep the momentum going while premium spots still feel scarce.
+              More people are booking this week. Keep sharing while premium spots are still
+              available.
             </p>
           </div>
         </div>
@@ -445,7 +466,7 @@ const addCustomLink = () => {
         <article class="event-readiness-card">
           <div>
             <h3>Event-day readiness</h3>
-            <p>QR code ready. 612 expected. Check-in hasn't started.</p>
+            <p>Your QR code is ready for 612 attendees when doors open.</p>
           </div>
           <button class="btn btn-ghost" type="button" @click="showManage('checkin')">
             Prepare check-in

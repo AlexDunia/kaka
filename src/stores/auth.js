@@ -29,7 +29,7 @@ export const useAuthStore = defineStore('auth', () => {
         }
       }
     } catch (err) {
-      error.value = err.message || 'Failed to initialize'
+      error.value = err.message || 'We couldn’t restore your session.'
       localStorage.removeItem('user')
       localStorage.removeItem('authProvider')
       user.value = null
@@ -54,7 +54,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       return user.value
     } catch (err) {
-      error.value = err.response?.data?.message || 'Login failed'
+      error.value = err.response?.data?.message || 'We couldn’t log you in. Check your details and try again.'
       throw new Error(error.value)
     } finally {
       isLoading.value = false
@@ -81,7 +81,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       return user.value
     } catch (err) {
-      error.value = err.response?.data?.message || 'Registration failed'
+      error.value = err.response?.data?.message || 'We couldn’t create your account. Please try again.'
       throw new Error(error.value)
     } finally {
       isLoading.value = false
@@ -119,7 +119,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       return user.value
     } catch (err) {
-      error.value = err.message || 'Failed to fetch user data'
+      error.value = err.message || 'We couldn’t load your account details.'
       user.value = null
       localStorage.removeItem('user')
       throw err
@@ -144,7 +144,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       return user.value
     } catch (err) {
-      error.value = err.message || 'Failed to update user data'
+      error.value = err.message || 'We couldn’t save your account changes.'
       throw err
     } finally {
       isLoading.value = false
@@ -158,7 +158,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       await axios.post(`${API_BASE_URL}/api/reset-password`, { email }, { withCredentials: true })
     } catch (err) {
-      error.value = err.message || 'Failed to send password reset email'
+      error.value = err.message || 'We couldn’t send the reset email. Please try again.'
       throw err
     } finally {
       isLoading.value = false
@@ -172,7 +172,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       await axios.post(`${API_BASE_URL}/api/update-password`, data, { withCredentials: true })
     } catch (err) {
-      error.value = err.message || 'Failed to update password'
+      error.value = err.message || 'We couldn’t update your password. Please try again.'
       throw err
     } finally {
       isLoading.value = false
