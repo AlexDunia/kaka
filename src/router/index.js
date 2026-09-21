@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+﻿import { createRouter, createWebHistory } from 'vue-router'
 import HomePage from '../pages/HomePage.vue'
 import EventDetails from '../pages/EventDetails.vue'
 import CreateEvent from '../pages/CreateEvent.vue'
@@ -306,3 +306,5 @@ router.beforeEach((to, from, next) => {
 })
 
 export default router
+
+

@@ -5,7 +5,12 @@ import fallbackEventsData from '../../public/events.json'
 // Configuration
 // const EVENTS_API_URL = '/api/events.php'
 // const EVENTS_API_URL = '/api/events.php'
-const EVENTS_API_URL = 'http://127.0.0.1:8000/api/events'
+const API_BASE_URL = (
+  import.meta.env.VITE_API_URL ||
+  'http://127.0.0.1:8000/api'
+).replace(/\/$/, '')
+
+const EVENTS_API_URL = `${API_BASE_URL}/events`
 const EVENTS_FALLBACK_API_URL = 'http://localhost/api/test-search.php'
 
 console.debug('EVENTS_API_URL configured as:', EVENTS_API_URL)
@@ -308,22 +313,25 @@ const dataService = {
   EVENTS_API_URL,
 
   // EVENTS
-  async getAllEvents(page = 1, limit = 12) {
+  async getAllEvents(page = 1, limit = 12, options = {}) {
+    const allowFallback = options.allowFallback !== false
+    const skipCache = options.skipCache === true
     const cacheKey = `events:${page}:${limit}`
-    const cachedResult = cacheManager.get(cacheKey)
-    if (cachedResult) {
-      return cachedResult
+
+    if (!skipCache) {
+      const cachedResult = cacheManager.get(cacheKey)
+      if (cachedResult) return cachedResult
     }
 
     try {
       const url = `${EVENTS_API_URL}?page=${page}&_=${Date.now()}`
-      console.log('🔵 Fetching from:', url)
+      console.log('ðŸ”µ Fetching from:', url)
 
       const response = await axios.get(url, {
         headers: { 'X-Request-ID': Math.random().toString(36).substring(2, 15) },
       })
 
-      console.log('🔵 Response received:', response.data)
+      console.log('ðŸ”µ Response received:', response.data)
 
       // Transform Laravel response
       const transformedData = {
@@ -339,15 +347,24 @@ const dataService = {
       }
 
       if (!transformedData.data?.length) {
-        return getFallbackEvents(page, limit)
+        return allowFallback
+          ? getFallbackEvents(page, limit)
+          : transformedData
       }
 
-      cacheManager.set(cacheKey, transformedData)
-      console.log('🟢 Returning transformed data:', transformedData)
+      if (!skipCache) {
+        cacheManager.set(cacheKey, transformedData)
+      }
+      console.log('ðŸŸ¢ Returning transformed data:', transformedData)
       return transformedData
     } catch (error) {
       console.error('❌ Error fetching events:', error)
-      return getFallbackEvents(page, limit)
+
+      if (allowFallback) {
+        return getFallbackEvents(page, limit)
+      }
+
+      throw error
     }
   },
 
@@ -417,7 +434,7 @@ const dataService = {
 
     try {
       const cacheBuster = Date.now()
-      console.log('🔵 Fetching featured from:', `${EVENTS_API_URL}?featured=1&limit=${limit}`)
+      console.log('ðŸ”µ Fetching featured from:', `${EVENTS_API_URL}?featured=1&limit=${limit}`)
 
       const response = await axios.get(
         `${EVENTS_API_URL}?featured=1&limit=${limit}&_=${cacheBuster}`,
@@ -426,9 +443,9 @@ const dataService = {
         },
       )
 
-      console.log('🔵 Featured raw response:', response.data)
+      console.log('ðŸ”µ Featured raw response:', response.data)
 
-      // ✅ Transform Laravel response (same as getAllEvents)
+      // âœ… Transform Laravel response (same as getAllEvents)
       const transformedData = {
         data: response.data.data || [],
         pagination: response.data.meta
@@ -444,10 +461,10 @@ const dataService = {
       }
 
       cacheManager.set(cacheKey, transformedData)
-      console.log('🟢 Featured transformed data:', transformedData)
+      console.log('ðŸŸ¢ Featured transformed data:', transformedData)
       return transformedData
     } catch (error) {
-      console.error('❌ Error fetching featured events:', error)
+      console.error('âŒ Error fetching featured events:', error)
       return getFallbackFeaturedEvents(limit)
     }
   },

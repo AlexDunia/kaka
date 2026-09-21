@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { ref, onMounted, onUnmounted, computed, watch, provide } from 'vue'
 import { useCartStore } from '@/stores/cart'
@@ -8,7 +8,8 @@ import { getRushHourLogo } from '@/constants/brand'
 import { playThemeToggleClick } from '@/utils/themeClickSound'
 import HeroSection from '@/components/HeroSection.vue'
 import PageSkeleton from '@/components/PageSkeleton.vue'
-import throttle from 'lodash.throttle' // ✅ use throttling to reduce scroll event calls
+import AccountMenu from '@/components/AccountMenu.vue'
+import throttle from 'lodash.throttle' // âœ… use throttling to reduce scroll event calls
 
 const isMobileMenuOpen = ref(false)
 const currentYear = ref(new Date().getFullYear())
@@ -45,7 +46,9 @@ const showHero = computed(
   () =>
     !isRouteLoading.value && (chromeRoute.value.name === 'home' || chromeRoute.value.path === '/'),
 )
-const isCreateEventRoute = computed(() => chromeRoute.value.name === 'CreateEvent')
+const isCreateEventRoute = computed(() =>
+  chromeRoute.value.name === 'CreateEvent' || chromeRoute.value.name === 'EditEvent',
+)
 const usesFullScreenShell = computed(() => Boolean(chromeRoute.value.meta?.fullScreenShell))
 const showGlobalHeader = computed(
   () => !isCreateEventRoute.value && chromeRoute.value.name !== 'dashboard',
@@ -53,11 +56,11 @@ const showGlobalHeader = computed(
 
 const routeSkeletonVariant = computed(() => {
   const targetRoute = skeletonRoute.value || route
-  if (targetRoute.name === 'CreateEvent') return 'create-event'
+  if (targetRoute.name === 'CreateEvent' || targetRoute.name === 'EditEvent') return 'create-event'
   if (['event-details', 'event-details-legacy'].includes(targetRoute.name)) return 'detail'
   if (targetRoute.name === 'dashboard') return 'dashboard-overview'
   if (['admin', 'transactions'].includes(targetRoute.name)) return 'dashboard'
-  if (['login', 'register', 'forgot-password', 'google-callback'].includes(targetRoute.name))
+  if (['login', 'register', 'forgot-password', 'reset-password', 'google-callback'].includes(targetRoute.name))
     return 'auth'
   if (targetRoute.name === 'contact') return 'contact'
   if (targetRoute.name === 'cart') return 'cart'
@@ -215,7 +218,7 @@ const navigationLinks = [
   { path: '/contact', name: 'Contact us' },
 ]
 
-// ✅ Menu toggle logic
+// âœ… Menu toggle logic
 const toggleMobileMenu = () => {
   isMobileMenuOpen.value = !isMobileMenuOpen.value
   document.body.style.overflow = isMobileMenuOpen.value ? 'hidden' : ''
@@ -226,7 +229,7 @@ const closeMenu = () => {
   document.body.style.overflow = ''
 }
 
-// ✅ Update meta tags when route changes
+// âœ… Update meta tags when route changes
 watch(
   () => route.meta,
   (meta) => {
@@ -398,18 +401,7 @@ onUnmounted(() => {
             </span>
           </button>
           <template v-if="isAuthenticated">
-            <div
-              class="user-avatar"
-              :title="authStore.user?.display_name || authStore.user?.name || 'Profile'"
-            >
-              <img
-                v-if="avatarUrl"
-                :src="avatarUrl"
-                :alt="authStore.user?.display_name || authStore.user?.name || 'Avatar'"
-                class="avatar-image"
-              />
-              <span v-else class="avatar-fallback">{{ avatarInitials }}</span>
-            </div>
+            <AccountMenu context="site" />
           </template>
 
           <template v-else>
@@ -524,7 +516,7 @@ onUnmounted(() => {
           <img :src="brandLogoUrl" alt="Rush Hour" class="footer-logo-img" />
         </div>
         <div class="footer-center-col">
-          <span class="footer-copyright">© {{ currentYear }} kakaworldcompany</span>
+          <span class="footer-copyright">Â© {{ currentYear }} kakaworldcompany</span>
         </div>
         <div class="footer-social-col">
           <a
@@ -1411,3 +1403,8 @@ body {
   }
 }
 </style>
+
+
+
+
+

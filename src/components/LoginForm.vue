@@ -1,7 +1,12 @@
-<script setup>
+﻿<script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+
+const API_BASE_URL = (
+  import.meta.env.VITE_API_URL ||
+  'http://127.0.0.1:8000/api'
+).replace(/\/$/, '')
 
 const email = ref('')
 const password = ref('')
@@ -30,16 +35,16 @@ const login = async () => {
       router.push('/dashboard')
     }
   } catch (err) {
-    error.value = err.message || 'We couldn’t log you in. Check your details and try again.'
+    error.value = err.message || 'We couldnâ€™t log you in. Check your details and try again.'
   } finally {
     loading.value = false
   }
 }
 
-// ✅ NEW: Google Sign-In
+// âœ… NEW: Google Sign-In
 const loginWithGoogle = () => {
   // Redirect to Laravel Google OAuth
-  window.location.href = 'http://127.0.0.1:8000/api/auth/google'
+  window.location.href = `${API_BASE_URL}/auth/google`
 }
 
 const goToForgotPassword = () => {
@@ -97,12 +102,12 @@ const goToRegister = () => {
         <span v-else>Log in</span>
       </button>
 
-      <!-- ✅ NEW: Divider -->
+      <!-- âœ… NEW: Divider -->
       <div class="login-form__divider">
         <span>or</span>
       </div>
 
-      <!-- ✅ NEW: Google Sign-In Button -->
+      <!-- âœ… NEW: Google Sign-In Button -->
       <button type="button" class="login-form__google" @click="loginWithGoogle">
         <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
           <path
@@ -268,3 +273,4 @@ const goToRegister = () => {
   flex-shrink: 0;
 }
 </style>
+

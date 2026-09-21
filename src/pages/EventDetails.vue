@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { ref, onMounted, computed, watch, onUnmounted, onBeforeUnmount } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
@@ -24,13 +24,20 @@ const { currentEvent, isLoadingEvent } = storeToRefs(eventStore)
 const loading = ref(false)
 const error = ref(null)
 const event = currentEvent
+const canEditEvent = computed(() => {
+  if (!authStore.isAuthenticated || !event.value?.id) return false
+  return Number(event.value.created_by) === Number(authStore.user?.id)
+})
+const editEvent = () => {
+  if (canEditEvent.value) router.push({ name: 'EditEvent', params: { id: event.value.id } })
+}
 
-// ── Like state ──────────────────────────────────────────────────────────────
+// â”€â”€ Like state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const isLiked = ref(false)
 const likesCount = ref(0)
 const likeLoading = ref(false)
 
-// ── Modal / UI state ─────────────────────────────────────────────────────────
+// â”€â”€ Modal / UI state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const showPurchaseModal = ref(false)
 const showQRModal = ref(false)
 const qrValue = ref('')
@@ -50,7 +57,7 @@ const selectedTicketType = ref(null)
 const ticketQuantity = ref(1)
 const pollInterval = ref(null)
 
-// ── Computed ─────────────────────────────────────────────────────────────────
+// â”€â”€ Computed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const eventImage = computed(() => {
   if (!event.value) return ''
   return event.value.main_image || ''
@@ -195,7 +202,7 @@ const ticketTypes = computed(() => {
   return fallbackTypes.map((t) => ({ ...t, highlight: t.price === maxFallbackPrice }))
 })
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function formatPrice(price) {
   return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(price)
 }
@@ -242,7 +249,7 @@ const mergeEventOptions = () => {
   return ['Live performance', 'Food & drinks available', 'Indoor event']
 }
 
-// ── Like functions ────────────────────────────────────────────────────────────
+// â”€â”€ Like functions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const checkLikeStatus = async (eventId) => {
   if (!authStore.isAuthenticated) return
   try {
@@ -250,7 +257,7 @@ const checkLikeStatus = async (eventId) => {
     isLiked.value = result.liked
     likesCount.value = result.likes_count ?? 0
   } catch (e) {
-    // user not logged in or request failed — defaults stay
+    // user not logged in or request failed â€” defaults stay
   }
 }
 
@@ -265,7 +272,7 @@ const handleLike = async () => {
     const result = await eventStore.toggleLike(event.value.id)
     isLiked.value = result.liked
     likesCount.value = result.likes_count ?? 0
-    showToaster(result.liked ? '❤️ Event saved to your likes!' : 'Removed from your likes')
+    showToaster(result.liked ? 'â¤ï¸ Event saved to your likes!' : 'Removed from your likes')
   } catch (e) {
     showToaster('Something went wrong, please try again')
   } finally {
@@ -273,7 +280,7 @@ const handleLike = async () => {
   }
 }
 
-// ── Fetch / polling ───────────────────────────────────────────────────────────
+// â”€â”€ Fetch / polling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const fetchEventData = async () => {
   loading.value = true
   error.value = null
@@ -301,7 +308,7 @@ const startPollingIfNearExpiry = () => {
   }
 }
 
-// ── Ticket modal functions ─────────────────────────────────────────────────────
+// â”€â”€ Ticket modal functions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const getSelectedTicketName = () => {
   const ticket = ticketTypes.value.find((t) => t.id === selectedTicketType.value)
   return ticket ? ticket.name : ''
@@ -359,7 +366,7 @@ const addToCart = () => {
     eventImage: eventImage.value,
   })
   closePurchaseModal()
-  showToaster(`${ticketQuantity.value} × ${event.value.title} added to cart`, true)
+  showToaster(`${ticketQuantity.value} Ã— ${event.value.title} added to cart`, true)
 }
 
 const generateQRCode = () => {
@@ -386,7 +393,7 @@ const scrollToTickets = () => {
   }
 }
 
-// ── Share functions ───────────────────────────────────────────────────────────
+// â”€â”€ Share functions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const openShareModal = async () => {
   if (!event.value) return
   isSharing.value = true
@@ -435,7 +442,7 @@ const shareLink = (platform) => {
 
 const goBack = () => router.back()
 
-// ── Watchers ──────────────────────────────────────────────────────────────────
+// â”€â”€ Watchers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 watch(
   event,
   (newEvent) => {
@@ -492,7 +499,7 @@ watch(
   { immediate: true },
 )
 
-// ── Lifecycle ─────────────────────────────────────────────────────────────────
+// â”€â”€ Lifecycle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 onMounted(() => fetchEventData())
 
 onUnmounted(() => {
@@ -686,8 +693,12 @@ onBeforeUnmount(() => {
                 </div>
               </div>
 
-              <!-- ── Action buttons: Share + Like side by side ── -->
+              <!-- â”€â”€ Action buttons: Share + Like side by side â”€â”€ -->
               <div class="event-info__action">
+                <button v-if="canEditEvent" type="button" class="event-info__share-btn" @click="editEvent">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L8 18l-4 1 1-4Z" /></svg>
+                  <span>Edit event</span>
+                </button>
                 <!-- Share Button -->
                 <button class="event-info__share-btn" @click="openShareModal" :disabled="isSharing">
                   <div v-if="isSharing" class="spinner"></div>
@@ -1035,7 +1046,7 @@ onBeforeUnmount(() => {
         <div class="premium-modal__body">
           <div v-if="event" class="premium-modal__content">
             <h4 class="premium-modal__event-title">{{ event.title }}</h4>
-            <p class="premium-modal__event-details">{{ formattedDate }} • {{ event.location }}</p>
+            <p class="premium-modal__event-details">{{ formattedDate }} â€¢ {{ event.location }}</p>
             <div class="premium-modal__ticket-section">
               <div class="premium-modal__ticket-info">
                 <div class="premium-modal__ticket-type">
@@ -2906,3 +2917,4 @@ onBeforeUnmount(() => {
   border-radius: 12px;
 }
 </style>
+

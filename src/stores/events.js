@@ -48,7 +48,11 @@ export const useEventStore = defineStore('events', () => {
     return response.data
   }
 
-  const fetchAllEvents = async (refresh = false, page = 1) => {
+  const fetchAllEvents = async (
+    refresh = false,
+    page = 1,
+    options = {},
+  ) => {
     const fiveMinutesAgo = Date.now() - 5 * 60 * 1000
     if (
       !refresh &&
@@ -67,13 +71,17 @@ export const useEventStore = defineStore('events', () => {
 
     try {
       console.log('Fetching all events from API')
-      const response = await eventService.getAllEvents(page, itemsPerPage.value)
+      const response = await eventService.getAllEvents(
+        page,
+        itemsPerPage.value,
+        options,
+      )
 
       console.log('Raw API response:', response)
 
-      // ✅ FIX: Check for the transformed structure
+      // âœ… FIX: Check for the transformed structure
       if (response && response.data && Array.isArray(response.data)) {
-        console.log(`✅ Setting ${response.data.length} events in store`)
+        console.log(`âœ… Setting ${response.data.length} events in store`)
         events.value = response.data
 
         // Update pagination info if available
@@ -85,15 +93,15 @@ export const useEventStore = defineStore('events', () => {
         lastFetch.value = Date.now()
         forceRefresh.value = false
 
-        console.log('✅ Events set in store:', events.value)
+        console.log('âœ… Events set in store:', events.value)
         return response.data
       } else {
-        console.error('❌ Invalid response format:', response)
+        console.error('âŒ Invalid response format:', response)
         throw new Error('Invalid data format received from API')
       }
     } catch (err) {
       error.value = err.message || 'Failed to fetch events from API'
-      console.error('❌ Error fetching events:', err)
+      console.error('âŒ Error fetching events:', err)
       throw err
     } finally {
       isLoading.value = false
@@ -197,23 +205,23 @@ export const useEventStore = defineStore('events', () => {
     error.value = null
 
     try {
-      console.log('⭐ Fetching featured events...')
+      console.log('â­ Fetching featured events...')
       const response = await eventService.getFeaturedEvents(limit)
 
-      console.log('⭐ Featured response:', response)
+      console.log('â­ Featured response:', response)
 
-      // ✅ FIX: Check for the transformed structure
+      // âœ… FIX: Check for the transformed structure
       if (response && response.data && Array.isArray(response.data)) {
-        console.log(`✅ Setting ${response.data.length} featured events`)
+        console.log(`âœ… Setting ${response.data.length} featured events`)
         featuredEvents.value = response.data
         return response.data
       } else {
-        console.error('❌ Invalid featured events format:', response)
+        console.error('âŒ Invalid featured events format:', response)
         throw new Error('Invalid featured events data format')
       }
     } catch (err) {
       error.value = err.message || 'Failed to fetch featured events'
-      console.error('❌ Error fetching featured:', err)
+      console.error('âŒ Error fetching featured:', err)
       throw err
     } finally {
       isLoading.value = false

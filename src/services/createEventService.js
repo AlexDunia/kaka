@@ -134,3 +134,9 @@ export const publishEvent = async (eventId) => {
   const response = await api.post(`/create-event/${eventId}/publish`)
   return response.data
 }
+
+export const getEventForEditing = async (eventId) => {
+  await ensureCsrfCookie()
+  const response = await api.get(`/create-event/${eventId}`)
+  return response.data
+}

@@ -1,6 +1,6 @@
-<script setup>
+﻿<script setup>
 import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   AcademicCapIcon,
   ArrowLeftIcon,
@@ -40,6 +40,7 @@ import { playThemeToggleClick } from '@/utils/themeClickSound'
 import {
   DEFAULT_CREATE_EVENT_TIPS,
   createEventDraft,
+  getEventForEditing,
   publishEvent as publishEventRequest,
   updateEventDraft,
 } from '@/services/createEventService'
@@ -49,6 +50,7 @@ import {
   getVenueToday,
   isAfter,
   isStartDateTimeValid,
+  toLocalDateTimeString,
 } from '@/utils/eventDateTime'
 import {
   WEEKDAYS,
@@ -57,6 +59,7 @@ import {
   scheduleHasOverlap,
 } from '@/utils/recurrenceSchedule'
 
+const route = useRoute()
 const router = useRouter()
 const themeController = inject('themeController', null)
 
@@ -167,6 +170,30 @@ const form = reactive({
   attendeeFields: attendeeFieldDefaults.map((field) => ({ ...field })),
 })
 
+const isEditMode = computed(() => route.name === 'EditEvent')
+const editingEventId = computed(() => {
+  if (!isEditMode.value) return null
+  const id = Number(route.params.id)
+  return Number.isInteger(id) && id > 0 ? id : null
+})
+const editorLoading = ref(false)
+const editorLoadError = ref('')
+const editorStatus = ref(null)
+const originalStartsAtLocal = ref(null)
+const isPublishedEdit = computed(() => isEditMode.value && editorStatus.value === 'active')
+const startTimeNeedsLeadValidation = computed(() => !isEditMode.value || !originalStartsAtLocal.value || toLocalDateTimeString(form.startsAt) !== originalStartsAtLocal.value)
+function fromLocalDateTimeString(value) {
+  if (!value) return null
+  const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/)
+  if (!match) { const parsed = new Date(value); return Number.isNaN(parsed.getTime()) ? null : parsed }
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]), Number(match[6] || '00'), 0)
+}
+function hydrateEventForm(payload = {}) {
+  form.title=payload.title||'';form.startsAt=fromLocalDateTimeString(payload.startsAtLocal);form.endsAt=fromLocalDateTimeString(payload.endsAtLocal);form.eventType=payload.eventType||'one_time';form.recurrence={...form.recurrence,...(payload.recurrence||{})};form.format=payload.format||'in-person';form.venue=payload.venue||'';form.venueTimezone=payload.timeZone||APP_DEFAULT_TIME_ZONE;form.meetingLink=payload.meetingLink||'';form.category=payload.category||'';form.coverImage=payload.coverImage||'';form.secondaryImages=Array.isArray(payload.secondaryImages)?[...payload.secondaryImages]:[];form.description=payload.description||'';form.organiser=payload.organiser||'';form.organiserWebsite=payload.organiserWebsite||'';form.tags=payload.tags||'';form.ticketMode=payload.ticketMode||'free';form.freeCapacity=payload.freeCapacity??'';form.tickets=(payload.tickets||[]).map(ticket=>({id:Number(ticket.id)||++ticketId.value,name:ticket.name||'',unitType:ticket.unitType||'individual',color:ticket.color||'#ec4899',price:Number(ticket.price)||0,units:Number(ticket.units)||0,peoplePerUnit:Number(ticket.peoplePerUnit)||1,maxPerPerson:Number(ticket.maxPerPerson)||1,visible:ticket.visible!==false,perks:ticket.perks||'',salesStart:fromLocalDateTimeString(ticket.salesStartLocal),salesEnd:fromLocalDateTimeString(ticket.salesEndLocal)}));form.attendeeFields=Array.isArray(payload.attendeeFields)?payload.attendeeFields.map(field=>({...field})):attendeeFieldDefaults.map(field=>({...field}));form.extraDetails=Array.isArray(payload.extraDetails)?payload.extraDetails.map(detail=>({...detail,icon:detailOptions.find(item=>item.type===detail.type)?.icon||InformationCircleIcon})):[];originalStartsAtLocal.value=payload.startsAtLocal||toLocalDateTimeString(form.startsAt)
+}
+async function loadEventForEditing() { if (!editingEventId.value) { editorLoadError.value='This event could not be opened for editing.';return };editorLoading.value=true;editorLoadError.value='';try { const record=(await getEventForEditing(editingEventId.value))?.data;if (!record?.form) throw new Error('The backend did not return event form data.');hydrateEventForm(record.form);draftId.value=record.id;editorStatus.value=record.status;maxStepReached.value=steps.length } catch(error) { editorLoadError.value=error?.response?.status===403?'You do not have permission to edit this event.':error?.response?.status===404?'This event no longer exists.':error?.response?.data?.message||error?.message||'We could not load this event for editing.' } finally { editorLoading.value=false } }
+function validateAllEditableSteps(){for(const step of [1,2,3]){if(!validateStep(step)){currentStep.value=step;maxStepReached.value=steps.length;return false}}return true}
+async function saveEventChanges(){if(!isEditMode.value||!editingEventId.value||isSaving.value||isPublishing.value)return;if(!validateAllEditableSteps())return;isSaving.value=true;saveError.value=[];publishErrors.value=[];try{const response=await updateEventDraft(editingEventId.value,form);editorStatus.value=response?.data?.status||editorStatus.value;lastSavedAt.value=new Date();markDraftSaved();showToast('Changes saved')}catch(error){saveError.value=normalizeRequestErrors(error);applyBackendErrors(saveError.value,error?.response?.status===422)}finally{isSaving.value=false}}
 const clock = ref(new Date())
 const eventTimeZone = computed(() => form.venueTimezone || APP_DEFAULT_TIME_ZONE)
 const venueToday = computed(() => getVenueToday(eventTimeZone.value, clock.value))
@@ -436,7 +463,7 @@ function formatOccurrenceDate(value) {
 }
 
 function formatTimeRange() {
-  return `${formatTimeLabel(toTimeInputValue(form.startsAt))} – ${formatTimeLabel(
+  return `${formatTimeLabel(toTimeInputValue(form.startsAt))} â€“ ${formatTimeLabel(
     toTimeInputValue(form.endsAt),
   )}`
 }
@@ -563,6 +590,7 @@ async function persistDraft() {
 }
 
 async function saveDraft() {
+  if (isEditMode.value) { await saveEventChanges(); return }
   if (isSaving.value || isPublishing.value) return
 
   isSaving.value = true
@@ -666,7 +694,7 @@ function isStepComplete(step) {
   if (step === 1) {
     if (!form.title.trim()) return false
     if (!form.startsAt || !form.endsAt) return false
-    if (form.startsAt && !isStartDateTimeValid(form.startsAt, eventTimeZone.value, clock.value)) return false
+    if (startTimeNeedsLeadValidation.value && form.startsAt && !isStartDateTimeValid(form.startsAt, eventTimeZone.value, clock.value)) return false
     if (form.endsAt && form.startsAt && new Date(form.endsAt) <= new Date(form.startsAt)) {
       return false
     }
@@ -706,7 +734,7 @@ function validateStep(step) {
     if (!form.title.trim()) setError('title', 'Please enter an event name.')
     if (!form.startsAt) setError('startsAt', 'Please choose a start date and time.')
     if (!form.endsAt) setError('endsAt', 'Please choose an end date and time.')
-    if (form.startsAt && !isStartDateTimeValid(form.startsAt, eventTimeZone.value, clock.value)) {
+    if (startTimeNeedsLeadValidation.value && form.startsAt && !isStartDateTimeValid(form.startsAt, eventTimeZone.value, clock.value)) {
       setError('startsAt', 'Choose a start time at least 30 minutes from now.')
     }
     if (form.endsAt && form.startsAt && new Date(form.endsAt) <= new Date(form.startsAt)) {
@@ -929,6 +957,7 @@ function ticketSeatCount(ticket) {
 }
 
 async function publishEvent() {
+  if (isEditMode.value) { await saveEventChanges(); return }
   if (isSaving.value || isPublishing.value) return
   if (!validateStep(1)) {
     currentStep.value = 1
@@ -961,14 +990,13 @@ async function publishEvent() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   initializeTheme()
   clockTimer = setInterval(() => {
     clock.value = new Date()
   }, 60_000)
-  tipTimer = setInterval(() => {
-    tipIndex.value = (tipIndex.value + 1) % activeTips.value.length
-  }, 7000)
+  tipTimer = setInterval(() => { tipIndex.value = (tipIndex.value + 1) % activeTips.value.length }, 7000)
+  if (isEditMode.value) await loadEventForEditing()
 })
 
 onBeforeUnmount(() => {
@@ -1347,7 +1375,7 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
                     <p>{{ formatTimeRange() }}</p>
                     <p>
                       Starts {{ formatReviewDate(form.startsAt) }}
-                      <span aria-hidden="true">·</span>
+                      <span aria-hidden="true">Â·</span>
                       {{ seriesEndText }}
                     </p>
                     <div v-if="nextOccurrences.length" class="next-occurrences">
@@ -1479,7 +1507,7 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
               <div class="field" data-error-key="coverImage">
                 <div class="field-top">
                   <div>
-                    <label>Event images <span>Required cover · max 6</span></label>
+                    <label>Event images <span>Required cover Â· max 6</span></label>
                     <p class="help">Upload a cover photo first, then add optional gallery images for the event page.</p>
                   </div>
                   <button type="button" class="text-btn" @click="showTemplates = !showTemplates">
@@ -1517,7 +1545,7 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
                   <div class="upload-ring"><PhotoIcon aria-hidden="true" /></div>
                   <strong>Drop cover and gallery images here</strong>
                   <span>Browse files or drag them in. The first image becomes the cover photo.</span>
-                  <span>JPG, PNG, or WebP · best 1600x900px · up to 6 images</span>
+                  <span>JPG, PNG, or WebP Â· best 1600x900px Â· up to 6 images</span>
                   <input ref="fileInput" type="file" hidden multiple accept="image/*" @change="handleFiles($event.target.files)" />
                 </div>
 
@@ -1604,7 +1632,7 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
               </div>
 
               <div class="divider"><span>Extra details</span></div>
-              <div class="detail-hint">💡 <strong>The more you share, the fewer questions you get.</strong></div>
+              <div class="detail-hint">ðŸ’¡ <strong>The more you share, the fewer questions you get.</strong></div>
               <div class="detail-chip-row">
                 <button
                   v-for="option in detailOptions"
@@ -1770,7 +1798,7 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
                     </div>
                     <div class="two-col">
                       <div class="field">
-                        <label>Price (₦)</label>
+                        <label>Price (â‚¦)</label>
                         <input v-model.number="ticket.price" type="number" min="0" class="field-input" placeholder="0 = free" />
                       </div>
                       <div class="field">
@@ -3920,7 +3948,7 @@ label span {
 }
 
 .success-screen .published-meta span + span::before {
-  content: '·';
+  content: 'Â·';
   margin-right: 8px;
 }
 
@@ -4083,3 +4111,5 @@ label span {
   .nav-actions .primary-btn { min-width: 0; width: 100%; }
 }
 </style>
+
+
