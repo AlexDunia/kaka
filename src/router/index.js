@@ -2,7 +2,6 @@
 import HomePage from '../pages/HomePage.vue'
 import EventDetails from '../pages/EventDetails.vue'
 import CreateEvent from '../pages/CreateEvent.vue'
-import CheckoutPage from '../pages/Checkout.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -211,7 +210,7 @@ const router = createRouter({
     {
       path: '/checkout',
       name: 'checkout',
-      component: CheckoutPage,
+      component: () => import('../pages/Checkout.vue'),
       meta: {
         title: 'Checkout',
         description: 'Complete your ticket purchase securely.',
@@ -306,5 +305,8 @@ router.beforeEach((to, from, next) => {
 })
 
 export default router
+
+
+
 
 

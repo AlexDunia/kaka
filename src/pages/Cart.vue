@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
@@ -40,19 +40,17 @@ function clearCart() {
 
 function proceedToCheckout() {
   if (cart.isEmpty) return
-  // Save cart to session for checkout page
-  sessionStorage.setItem('checkoutCart', JSON.stringify(cart.items))
   router.push('/checkout')
 }
 </script>
 
 <template>
   <div class="cart-bg">
-    <button class="back-button" @click="router.back()">← Back</button>
+    <button class="back-button" @click="router.back()">â† Back</button>
     <div class="cart-container">
       <h1 class="cart-title">Your Cart</h1>
       <div v-if="cart.isEmpty" class="cart-empty">
-        <div class="empty-cart-icon">🛒</div>
+        <div class="empty-cart-icon">ðŸ›’</div>
         <p>Your cart is empty.</p>
         <button class="continue-shopping" @click="router.push('/')">Continue Shopping</button>
       </div>
@@ -88,7 +86,7 @@ function proceedToCheckout() {
             </div>
             <div class="cart-actions">
               <div class="cart-price">
-                {{ '₦' + (item.pricePerTicket * item.quantity).toLocaleString('en-NG') }}
+                {{ 'â‚¦' + (item.pricePerTicket * item.quantity).toLocaleString('en-NG') }}
               </div>
               <button
                 class="cart-remove-inline"
@@ -124,7 +122,7 @@ function proceedToCheckout() {
     <div class="cart-footer-summary" v-if="!cart.isEmpty">
       <div class="cart-footer-row">
         <span>Subtotal</span>
-        <span>{{ '₦' + cart.total.toLocaleString('en-NG') }}</span>
+        <span>{{ 'â‚¦' + cart.total.toLocaleString('en-NG') }}</span>
       </div>
       <div class="cart-footer-actions">
         <button class="cart-clear-btn" @click="clearCart">Clear Cart</button>
@@ -464,3 +462,4 @@ function proceedToCheckout() {
   }
 }
 </style>
+

@@ -10,6 +10,7 @@ import { useSlug } from '@/composables/useSlug'
 import SeoImage from '@/components/SeoImage.vue'
 import { useAuthStore } from '@/stores/auth'
 import PageSkeleton from '@/components/PageSkeleton.vue'
+import { trackEventView } from '@/services/eventViewService'
 
 const route = useRoute()
 const router = useRouter()
@@ -56,6 +57,7 @@ const ticketSectionRef = ref(null)
 const selectedTicketType = ref(null)
 const ticketQuantity = ref(1)
 const pollInterval = ref(null)
+const trackedEventId = ref(null)
 
 // â”€â”€ Computed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const eventImage = computed(() => {
@@ -289,6 +291,12 @@ const fetchEventData = async () => {
     if (!eventId) throw new Error('No event ID provided')
     await eventStore.fetchEventById(parseInt(eventId))
     if (!eventStore.currentEvent) throw new Error('Event not found')
+    const loadedEventId = Number(eventStore.currentEvent?.id)
+    if (Number.isInteger(loadedEventId) && trackedEventId.value !== loadedEventId) {
+      trackedEventId.value = loadedEventId
+      const sourceCode = typeof route.query.src === 'string' ? route.query.src : null
+      void trackEventView(loadedEventId, { sourceCode }).catch(() => {})
+    }
     if (eventStore.currentEvent?.title) {
       document.title = `${eventStore.currentEvent.title} in Nigeria | KakaWorld`
     }
@@ -456,7 +464,7 @@ watch(
     updateMetaDescription(description)
     if (route.params.id && !route.params.slug && newEvent.title) {
       const slug = newEvent.slug || generateSlug(newEvent.title)
-      router.replace(`/events/${route.params.id}-${slug}`)
+      router.replace({ name: 'event-details', params: { id: route.params.id, slug }, query: route.query })
     }
     const canonical =
       window.location.origin +
@@ -2917,4 +2925,5 @@ onBeforeUnmount(() => {
   border-radius: 12px;
 }
 </style>
+
 

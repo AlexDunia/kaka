@@ -1,0 +1,3 @@
+﻿import { v4 as uuidv4 } from 'uuid'
+const ATTEMPT_KEY='checkoutAttemptToken',ORDER_TOKEN_PREFIX='checkoutOrderToken:'
+export const getOrCreateCheckoutToken=()=>{const existing=sessionStorage.getItem(ATTEMPT_KEY);if(existing)return existing;const token=uuidv4();sessionStorage.setItem(ATTEMPT_KEY,token);return token};export const clearCheckoutAttempt=()=>sessionStorage.removeItem(ATTEMPT_KEY);export const rememberOrderToken=(orderId,token)=>{if(orderId&&token)sessionStorage.setItem(`${ORDER_TOKEN_PREFIX}${orderId}`,token)};export const getOrderToken=orderId=>orderId?sessionStorage.getItem(`${ORDER_TOKEN_PREFIX}${orderId}`):null
