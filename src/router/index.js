@@ -150,6 +150,11 @@ const router = createRouter({
       },
     },
     {
+      path: '/dashboard/events/:eventId',
+      name: 'dashboard-event',
+      component: () => import('../pages/Dashboard.vue'),
+      meta: { title: 'Event Dashboard', description: 'Manage event performance, tickets, guests, payouts, and settings.', requiresAuth: true, disableRouteSkeleton: true, fullScreenShell: true },
+    },    {
       path: '/trolio',
       name: 'trolio',
       component: () => import('../pages/Trolio.vue'),
@@ -208,6 +213,12 @@ const router = createRouter({
       },
     },
     {
+      path: '/events/:id/edit',
+      name: 'EditEvent',
+      component: CreateEvent,
+      props: true,
+      meta: { title: 'Edit Event', description: 'Update your published event.', requiresAuth: true },
+    },    {
       path: '/checkout',
       name: 'checkout',
       component: () => import('../pages/Checkout.vue'),
@@ -218,6 +229,11 @@ const router = createRouter({
       },
     },
     {
+      path: '/payment-success/:orderId',
+      name: 'payment-success',
+      component: () => import('../pages/PaymentSuccess.vue'),
+      meta: { title: 'Payment Confirmed', description: 'View your KakaTickets order and tickets.', disableRouteSkeleton: true },
+    },    {
       path: '/cart',
       name: 'cart',
       component: () => import('../pages/Cart.vue'),
@@ -305,8 +321,4 @@ router.beforeEach((to, from, next) => {
 })
 
 export default router
-
-
-
-
 

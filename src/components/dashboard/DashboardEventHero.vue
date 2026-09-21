@@ -1,27 +1,7 @@
-<template>
-  <div class="event-hero">
-    <img
-      src="https://res.cloudinary.com/dnuhjsckk/image/upload/v1745339803/Comedy-Meets-dance_s2egap.jpg"
-      alt="Comedy Meets Dance"
-    />
-    <div class="event-hero-overlay"></div>
-    <div class="event-hero-content">
-      <div class="hero-status"><span class="status-dot"></span>Live now</div>
-      <div class="hero-title">Comedy Meets Dance</div>
-      <div class="hero-meta">
-        <div class="hero-meta-item">
-          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          May 12, 2026 &middot; 6:00 PM
-        </div>
-        <div class="hero-meta-item">
-          <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          Eko Hotel &amp; Suites, Lagos
-        </div>
-        <div class="hero-countdown">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-          12 days to go
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
+﻿<script setup>
+import { computed } from 'vue'
+const props=defineProps({event:{type:Object,required:true}})
+const formattedDate=computed(()=>{if(!props.event.starts_at)return '';const date=new Date(props.event.starts_at);return Number.isNaN(date.getTime())?'':new Intl.DateTimeFormat('en-NG',{dateStyle:'medium',timeStyle:'short',timeZone:props.event.timezone||undefined}).format(date)})
+const countdown=computed(()=>{if(!props.event.starts_at)return '';const diff=new Date(props.event.starts_at).getTime()-Date.now();if(!Number.isFinite(diff))return '';if(diff<=0)return 'Event started';const days=Math.ceil(diff/86400000);return days===1?'Tomorrow':`${days} days to go`})
+</script>
+<template><div class="event-hero"><img v-if="event.image" :src="event.image" :alt="event.title"><div class="event-hero-overlay"></div><div class="event-hero-content"><div class="hero-status"><span class="status-dot"></span>{{ event.status === 'active' ? 'Live' : event.status }}</div><div class="hero-title">{{ event.title }}</div><div class="hero-meta"><div v-if="formattedDate" class="hero-meta-item">{{ formattedDate }}</div><div v-if="event.venue" class="hero-meta-item">{{ event.venue }}</div><div v-if="countdown" class="hero-countdown">{{ countdown }}</div></div></div></div></template>

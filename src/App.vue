@@ -33,6 +33,8 @@ const pageOwnedSkeletonRoutes = new Set([
   'admin',
   'transactions',
   'dashboard',
+  'dashboard-event',
+  'payment-success',
 ])
 const routeUsesShellSkeleton = (targetRoute) => !pageOwnedSkeletonRoutes.has(targetRoute?.name)
 const isRouteLoading = ref(routeUsesShellSkeleton(route))
@@ -51,14 +53,14 @@ const isCreateEventRoute = computed(() =>
 )
 const usesFullScreenShell = computed(() => Boolean(chromeRoute.value.meta?.fullScreenShell))
 const showGlobalHeader = computed(
-  () => !isCreateEventRoute.value && chromeRoute.value.name !== 'dashboard',
+  () => !isCreateEventRoute.value && !usesFullScreenShell.value,
 )
 
 const routeSkeletonVariant = computed(() => {
   const targetRoute = skeletonRoute.value || route
   if (targetRoute.name === 'CreateEvent' || targetRoute.name === 'EditEvent') return 'create-event'
   if (['event-details', 'event-details-legacy'].includes(targetRoute.name)) return 'detail'
-  if (targetRoute.name === 'dashboard') return 'dashboard-overview'
+  if (['dashboard', 'dashboard-event'].includes(targetRoute.name)) return 'dashboard-overview'
   if (['admin', 'transactions'].includes(targetRoute.name)) return 'dashboard'
   if (['login', 'register', 'forgot-password', 'reset-password', 'google-callback'].includes(targetRoute.name))
     return 'auth'
@@ -1403,8 +1405,4 @@ body {
   }
 }
 </style>
-
-
-
-
 
