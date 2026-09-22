@@ -1,17 +1,9 @@
-// resources/js/api/axios.js
-import axios from 'axios'
-
-const apiOrigin = import.meta.env.DEV ? 'http://127.0.0.1:8000' : ''
-
-// const api = axios.create({
-//   baseURL: `${apiOrigin}/api`,
-//   withCredentials: true,
-//   withXSRFToken: true,
-// })
+﻿import axios from 'axios'
 
 const api = axios.create({
-  baseURL: '/api', // use Vite proxy, no hardcoded origin
+  baseURL: '/api',
   withCredentials: true,
+  withXSRFToken: true,
 })
 
 let csrfCookieRequest = null
@@ -19,16 +11,9 @@ let csrfCookieRequest = null
 export const ensureCsrfCookie = () => {
   if (!csrfCookieRequest) {
     csrfCookieRequest = axios
-      .get(`${apiOrigin}/sanctum/csrf-cookie`, {
-        withCredentials: true,
-        withXSRFToken: true,
-      })
-      .catch((error) => {
-        csrfCookieRequest = null
-        throw error
-      })
+      .get('/sanctum/csrf-cookie', { withCredentials: true, withXSRFToken: true })
+      .finally(() => { csrfCookieRequest = null })
   }
-
   return csrfCookieRequest
 }
 
