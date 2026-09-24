@@ -1,80 +1,317 @@
 <script setup>
-import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useRoute, useRouter } from 'vue-router'
 import DashboardContentSkeleton from '@/components/dashboard/DashboardContentSkeleton.vue'
-import DashboardEditContent from '@/components/dashboard/DashboardEditContent.vue'
 import DashboardManageContent from '@/components/dashboard/DashboardManageContent.vue'
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar.vue'
 import DashboardTopbar from '@/components/dashboard/DashboardTopbar.vue'
+import { useDashboardStore } from '@/stores/dashboard'
+
+const route = useRoute()
+const router = useRouter()
+const dashboardStore = useDashboardStore()
+
+const {
+  events,
+  eventsLoading,
+  eventsError,
+} = storeToRefs(dashboardStore)
 
 const dropdownOpen = ref(false)
-const isEditMode = ref(false)
-const currentStep = ref(1)
 const currentManageView = ref('overview')
-const pageBody = ref(null)
-const isDashboardLoading = ref(true)
 const loadingView = ref('overview')
 const toast = ref(null)
-let loadingToken = 0
+const overviewLoading = ref(false)
+const pageError = ref('')
 let toastTimer = null
 
-const scrollPageToTop = () => pageBody.value?.scrollTo({ top: 0 })
-const toggleDropdown = () => { dropdownOpen.value = !dropdownOpen.value }
-const getMinimumLoadingTime = () => {
-  const rtt = Number(navigator.connection?.rtt) || 120
-  return Math.min(1450, Math.max(1050, 900 + rtt))
+const selectedEventId = computed(() => {
+  const routeId = Number(route.params.eventId)
+  if (Number.isInteger(routeId) && routeId > 0) return routeId
+  return Number(events.value[0]?.id || 0)
+})
+
+const selectedEvent = computed(() =>
+  events.value.find(
+    (event) => Number(event.id) === selectedEventId.value,
+  ) || null,
+)
+
+const overview = computed(() =>
+  selectedEventId.value
+    ? dashboardStore.getOverview(selectedEventId.value)
+    : null,
+)
+
+const isDashboardLoading = computed(
+  () =>
+    eventsLoading.value
+    || overviewLoading.value
+    || (
+      Boolean(selectedEventId.value)
+      && !overview.value
+      && !pageError.value
+    ),
+)
+
+const toggleDropdown = () => {
+  dropdownOpen.value = !dropdownOpen.value
 }
-const loadDashboardView = async (applyView) => {
-  const token = ++loadingToken
-  const startedAt = performance.now()
-  isDashboardLoading.value = true
-  await nextTick()
-  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
-  applyView()
-  const remaining = Math.max(0, getMinimumLoadingTime() - (performance.now() - startedAt))
-  window.setTimeout(() => { if (token === loadingToken) isDashboardLoading.value = false }, remaining)
+
+const closeDropdown = () => {
+  dropdownOpen.value = false
 }
+
 const showSuccessToast = (message) => {
   window.clearTimeout(toastTimer)
-  toast.value = { message, key: Date.now() }
-  toastTimer = window.setTimeout(() => { toast.value = null }, 4200)
+  toast.value = {
+    message,
+    key: Date.now(),
+  }
+  toastTimer = window.setTimeout(() => {
+    toast.value = null
+  }, 4200)
 }
-const enterEditMode = () => {
-  loadingView.value = 'edit'
-  loadDashboardView(() => { isEditMode.value = true; currentStep.value = 1; scrollPageToTop() })
-}
-const exitEditMode = () => { isEditMode.value = false; scrollPageToTop() }
-const goToStep = (step) => {
-  if (isEditMode.value && currentStep.value === step) return
-  loadingView.value = `edit-${step}`
-  loadDashboardView(() => { currentStep.value = step; scrollPageToTop() })
-}
-const showManage = (key) => {
-  if (!isEditMode.value && currentManageView.value === key) return
-  loadingView.value = key
-  loadDashboardView(() => { isEditMode.value = false; currentManageView.value = key; scrollPageToTop() })
-}
-const goBack = () => alert('Going back to My Events...')
 
-onMounted(() => loadDashboardView(() => {}))
-onBeforeUnmount(() => { loadingToken += 1; window.clearTimeout(toastTimer) })
+const showManage = (key) => {
+  currentManageView.value = key
+  loadingView.value = key
+}
+
+const loadOverview = async (eventId, { force = false } = {}) => {
+  if (!eventId) return
+
+  overviewLoading.value = true
+  pageError.value = ''
+
+  try {
+    await dashboardStore.fetchOverview(
+      eventId,
+      { force },
+    )
+  } catch (error) {
+    pageError.value =
+      error?.response?.data?.message
+      || 'We could not load this event dashboard.'
+  } finally {
+    overviewLoading.value = false
+  }
+}
+
+const normalizeRouteToOwnedEvent = async () => {
+  if (!events.value.length) return
+
+  const requestedId = Number(route.params.eventId)
+  const requestedIsOwned = events.value.some(
+    (event) => Number(event.id) === requestedId,
+  )
+
+  const targetId = requestedIsOwned
+    ? requestedId
+    : Number(events.value[0].id)
+
+  if (
+    route.name !== 'dashboard-event'
+    || Number(route.params.eventId) !== targetId
+  ) {
+    await router.replace({
+      name: 'dashboard-event',
+      params: { eventId: targetId },
+    })
+  }
+}
+
+const loadDashboard = async () => {
+  pageError.value = ''
+
+  try {
+    await dashboardStore.fetchEvents()
+    await normalizeRouteToOwnedEvent()
+
+    if (selectedEventId.value) {
+      await loadOverview(selectedEventId.value)
+    }
+  } catch (error) {
+    pageError.value =
+      error?.response?.data?.message
+      || eventsError.value
+      || 'We could not load your dashboard.'
+  }
+}
+
+const selectEvent = async (eventId) => {
+  closeDropdown()
+
+  const id = Number(eventId)
+  if (!id || id === selectedEventId.value) return
+
+  currentManageView.value = 'overview'
+
+  await router.push({
+    name: 'dashboard-event',
+    params: { eventId: id },
+  })
+}
+
+const goBack = () => {
+  router.push('/')
+}
+
+const viewPublicEvent = () => {
+  if (!selectedEvent.value?.public_path) return
+  router.push(selectedEvent.value.public_path)
+}
+
+const editEvent = () => {
+  if (!selectedEventId.value) return
+
+  router.push({
+    name: 'EditEvent',
+    params: { id: selectedEventId.value },
+  })
+}
+
+watch(
+  () => route.params.eventId,
+  async (next, previous) => {
+    const id = Number(next)
+    if (!id || id === Number(previous)) return
+
+    const owned = events.value.some(
+      (event) => Number(event.id) === id,
+    )
+
+    if (!owned) {
+      await normalizeRouteToOwnedEvent()
+      return
+    }
+
+    await loadOverview(id)
+  },
+)
+
+onMounted(loadDashboard)
+onBeforeUnmount(() => window.clearTimeout(toastTimer))
 </script>
 
 <template>
   <div class="event-dashboard">
-    <DashboardSidebar :dropdown-open="dropdownOpen" :is-edit-mode="isEditMode" :current-manage-view="currentManageView" :current-step="currentStep" @toggle-dropdown="toggleDropdown" @go-back="goBack" @select-view="showManage" @select-step="goToStep" />
+    <DashboardSidebar
+      :dropdown-open="dropdownOpen"
+      :current-manage-view="currentManageView"
+      :events="events"
+      :current-event="selectedEvent"
+      @toggle-dropdown="toggleDropdown"
+      @go-back="goBack"
+      @select-view="showManage"
+      @select-event="selectEvent"
+    />
+
     <main class="main">
-      <DashboardTopbar :is-edit-mode="isEditMode" :current-step="currentStep" @enter-edit-mode="enterEditMode" @exit-edit-mode="exitEditMode" @select-step="goToStep" />
-      <div id="page-body" ref="pageBody" class="page-body">
-        <DashboardContentSkeleton v-if="isDashboardLoading" :view="loadingView" />
-        <DashboardManageContent v-else-if="!isEditMode" :current-manage-view="currentManageView" @select-view="showManage" @link-created="showSuccessToast" />
-        <DashboardEditContent v-else :current-step="currentStep" @select-step="goToStep" @exit-edit-mode="exitEditMode" />
+      <DashboardTopbar
+        :event="selectedEvent"
+        @view-public="viewPublicEvent"
+        @edit-event="editEvent"
+      />
+
+      <div id="page-body" class="page-body">
+        <DashboardContentSkeleton
+          v-if="isDashboardLoading"
+          :view="loadingView"
+        />
+
+        <section
+          v-else-if="pageError"
+          class="mv-wrap"
+          role="alert"
+        >
+          <div class="card" style="padding:var(--s6)">
+            <div class="chart-head-title">
+              We could not load this dashboard.
+            </div>
+            <p
+              style="
+                margin-top:var(--s3);
+                color:var(--t-lo);
+                line-height:1.6;
+              "
+            >
+              {{ pageError }}
+            </p>
+            <button
+              type="button"
+              class="btn btn-primary"
+              style="margin-top:var(--s4)"
+              @click="loadDashboard"
+            >
+              Try again
+            </button>
+          </div>
+        </section>
+
+        <section
+          v-else-if="!events.length"
+          class="mv-wrap"
+        >
+          <div class="card" style="padding:var(--s6)">
+            <div class="chart-head-title">
+              No events yet
+            </div>
+            <p
+              style="
+                margin-top:var(--s3);
+                color:var(--t-lo);
+                line-height:1.6;
+              "
+            >
+              Create an event first. Its live sales data will appear here.
+            </p>
+            <button
+              type="button"
+              class="btn btn-primary"
+              style="margin-top:var(--s4)"
+              @click="router.push({ name: 'CreateEvent' })"
+            >
+              Create event
+            </button>
+          </div>
+        </section>
+
+        <DashboardManageContent
+          v-else
+          :current-manage-view="currentManageView"
+          :event="selectedEvent"
+          :overview="overview"
+          @select-view="showManage"
+          @link-created="showSuccessToast"
+          @refresh-overview="loadOverview(selectedEventId, { force: true })"
+        />
       </div>
     </main>
+
     <Transition name="dashboard-toast">
-      <div v-if="toast" :key="toast.key" class="dashboard-success-toast" role="status" aria-live="polite">
-        <span class="dashboard-success-toast__icon" aria-hidden="true">&#10003;</span>
-        <div><strong>Your link is ready</strong><p>{{ toast.message }}</p></div>
-        <span class="dashboard-success-toast__progress" aria-hidden="true"></span>
+      <div
+        v-if="toast"
+        :key="toast.key"
+        class="dashboard-success-toast"
+        role="status"
+        aria-live="polite"
+      >
+        <span
+          class="dashboard-success-toast__icon"
+          aria-hidden="true"
+        >
+          &#10003;
+        </span>
+        <div>
+          <strong>Done</strong>
+          <p>{{ toast.message }}</p>
+        </div>
+        <span
+          class="dashboard-success-toast__progress"
+          aria-hidden="true"
+        ></span>
       </div>
     </Transition>
   </div>

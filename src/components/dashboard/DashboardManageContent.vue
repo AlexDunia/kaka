@@ -16,29 +16,74 @@ defineProps({
     type: String,
     required: true,
   },
+  event: {
+    type: Object,
+    default: null,
+  },
+  overview: {
+    type: Object,
+    default: null,
+  },
 })
 
-const emit = defineEmits(['select-view', 'link-created'])
-
-const showManage = (view) => emit('select-view', view)
-const linkCreated = (message) => emit('link-created', message)
+const emit = defineEmits([
+  'select-view',
+  'link-created',
+  'refresh-overview',
+])
 </script>
 
 <template>
-  <div class="manage-content" id="manage-content">
+  <div
+    v-if="overview"
+    class="manage-content"
+    id="manage-content"
+  >
     <template v-if="currentManageView === 'overview'">
-      <DashboardEventHero />
-      <DashboardStatStrip />
-      <DashboardOverviewView @select-view="showManage" @link-created="linkCreated" />
+      <DashboardEventHero :overview="overview" />
+      <DashboardStatStrip :overview="overview" />
+      <DashboardOverviewView
+        :overview="overview"
+        @select-view="$emit('select-view', $event)"
+      />
     </template>
 
-    <DashboardAttendeesView v-else-if="currentManageView === 'attendees'" />
-    <DashboardInsightsView v-else-if="currentManageView === 'insights'" />
-    <DashboardCheckinView v-else-if="currentManageView === 'checkin'" />
-    <DashboardEmailView v-else-if="currentManageView === 'email'" />
-    <DashboardPromoView v-else-if="currentManageView === 'promo'" />
-    <DashboardShareView v-else-if="currentManageView === 'share'" @select-view="showManage" @link-created="linkCreated" />
-    <DashboardPayoutView v-else-if="currentManageView === 'payout'" />
-    <DashboardSettingsView v-else-if="currentManageView === 'settings'" />
+    <DashboardAttendeesView
+      v-else-if="currentManageView === 'attendees'"
+    />
+
+    <DashboardInsightsView
+      v-else-if="currentManageView === 'insights'"
+      :overview="overview"
+    />
+
+    <DashboardCheckinView
+      v-else-if="currentManageView === 'checkin'"
+    />
+
+    <DashboardEmailView
+      v-else-if="currentManageView === 'email'"
+    />
+
+    <DashboardPromoView
+      v-else-if="currentManageView === 'promo'"
+    />
+
+    <DashboardShareView
+      v-else-if="currentManageView === 'share'"
+      :event="event"
+      :overview="overview"
+      @select-view="$emit('select-view', $event)"
+      @link-created="$emit('link-created', $event)"
+      @refresh-overview="$emit('refresh-overview')"
+    />
+
+    <DashboardPayoutView
+      v-else-if="currentManageView === 'payout'"
+    />
+
+    <DashboardSettingsView
+      v-else-if="currentManageView === 'settings'"
+    />
   </div>
 </template>

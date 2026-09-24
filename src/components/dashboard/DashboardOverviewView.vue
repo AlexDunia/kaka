@@ -1,159 +1,195 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import {
+  formatMoneyMinor,
+  formatNumber,
+  formatPercent,
+  unitNoun,
+} from '@/utils/dashboardFormat'
 
-const emit = defineEmits(['select-view', 'link-created'])
-const showManage = (view) => emit('select-view', view)
-
-const baseLink = 'rushhour.ng/e/comedy-meets-dance'
-const linkPresets = [
-  { label: 'WhatsApp', source: 'wa', note: 'Where most buyers find you', buyers: 271, clicks: 813 },
-  {
-    label: 'Instagram',
-    source: 'ig',
-    note: 'Helping new people discover you',
-    buyers: 110,
-    clicks: 486,
+const props = defineProps({
+  overview: {
+    type: Object,
+    required: true,
   },
-  {
-    label: 'Direct link',
-    source: 'direct',
-    note: 'Handy for bios and flyers',
-    buyers: 148,
-    clicks: 392,
-  },
-]
-
-const linksGenerated = ref(false)
-const isGeneratingLinks = ref(false)
-const customLabel = ref('')
-const showCustomLink = ref(false)
-const linkFeedback = ref('')
-const shareLinks = ref([])
-const linkModalOpen = ref(false)
-const linkModalStep = ref(1)
-
-const createSourceLink = (item) => ({
-  ...item,
-  url: `${baseLink}?src=${item.source}`,
-  sales: item.buyers,
 })
 
-const generateSourceLinks = () => {
-  if (isGeneratingLinks.value) return
+const emit = defineEmits(['select-view'])
 
-  isGeneratingLinks.value = true
-  linkFeedback.value = ''
-  linkModalStep.value = 1
+const selectedRange = ref('30d')
 
-  window.setTimeout(() => {
-    shareLinks.value = linkPresets.map(createSourceLink)
-    linksGenerated.value = true
-    isGeneratingLinks.value = false
-    linkModalOpen.value = true
-    linkFeedback.value = 'Your links are ready. Choose the one that matches where you are sharing.'
-    emit('link-created', 'Your event is ready to share.')
-  }, 650)
-}
+const ranges = [
+  { key: '7d', label: '7d' },
+  { key: '30d', label: '30d' },
+  { key: 'all', label: 'All' },
+]
 
-const closeLinkModal = () => {
-  linkModalOpen.value = false
-}
+const ticketTypes = computed(
+  () => props.overview.ticket_types || [],
+)
 
-const advanceLinkModal = () => {
-  if (linkModalStep.value < 3) {
-    linkModalStep.value += 1
-    return
+const sources = computed(
+  () =>
+    (props.overview.sources || [])
+      .filter(
+        (source) =>
+          source.source_code !== 'unattributed'
+          && Number(source.buyers || 0) > 0,
+      )
+      .slice(0, 4),
+)
+
+const series = computed(
+  () =>
+    props.overview.sales_trend?.[selectedRange.value]
+    || [],
+)
+
+const chartGeometry = computed(() => {
+  const rows = series.value
+  const width = 540
+  const left = 15
+  const baseline = 110
+  const usableHeight = 92
+
+  if (!rows.length) {
+    return {
+      line: '',
+      area: '',
+      last: null,
+    }
   }
 
-  closeLinkModal()
-}
+  const max = Math.max(
+    1,
+    ...rows.map((row) => Number(row.units_sold || 0)),
+  )
 
-const copyLink = async (link) => {
-  const fullLink = `https://${link.url}`
+  const points = rows.map((row, index) => {
+    const x =
+      rows.length === 1
+        ? left + width / 2
+        : left + (index / (rows.length - 1)) * width
 
-  try {
-    await navigator.clipboard?.writeText(fullLink)
-    linkFeedback.value = `${link.label} link copied.`
-  } catch {
-    linkFeedback.value = fullLink
+    const y =
+      baseline
+      - (Number(row.units_sold || 0) / max) * usableHeight
+
+    return {
+      x,
+      y,
+      row,
+    }
+  })
+
+  const line = points
+    .map(
+      (point, index) =>
+        `${index === 0 ? 'M' : 'L'}${point.x.toFixed(2)},${point.y.toFixed(2)}`,
+    )
+    .join(' ')
+
+  const first = points[0]
+  const last = points[points.length - 1]
+  const area =
+    `${line} L${last.x.toFixed(2)},${baseline} `
+    + `L${first.x.toFixed(2)},${baseline} Z`
+
+  return {
+    line,
+    area,
+    last,
   }
+})
+
+const strongestTier = computed(() =>
+  [...ticketTypes.value]
+    .filter((tier) => Number(tier.effective_capacity_units || 0) > 0)
+    .sort(
+      (a, b) =>
+        Number(b.sold_percent || 0)
+        - Number(a.sold_percent || 0),
+    )[0]
+    || null,
+)
+
+const weakestTier = computed(() =>
+  [...ticketTypes.value]
+    .filter(
+      (tier) =>
+        tier.visible
+        && Number(tier.effective_capacity_units || 0) > 0,
+    )
+    .sort(
+      (a, b) =>
+        Number(a.sold_percent || 0)
+        - Number(b.sold_percent || 0),
+    )[0]
+    || null,
+)
+
+const topSource = computed(() => sources.value[0] || null)
+
+const ticketLabel = (tier, quantity) =>
+  unitNoun(tier, quantity)
+
+const tierCountCopy = (tier) => {
+  const sold = Number(tier.sold_units || 0)
+  const left = Number(tier.available_units || 0)
+
+  return `${formatNumber(sold)} ${ticketLabel(tier, sold)} sold · `
+    + `${formatNumber(left)} ${ticketLabel(tier, left)} left`
 }
 
-const shareLink = (link) => {
-  const fullLink = `https://${link.url}`
-  const message = encodeURIComponent(`Grab your ticket: ${fullLink}`)
-  const source = link.source.toLowerCase()
+const bestDayCopy = (day) => {
+  if (!day) return 'No sales yet'
 
-  if (source.includes('wa')) {
-    window.open(`https://wa.me/?text=${message}`, '_blank', 'noopener,noreferrer')
-    linkFeedback.value = 'Opening WhatsApp so you can share your event.'
-    return
-  }
-
-  copyLink(link)
-}
-
-const addCustomLink = () => {
-  const label = customLabel.value.trim()
-  if (!label) return
-
-  const source =
-    label
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '')
-      .slice(0, 24) || 'custom'
-
-  shareLinks.value = [
-    ...shareLinks.value,
-    {
-      label,
-      source,
-      note: 'Custom tracker',
-      buyers: 0,
-      clicks: 0,
-      sales: 0,
-      url: `${baseLink}?src=${source}`,
-    },
-  ]
-  customLabel.value = ''
-  showCustomLink.value = false
-  linkFeedback.value = `${label} link added.`
-  emit('link-created', `${label} is ready to use.`)
+  return `${day.label} · ${formatNumber(day.units_sold)} sold`
 }
 </script>
 
 <template>
-  <div class="manage-view active" id="mv-overview">
+  <div
+    class="manage-view active"
+    id="mv-overview"
+  >
     <div class="sections-wrap overview-wrap">
-      <section v-if="!linksGenerated" class="link-flow-section link-flow-section--sales">
-        <article class="card ticket-performance-card sales-link-pregen-card">
-          <div class="overview-card-head ticket-card-head sales-link-pregen-head">
-            <div>
-              <h3>Alex, let's get your event ready to share</h3>
-              <p>Create all the links you need in one click.</p>
-            </div>
-            <button
-              class="link-primary-action sales-link-pregen-action"
-              type="button"
-              :disabled="isGeneratingLinks"
-              @click="generateSourceLinks"
-            >
-              {{ isGeneratingLinks ? 'Generating...' : 'Generate event links' }}
-            </button>
-          </div>
-        </article>
-      </section>
-
       <section class="generated-ticket-performance-section">
         <article class="card generated-ticket-performance-card">
           <div class="overview-card-head">
-            <h3>How your tickets are doing</h3>
-            <p>See which ticket types people are choosing most.</p>
+            <div>
+              <h3>How your tickets are doing</h3>
+              <p>
+                Every number here now comes from paid orders and live inventory.
+              </p>
+            </div>
+
+            <button
+              class="link-primary-action"
+              type="button"
+              @click="emit('select-view', 'share')"
+            >
+              Open sharing links
+            </button>
           </div>
-          <div class="traffic-rows overview-traffic generated-ticket-rows">
-            <div class="traffic-row">
-              <div class="traffic-icon ticket-tier-icon hot">
+
+          <div
+            v-if="ticketTypes.length"
+            class="traffic-rows overview-traffic generated-ticket-rows"
+          >
+            <div
+              v-for="tier in ticketTypes"
+              :key="tier.id"
+              class="traffic-row"
+            >
+              <div
+                class="traffic-icon ticket-tier-icon"
+                :class="{
+                  hot: tier.sold_percent >= 80,
+                  good: tier.sold_percent >= 50 && tier.sold_percent < 80,
+                  neutral: tier.sold_percent < 50,
+                }"
+              >
                 <svg viewBox="0 0 24 24">
                   <path
                     d="M2 9a3 3 0 0 0 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 0 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2Z"
@@ -161,170 +197,138 @@ const addCustomLink = () => {
                   <path d="M12 5v14" />
                 </svg>
               </div>
+
               <div class="traffic-info">
-                <div class="traffic-name">Gold Table</div>
-                <div class="traffic-count">25 sold · 5 left</div>
+                <div class="traffic-name">
+                  {{ tier.name }}
+                </div>
+
+                <div class="traffic-count">
+                  {{ tierCountCopy(tier) }}
+                </div>
+
                 <div class="traffic-bar-wrap">
                   <div class="traffic-bar-track">
-                    <div class="traffic-bar-fill fill-red" style="width: 93%"></div>
+                    <div
+                      class="traffic-bar-fill"
+                      :class="{
+                        'fill-red': tier.sold_percent >= 80,
+                        'fill-teal': tier.sold_percent >= 50 && tier.sold_percent < 80,
+                        'fill-blue': tier.sold_percent < 50,
+                      }"
+                      :style="{
+                        width: `${Math.min(100, Math.max(0, Number(tier.sold_percent || 0)))}%`,
+                      }"
+                    ></div>
                   </div>
                 </div>
               </div>
-              <div class="traffic-pct">93%</div>
+
+              <div class="traffic-pct">
+                {{ formatPercent(tier.sold_percent) }}
+              </div>
             </div>
-            <div class="traffic-row">
-              <div class="traffic-icon ticket-tier-icon good">
-                <svg viewBox="0 0 24 24">
-                  <path
-                    d="M2 9a3 3 0 0 0 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 0 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2Z"
-                  />
-                  <path d="M12 5v14" />
-                </svg>
-              </div>
-              <div class="traffic-info">
-                <div class="traffic-name">VIP</div>
-                <div class="traffic-count">38 sold · 12 left</div>
-                <div class="traffic-bar-wrap">
-                  <div class="traffic-bar-track">
-                    <div class="traffic-bar-fill fill-teal" style="width: 76%"></div>
-                  </div>
-                </div>
-              </div>
-              <div class="traffic-pct">76%</div>
-            </div>
-            <div class="traffic-row">
-              <div class="traffic-icon ticket-tier-icon neutral">
-                <svg viewBox="0 0 24 24">
-                  <path
-                    d="M2 9a3 3 0 0 0 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 0 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2Z"
-                  />
-                  <path d="M12 5v14" />
-                </svg>
-              </div>
-              <div class="traffic-info">
-                <div class="traffic-name">General Admission</div>
-                <div class="traffic-count">177 sold · 323 left</div>
-                <div class="traffic-bar-wrap">
-                  <div class="traffic-bar-track">
-                    <div class="traffic-bar-fill fill-blue" style="width: 35%"></div>
-                  </div>
-                </div>
-              </div>
-              <div class="traffic-pct">35%</div>
-            </div>
+          </div>
+
+          <div
+            v-else
+            class="overview-note"
+          >
+            This event does not have paid ticket tiers yet.
           </div>
         </article>
       </section>
-
-      <div
-        v-if="linkModalOpen"
-        class="link-flow-overlay"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="linkFlowTitle"
-      >
-        <article class="link-flow-modal">
-          <button class="link-modal-close" type="button" aria-label="Close" @click="closeLinkModal">
-            x
-          </button>
-
-          <div class="link-modal-step">Step {{ linkModalStep }} of 3</div>
-
-          <div v-if="linkModalStep === 1" class="link-modal-body">
-            <h3 id="linkFlowTitle">Your sharing links are ready</h3>
-            <p>
-              You now have a link for WhatsApp, Instagram, and direct sharing. Use each one in its
-              matching place to see where your buyers find you.
-            </p>
-            <div class="link-modal-mini-list">
-              <span>WhatsApp link ready</span>
-              <span>Instagram link ready</span>
-              <span>Direct link ready</span>
-            </div>
-          </div>
-
-          <div v-else-if="linkModalStep === 2" class="link-modal-body">
-            <h3 id="linkFlowTitle">Share each link in the right place</h3>
-            <p>
-              Choose WhatsApp for chats and groups, Instagram for your profile and posts, and Direct
-              for bios, flyers, and anywhere else you share.
-            </p>
-            <div class="link-modal-route">
-              <span>Copy</span>
-              <span>Share</span>
-              <span>Track</span>
-            </div>
-          </div>
-
-          <div v-else class="link-modal-body">
-            <h3 id="linkFlowTitle">See what brings people to your event</h3>
-            <p>
-              As people use your links, your dashboard will show which channels are helping your
-              event grow.
-            </p>
-            <div class="link-modal-mini-list">
-              <span>See how tickets are selling</span>
-              <span>Learn where buyers find you</span>
-              <span>Choose what to do next</span>
-            </div>
-          </div>
-
-          <div class="link-modal-dots" aria-hidden="true">
-            <span :class="{ active: linkModalStep === 1 }"></span>
-            <span :class="{ active: linkModalStep === 2 }"></span>
-            <span :class="{ active: linkModalStep === 3 }"></span>
-          </div>
-
-          <div class="link-modal-footer">
-            <button type="button" class="link-modal-quiet" @click="closeLinkModal">Skip</button>
-            <button type="button" class="link-modal-primary" @click="advanceLinkModal">
-              {{ linkModalStep === 3 ? 'Show my links' : 'Next' }}
-            </button>
-          </div>
-        </article>
-      </div>
 
       <section class="overview-command-grid overview-command-grid--calm">
         <article class="event-health-panel health-readout-panel">
           <div class="health-panel-head">
             <div>
-              <div class="section-title compact-section-title">Event health</div>
-              <h3>Your event is moving nicely</h3>
+              <div class="section-title compact-section-title">
+                Event health
+              </div>
+              <h3>
+                {{
+                  overview.sales.units_sold
+                    ? 'Your live sales picture'
+                    : 'Your event is ready for its first sale'
+                }}
+              </h3>
             </div>
-            <span class="health-status-pill health-status-pill--clear">82 score</span>
           </div>
 
           <div class="health-readout-main">
             <div class="health-readout-status">
               <span>Overall</span>
-              <strong>You're building great momentum</strong>
+              <strong>
+                {{
+                  formatPercent(overview.sales.sold_percent)
+                }}
+                of current ticket capacity is sold
+              </strong>
               <p>
-                Premium tickets are moving well. General Admission could use a little more
-                attention.
+                {{
+                  formatNumber(overview.sales.available_units)
+                }}
+                ticket units are still available right now.
               </p>
             </div>
-            <div class="health-readout-list" aria-label="Event health summary">
-              <div class="health-readout-item good">
+
+            <div class="health-readout-list">
+              <div
+                v-if="strongestTier"
+                class="health-readout-item good"
+              >
                 <span></span>
                 <div>
-                  <strong>VIP and table tickets are filling up.</strong>
-                  <p>Let people know there are only a few spots left in your next message.</p>
-                </div>
-              </div>
-              <div class="health-readout-item good">
-                <span></span>
-                <div>
-                  <strong>WhatsApp is bringing in the most buyers.</strong>
-                  <p>44% of buyers came from there, so it is a great place to share again.</p>
-                </div>
-              </div>
-              <div class="health-readout-item warn">
-                <span></span>
-                <div>
-                  <strong>General Admission has room to grow.</strong>
+                  <strong>
+                    {{ strongestTier.name }} is your strongest ticket.
+                  </strong>
                   <p>
-                    There are 323 spots left. A simple offer could help more people say yes this
-                    week.
+                    {{
+                      formatPercent(strongestTier.sold_percent)
+                    }}
+                    sold, with
+                    {{
+                      formatNumber(strongestTier.available_units)
+                    }}
+                    left.
+                  </p>
+                </div>
+              </div>
+
+              <div
+                v-if="topSource"
+                class="health-readout-item good"
+              >
+                <span></span>
+                <div>
+                  <strong>
+                    {{ topSource.label }} is bringing the most matched buyers.
+                  </strong>
+                  <p>
+                    {{
+                      formatNumber(topSource.buyers)
+                    }}
+                    buyers are currently attributed there.
+                  </p>
+                </div>
+              </div>
+
+              <div
+                v-if="weakestTier && weakestTier.id !== strongestTier?.id"
+                class="health-readout-item warn"
+              >
+                <span></span>
+                <div>
+                  <strong>
+                    {{ weakestTier.name }} has the most room to grow.
+                  </strong>
+                  <p>
+                    {{
+                      formatNumber(weakestTier.available_units)
+                    }}
+                    {{ ticketLabel(weakestTier, weakestTier.available_units) }}
+                    are still open.
                   </p>
                 </div>
               </div>
@@ -335,60 +339,115 @@ const addCustomLink = () => {
         <article class="next-move-panel next-move-panel--calm">
           <div class="next-move-head">
             <div>
-              <div class="section-title compact-section-title">Next moves</div>
-              <h3>A few things you can do next</h3>
+              <div class="section-title compact-section-title">
+                What the numbers say
+              </div>
+              <h3>Useful things to know now</h3>
             </div>
-            <span>Today</span>
+            <span>Live data</span>
           </div>
 
           <div class="next-move-list">
-            <button class="next-move-item urgent" type="button" @click="showManage('promo')">
+            <button
+              class="next-move-item"
+              type="button"
+              @click="emit('select-view', 'share')"
+            >
               <span class="next-move-num">01</span>
               <span class="next-move-copy">
-                <strong>Give General Admission a little boost</strong>
-                <small>A simple 48-hour discount can make it easier for people to book.</small>
-              </span>
-              <span class="next-move-destination">Discount</span>
-            </button>
-
-            <button class="next-move-item" type="button" @click="showManage('share')">
-              <span class="next-move-num">02</span>
-              <span class="next-move-copy">
-                <strong>Share your offer on WhatsApp</strong>
-                <small>It is already where most of your buyers are finding you.</small>
+                <strong>
+                  {{
+                    topSource
+                      ? `Keep an eye on ${topSource.label}`
+                      : 'Start using tracked sharing links'
+                  }}
+                </strong>
+                <small>
+                  {{
+                    topSource
+                      ? `${formatPercent(topSource.buyer_share_percent)} of buyers are currently attributed there.`
+                      : 'Once people use your links, buyer channels will appear here automatically.'
+                  }}
+                </small>
               </span>
               <span class="next-move-destination">Promote</span>
             </button>
 
-            <button class="next-move-item" type="button" @click="showManage('email')">
+            <button
+              v-if="weakestTier"
+              class="next-move-item"
+              type="button"
+              @click="emit('select-view', 'promo')"
+            >
+              <span class="next-move-num">02</span>
+              <span class="next-move-copy">
+                <strong>
+                  Watch {{ weakestTier.name }}
+                </strong>
+                <small>
+                  {{
+                    formatNumber(weakestTier.available_units)
+                  }}
+                  remain available.
+                </small>
+              </span>
+              <span class="next-move-destination">Discount</span>
+            </button>
+
+            <button
+              class="next-move-item"
+              type="button"
+              @click="emit('select-view', 'attendees')"
+            >
               <span class="next-move-num">03</span>
               <span class="next-move-copy">
-                <strong>Help attendees get ready</strong>
-                <small
-                  >Share arrival time, parking, and entry details in one helpful message.</small
-                >
+                <strong>
+                  {{
+                    formatNumber(overview.sales.admission_entries_covered)
+                  }}
+                  admissions are covered by sold tickets
+                </strong>
+                <small>
+                  Table guests are counted here for door capacity, but a table still counts as one sold unit.
+                </small>
               </span>
-              <span class="next-move-destination">Message</span>
+              <span class="next-move-destination">Attendees</span>
             </button>
           </div>
         </article>
       </section>
 
       <section>
-        <div class="section-title">Sales trend</div>
+        <div class="section-title">
+          Sales trend
+        </div>
+
         <div class="card">
           <div class="chart-wrap">
             <div class="chart-head">
               <div>
-                <div class="chart-head-title">Tickets bought per day</div>
-                <div class="chart-head-sub">Last 30 days</div>
+                <div class="chart-head-title">
+                  Tickets bought per day
+                </div>
+                <div class="chart-head-sub">
+                  Paid ticket units, not guest seats inside a table
+                </div>
               </div>
+
               <div class="chart-pills">
-                <div class="cpill">7d</div>
-                <div class="cpill on">30d</div>
-                <div class="cpill">All</div>
+                <button
+                  v-for="range in ranges"
+                  :key="range.key"
+                  type="button"
+                  class="cpill"
+                  :class="{ on: selectedRange === range.key }"
+                  @click="selectedRange = range.key"
+                >
+                  {{ range.label }}
+                </button>
               </div>
             </div>
+
             <svg
               class="chart-svg"
               viewBox="0 0 580 130"
@@ -419,29 +478,64 @@ const addCustomLink = () => {
                 stroke="rgba(255,255,255,.08)"
                 stroke-width="1"
               />
+
               <defs>
-                <linearGradient id="overviewSalesGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#29B89A" stop-opacity=".22" />
-                  <stop offset="100%" stop-color="#29B89A" stop-opacity="0" />
+                <linearGradient
+                  id="overviewSalesGradientLive"
+                  x1="0"
+                  y1="0"
+                  x2="0"
+                  y2="1"
+                >
+                  <stop
+                    offset="0%"
+                    stop-color="#29B89A"
+                    stop-opacity=".22"
+                  />
+                  <stop
+                    offset="100%"
+                    stop-color="#29B89A"
+                    stop-opacity="0"
+                  />
                 </linearGradient>
               </defs>
+
               <path
-                d="M15,105 L55,92 L95,88 L135,74 L175,70 L215,62 L255,54 L295,46 L335,42 L375,33 L415,26 L455,30 L495,22 L535,16 L555,12 L555,110 L15,110 Z"
-                fill="url(#overviewSalesGradient)"
+                v-if="chartGeometry.area"
+                :d="chartGeometry.area"
+                fill="url(#overviewSalesGradientLive)"
               />
+
               <path
-                d="M15,105 L55,92 L95,88 L135,74 L175,70 L215,62 L255,54 L295,46 L335,42 L375,33 L415,26 L455,30 L495,22 L535,16 L555,12"
+                v-if="chartGeometry.line"
+                :d="chartGeometry.line"
                 stroke="#29B89A"
                 stroke-width="2"
                 fill="none"
                 stroke-linecap="round"
                 stroke-linejoin="round"
               />
-              <circle cx="535" cy="16" r="4" fill="#29B89A" />
+
+              <circle
+                v-if="chartGeometry.last"
+                :cx="chartGeometry.last.x"
+                :cy="chartGeometry.last.y"
+                r="4"
+                fill="#29B89A"
+              />
             </svg>
+
             <p class="chart-summary-copy">
-              More people are booking this week. Keep sharing while premium spots are still
-              available.
+              {{
+                formatNumber(overview.sales.this_week_units)
+              }}
+              sold this week for
+              {{
+                formatMoneyMinor(
+                  overview.revenue.this_week_minor,
+                  overview.revenue.currency,
+                )
+              }}.
             </p>
           </div>
         </div>
@@ -449,28 +543,154 @@ const addCustomLink = () => {
 
       <section class="mini-metric-grid">
         <article class="mini-metric-card">
-          <div class="stat-cell-label">Average spend per buyer</div>
-          <div class="mini-metric-value">₦12,100</div>
+          <div class="stat-cell-label">
+            Average spend per buyer
+          </div>
+          <div class="mini-metric-value">
+            {{
+              formatMoneyMinor(
+                overview.buyers.average_spend_minor,
+                overview.revenue.currency,
+              )
+            }}
+          </div>
         </article>
+
         <article class="mini-metric-card">
-          <div class="stat-cell-label">Best sales day</div>
-          <div class="mini-metric-value">Friday</div>
+          <div class="stat-cell-label">
+            Best sales day this week
+          </div>
+          <div class="mini-metric-value">
+            {{
+              bestDayCopy(
+                overview.best_sales_day.this_week,
+              )
+            }}
+          </div>
         </article>
+
         <article class="mini-metric-card">
-          <div class="stat-cell-label">Peak buying time</div>
-          <div class="mini-metric-value">7-11 PM</div>
+          <div class="stat-cell-label">
+            Best sales day overall
+          </div>
+          <div class="mini-metric-value">
+            {{
+              bestDayCopy(
+                overview.best_sales_day.overall,
+              )
+            }}
+          </div>
+        </article>
+
+        <article class="mini-metric-card">
+          <div class="stat-cell-label">
+            Peak buying time
+          </div>
+          <div class="mini-metric-value">
+            {{
+              overview.peak_buying_time?.label
+              || 'No sales yet'
+            }}
+          </div>
         </article>
       </section>
 
-      <section>
-        <article class="event-readiness-card">
-          <div>
-            <h3>Event-day readiness</h3>
-            <p>Your QR code is ready for 612 attendees when doors open.</p>
+      <section class="overview-content-grid">
+        <article class="card">
+          <div class="overview-card-head">
+            <h3>Top buyer channels</h3>
+            <p>
+              A buyer is assigned to the source on their most recent paid purchase for this event.
+            </p>
           </div>
-          <button class="btn btn-ghost" type="button" @click="showManage('checkin')">
-            Prepare check-in
-          </button>
+
+          <div
+            v-if="sources.length"
+            class="traffic-rows overview-traffic"
+          >
+            <div
+              v-for="source in sources"
+              :key="source.source_code"
+              class="traffic-row"
+            >
+              <div class="traffic-info">
+                <div class="traffic-name">
+                  {{ source.label }}
+                </div>
+
+                <div class="traffic-count">
+                  {{ formatNumber(source.buyers) }} buyers ·
+                  {{ formatNumber(source.unique_visitors) }} visitors
+                </div>
+
+                <div class="traffic-bar-wrap">
+                  <div class="traffic-bar-track">
+                    <div
+                      class="traffic-bar-fill fill-teal"
+                      :style="{
+                        width: `${Math.min(100, Math.max(0, Number(source.buyer_share_percent || 0)))}%`,
+                      }"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="traffic-pct">
+                {{ formatPercent(source.buyer_share_percent) }}
+              </div>
+            </div>
+          </div>
+
+          <div
+            v-else
+            class="overview-note"
+          >
+            No attributed buyers yet. Use your tracked event links and the first source will appear automatically.
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="overview-card-head">
+            <h3>Traffic quality</h3>
+            <p>
+              Page views are deduplicated per visitor and event each hour so refreshes do not inflate the number.
+            </p>
+          </div>
+
+          <div
+            style="
+              padding:var(--s5) var(--s6);
+              display:grid;
+              gap:var(--s4);
+            "
+          >
+            <div>
+              <div class="stat-cell-label">
+                Unique visitors
+              </div>
+              <div class="mini-metric-value">
+                {{ formatNumber(overview.traffic.unique_visitors) }}
+              </div>
+            </div>
+
+            <div>
+              <div class="stat-cell-label">
+                Visitors who became buyers
+              </div>
+              <div class="mini-metric-value">
+                {{ formatNumber(overview.traffic.converted_visitors) }}
+              </div>
+            </div>
+
+            <div>
+              <div class="stat-cell-label">
+                Visitor-to-buyer conversion
+              </div>
+              <div class="mini-metric-value">
+                {{ formatPercent(overview.traffic.conversion_percent) }}
+              </div>
+            </div>
+          </div>
         </article>
       </section>
     </div>
