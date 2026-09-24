@@ -3,10 +3,6 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
-const API_BASE_URL = (
-  import.meta.env.VITE_API_URL ||
-  'http://127.0.0.1:8000/api'
-).replace(/\/$/, '')
 
 const email = ref('')
 const password = ref('')
@@ -43,8 +39,7 @@ const login = async () => {
 
 // âœ… NEW: Google Sign-In
 const loginWithGoogle = () => {
-  // Redirect to Laravel Google OAuth
-  window.location.href = `${API_BASE_URL}/auth/google`
+  window.location.href = '/api/auth/google'
 }
 
 const goToForgotPassword = () => {

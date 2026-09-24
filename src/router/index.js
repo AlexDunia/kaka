@@ -1,4 +1,5 @@
 ﻿import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import HomePage from '../pages/HomePage.vue'
 import EventDetails from '../pages/EventDetails.vue'
 import CreateEvent from '../pages/CreateEvent.vue'
@@ -299,25 +300,33 @@ const router = createRouter({
   },
 })
 
-// Route guard for authenticated routes
-router.beforeEach((to, from, next) => {
-  const userStore = localStorage.getItem('user')
-  const user = userStore ? JSON.parse(userStore) : null
+// Protected routes are authorized by the backend session.
+// localStorage is never accepted as proof of authentication.
+router.beforeEach(async (to) => {
+  const authStore = useAuthStore()
 
-  // Check if route requires authentication
-  if (to.meta.requiresAuth && !user) {
-    next({ name: 'login' })
-  }
-  // Check if route requires admin role
-  else if (to.meta.requiresAdmin && (!user || user.role !== 'admin')) {
-    next({ name: 'home' })
-  } else {
-    // Update document title based on route meta
-    if (to.meta.title) {
-      document.title = `${to.meta.title} | Kaka`
+  if (to.meta.requiresAuth || to.meta.requiresAdmin) {
+    await authStore.initialize()
+
+    if (!authStore.isAuthenticated) {
+      return {
+        name: 'login',
+        query: {
+          redirect: to.fullPath,
+        },
+      }
     }
-    next()
+
+    if (to.meta.requiresAdmin && !authStore.isAdmin) {
+      return { name: 'home' }
+    }
   }
+
+  if (to.meta.title) {
+    document.title = `${to.meta.title} | Kaka`
+  }
+
+  return true
 })
 
 export default router

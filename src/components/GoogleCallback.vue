@@ -6,31 +6,35 @@ import { useAuthStore } from '@/stores/auth'
 const router = useRouter()
 const authStore = useAuthStore()
 
-onMounted(() => {
-  // Get user data from URL params (sent by Laravel)
+onMounted(async () => {
   const urlParams = new URLSearchParams(window.location.search)
   const userData = urlParams.get('user')
   const error = urlParams.get('error')
 
   if (error) {
-    router.push('/login?error=' + error)
-  } else if (userData) {
-    try {
-      const user = JSON.parse(decodeURIComponent(userData))
-      authStore.setUser(user)
+    await router.replace(`/login?error=${encodeURIComponent(error)}`)
+    return
+  }
 
-      // Redirect based on role
-      if (user.role === 'admin') {
-        router.push('/admin')
-      } else {
-        router.push('/dashboard')
-      }
-    } catch (e) {
-      console.error('Failed to parse user data', e)
-      router.push('/login')
+  if (!userData) {
+    await router.replace('/login?error=session_not_established')
+    return
+  }
+
+  try {
+    const callbackUser = JSON.parse(decodeURIComponent(userData))
+    authStore.setUser(callbackUser, 'google')
+    const authenticatedUser = await authStore.fetchUser()
+
+    if (authenticatedUser?.role === 'admin') {
+      await router.replace('/admin')
+      return
     }
-  } else {
-    router.push('/login')
+
+    await router.replace('/dashboard')
+  } catch (callbackError) {
+    console.error('Google session verification failed', callbackError)
+    await router.replace('/login?error=session_not_established')
   }
 })
 </script>
