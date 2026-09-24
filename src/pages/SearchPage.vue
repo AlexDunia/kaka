@@ -978,9 +978,10 @@ const categoryOptions = [
 }
 
 .container {
-  max-width: 1200px;
+  width: var(--page-content-width);
+  max-width: none;
   margin: 0 auto;
-  padding: 0 20px;
+  padding-inline: 0;
 }
 
 .search-results__header {

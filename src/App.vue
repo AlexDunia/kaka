@@ -1321,9 +1321,9 @@ onUnmounted(() => {
 /* One alignment rail for header, content, and footer */
 .app-header .container,
 .footer-simple {
-  width: 100%;
-  max-width: 1320px;
-  padding-inline: clamp(16px, 1.8vw, 24px);
+  width: var(--page-content-width);
+  max-width: none;
+  padding-inline: 0;
 }
 </style>
 

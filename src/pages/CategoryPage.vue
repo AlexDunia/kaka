@@ -921,8 +921,8 @@ watch(
 }
 /* Match the global header alignment rail exactly */
 .category-page .container {
-  width: 100%;
-  max-width: 1320px;
-  padding-inline: clamp(16px, 1.8vw, 24px);
+  width: var(--page-content-width);
+  max-width: none;
+  padding-inline: 0;
 }
 </style>

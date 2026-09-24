@@ -25,6 +25,11 @@
   --container-width-sm: 768px; /* Small screens */
   --container-width-xs: 576px; /* Extra small screens */
 
+  /* Shared layout system: backgrounds span the viewport while content uses one rail. */
+  --page-content-width: 85%;
+  --page-content-gutter: clamp(1rem, 2vw, 2rem);
+  --section-space: clamp(3rem, 7vw, 7rem);
+
   /* Spacing system */
   --space-unit: 0.25rem;
   --space-1: calc(var(--space-unit) * 1); /* 0.25rem */
@@ -461,3 +466,22 @@ p {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
+
+
+/* Global page layout primitives */
+.page-bleed {
+  width: 100%;
+}
+
+.page-content,
+.container {
+  width: var(--page-content-width);
+  max-width: none;
+  margin-inline: auto;
+  padding-inline: 0;
+}
+
+.section-stack {
+  padding-block: var(--section-space);
+}
+
