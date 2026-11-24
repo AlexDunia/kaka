@@ -1,6 +1,11 @@
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import {
+  safeAuthDestination,
+  rememberAuthDestination,
+  takeAuthDestination,
+} from '@/utils/authDestination'
 import { useAuthStore } from '@/stores/auth'
 
 const name = ref('')
@@ -13,6 +18,13 @@ const success = ref(false)
 
 const authStore = useAuthStore()
 const router = useRouter()
+const route = useRoute()
+const authLink = (path) => ({
+  path,
+  query: safeAuthDestination(route.query.redirect)
+    ? { redirect: safeAuthDestination(route.query.redirect) }
+    : {},
+})
 
 const register = async () => {
   // Reset states
@@ -46,6 +58,13 @@ const register = async () => {
       password: password.value,
     })
 
+    const destination = safeAuthDestination(route.query.redirect) || takeAuthDestination()
+    if (destination && authStore.isAuthenticated) {
+      rememberAuthDestination(null)
+      await router.replace(destination)
+      return
+    }
+
     // Set success state
     success.value = true
 
@@ -57,7 +76,7 @@ const register = async () => {
 
     // Redirect to login after a short delay
     setTimeout(() => {
-      router.push('/login')
+      router.push(authLink('/login'))
     }, 2000)
   } catch (err) {
     error.value = err.message || 'We couldn’t create your account. Please try again.'
@@ -67,7 +86,7 @@ const register = async () => {
 }
 
 const goToLogin = () => {
-  router.push('/login')
+  router.push(authLink('/login'))
 }
 </script>
 
@@ -79,9 +98,7 @@ const goToLogin = () => {
       {{ error }}
     </div>
 
-    <div v-if="success" class="register-form__success">
-      You’re all set. Taking you to log in...
-    </div>
+    <div v-if="success" class="register-form__success">You’re all set. Taking you to log in...</div>
 
     <form v-if="!success" @submit.prevent="register" class="register-form__form">
       <div class="register-form__field">
@@ -188,7 +205,7 @@ const goToLogin = () => {
   display: block;
   margin-bottom: 0.5rem;
   font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--color-muted);
 }
 
 .register-form__input {
@@ -214,7 +231,7 @@ const goToLogin = () => {
 .register-form__login {
   text-align: center;
   font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--color-muted);
 }
 
 .register-form__login-link {

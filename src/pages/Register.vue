@@ -23,7 +23,7 @@ import RegisterForm from '@/components/RegisterForm.vue'
   background-color: var(--card-bg);
   border-radius: 10px;
   padding: 2rem;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-subtle);
 }
 
 @media (max-width: 768px) {

@@ -1,0 +1,75 @@
+/* Rush Hour Tickets wordmark: standard and pink-surface variants. */
+.event-workspace {
+  --rh-logo-pink: #ef277a;
+  --rh-logo-ink: #111111;
+  --rh-on-brand: #ffffff;
+}
+.event-workspace .rh-wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  column-gap: 0.25em;
+  line-height: 1.2;
+  font-family: Outfit, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  text-transform: none;
+}
+.event-workspace .rh-wordmark .rh-wordmark-name {
+  color: var(--rh-logo-pink);
+}
+.event-workspace .rh-wordmark .rh-wordmark-tickets {
+  color: var(--rh-logo-ink);
+}
+.event-workspace .rh-wordmark.rh-wordmark-inverse .rh-wordmark-name,
+.event-workspace .rh-wordmark.rh-wordmark-inverse .rh-wordmark-tickets {
+  color: var(--rh-on-brand);
+}
+.event-workspace .rh-brand-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 28px 24px;
+  background: var(--rh-logo-pink);
+  color: var(--rh-on-brand);
+  border: 0;
+  border-radius: 8px;
+  margin-top: 32px;
+}
+.event-workspace .rh-brand-footer p,
+.event-workspace .rh-brand-footer a {
+  color: var(--rh-on-brand);
+  margin: 0;
+}
+.event-workspace .rh-brand-footer .rh-wordmark {
+  font-size: 20px;
+}
+.event-workspace .rh-app-side .rh-side-wordmark.rh-wordmark {
+  color: var(--rh-logo-pink);
+}
+.event-workspace .rh-app-side .rh-side-mark {
+  background: var(--rh-logo-pink);
+  color: var(--rh-on-brand);
+}
+.event-workspace .rh29-side-footer small .rh-wordmark {
+  font: inherit;
+  letter-spacing: inherit;
+}
+.event-workspace .brand-name.rh-wordmark .rh-wordmark-tickets {
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+}
+.event-workspace .rh-v24-print-brand > strong.rh-wordmark .rh-wordmark-tickets {
+  color: var(--rh-logo-ink);
+}
+@media print {
+  .event-workspace .rh-wordmark .rh-wordmark-name {
+    color: var(--rh-logo-pink) !important;
+  }
+  .event-workspace .rh-wordmark .rh-wordmark-tickets {
+    color: var(--rh-logo-ink) !important;
+  }
+}

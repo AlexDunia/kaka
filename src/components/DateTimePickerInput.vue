@@ -185,7 +185,7 @@ function updateDateTime(dateTime) {
   margin-bottom: 6px;
   font-size: 14px;
   font-weight: 500;
-  color: #333;
+  color:var(--color-text);
 }
 
 .input-wrapper {
@@ -198,18 +198,18 @@ function updateDateTime(dateTime) {
   flex: 1;
   height: 40px;
   padding: 0 40px 0 12px;
-  border: 1px solid var(--color-border, #ddd);
+  border: 1px solid var(--color-border, color-mix(in srgb, #ddd 55%, transparent));
   border-radius: 6px;
   font-size: 14px;
   cursor: pointer;
-  background-color: var(--color-surface, #fff);
+  background-color: var(--color-surface, var(--color-surface));
   color: var(--color-text, #333);
 }
 
 .datetime-input:focus {
   outline: none;
-  border-color: var(--color-accent, #ec4899);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent, #ec4899) 16%, transparent);
+  border-color: var(--color-accent, color-mix(in srgb, #ec4899 55%, transparent));
+  box-shadow: var(--focus-ring);
 }
 
 .is-placeholder {
@@ -236,7 +236,7 @@ function updateDateTime(dateTime) {
 }
 
 .input-wrapper.has-error .datetime-input {
-  border-color: #ff4d4f;
+  border-color: color-mix(in srgb, #ff4d4f 55%, transparent);
 }
 
 .error-message {

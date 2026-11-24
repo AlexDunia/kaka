@@ -292,10 +292,10 @@ if (props.initialDate) {
 
 .date-picker-modal {
   width: 320px;
-  background-color: #19181e;
+  background-color: var(--color-surface);
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-subtle);
   animation: modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   overflow: hidden;
 }
@@ -305,13 +305,13 @@ if (props.initialDate) {
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .date-picker-header h3 {
   font-size: 18px;
   font-weight: 500;
-  color: #ffffff;
+  color:var(--color-text);
   margin: 0;
   letter-spacing: 0.3px;
 }
@@ -319,7 +319,7 @@ if (props.initialDate) {
 .date-picker-close {
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.6);
+  color:var(--color-muted);
   cursor: pointer;
   padding: 5px;
   display: flex;
@@ -330,8 +330,8 @@ if (props.initialDate) {
 }
 
 .date-picker-close:hover {
-  color: white;
-  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--color-text);
+  background-color: var(--color-surface-soft);
 }
 
 .date-picker-body {
@@ -349,7 +349,7 @@ if (props.initialDate) {
 .month-nav-btn {
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--color-muted);
   cursor: pointer;
   padding: 8px;
   border-radius: 8px;
@@ -360,8 +360,8 @@ if (props.initialDate) {
 }
 
 .month-nav-btn:hover:not(:disabled) {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: white;
+  background-color: var(--color-surface-soft);
+  color: var(--color-text);
 }
 
 .month-nav-btn:disabled {
@@ -372,7 +372,7 @@ if (props.initialDate) {
 .current-month-year {
   font-size: 16px;
   font-weight: 500;
-  color: white;
+  color: var(--color-text);
 }
 
 .calendar-grid {
@@ -389,7 +389,7 @@ if (props.initialDate) {
   text-align: center;
   font-size: 12px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.7);
+  color:var(--color-muted);
   padding: 8px 0;
 }
 
@@ -408,17 +408,17 @@ if (props.initialDate) {
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s ease;
-  color: rgba(255, 255, 255, 0.8);
+  color:var(--color-muted);
   position: relative;
 }
 
 .day:hover:not(.disabled) {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--color-surface-soft);
   transform: translateY(-2px);
 }
 
 .day.other-month {
-  color: rgba(255, 255, 255, 0.3);
+  color:var(--color-muted);
 }
 
 .day.today {
@@ -440,8 +440,8 @@ if (props.initialDate) {
 
 .day.selected {
   background-color: rgba(233, 75, 159, 0.15);
-  border: 1px solid rgba(233, 75, 159, 0.3);
-  color: white;
+  border: 1px solid rgba(233,75,159,0.165);
+  color: var(--color-text);
   font-weight: 500;
 }
 
@@ -456,7 +456,7 @@ if (props.initialDate) {
   justify-content: flex-end;
   gap: 10px;
   padding: 16px 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--color-border);
 }
 
 .date-picker-btn {
@@ -469,19 +469,19 @@ if (props.initialDate) {
 
 .date-picker-cancel {
   background-color: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--color-border);
+  color:var(--color-muted);
 }
 
 .date-picker-cancel:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: white;
+  background-color: var(--color-surface-soft);
+  color: var(--color-text);
 }
 
 .date-picker-apply {
   background-color: rgba(233, 75, 159, 0.15);
-  border: 1px solid rgba(233, 75, 159, 0.3);
-  color: white;
+  border: 1px solid rgba(233,75,159,0.165);
+  color: var(--color-on-action);
 }
 
 .date-picker-apply:hover {

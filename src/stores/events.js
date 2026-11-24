@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import eventService from '@/services/eventService'
-import axios from 'axios'
+import api, { ensureCsrfCookie } from '@/api/axios'
 
 export const useEventStore = defineStore('events', () => {
   // State
@@ -23,39 +23,23 @@ export const useEventStore = defineStore('events', () => {
   const totalPages = ref(0)
 
   // Actions
-  const API_BASE_URL = 'http://127.0.0.1:8000'
-
   const toggleLike = async (eventId) => {
-    const response = await axios.post(
-      `${API_BASE_URL}/api/events/${eventId}/toggle-like`,
-      {},
-      { withCredentials: true },
-    )
-    return response.data
+    await ensureCsrfCookie()
+    return (await api.post(`/events/${encodeURIComponent(eventId)}/toggle-like`, {})).data
   }
+  const checkLiked = async (eventId) =>
+    (await api.get(`/events/${encodeURIComponent(eventId)}/check-liked`)).data
+  const fetchLikedEvents = async (page = 1) =>
+    (await api.get('/user/liked-events', { params: { page, per_page: 100 } })).data
+  let detailRequest = 0
+  let collectionRequest = 0
 
-  const checkLiked = async (eventId) => {
-    const response = await axios.get(`${API_BASE_URL}/api/events/${eventId}/check-liked`, {
-      withCredentials: true,
-    })
-    return response.data
-  }
-
-  const fetchLikedEvents = async () => {
-    const response = await axios.get(`${API_BASE_URL}/api/user/liked-events`, {
-      withCredentials: true,
-    })
-    return response.data
-  }
-
-  const fetchAllEvents = async (
-    refresh = false,
-    page = 1,
-    options = {},
-  ) => {
+  const fetchAllEvents = async (refresh = false, page = 1, options = {}) => {
     const fiveMinutesAgo = Date.now() - 5 * 60 * 1000
     if (
       !refresh &&
+      currentCategory.value === 'all' &&
+      !searchQuery.value &&
       !forceRefresh.value &&
       events.value.length > 0 &&
       lastFetch.value &&
@@ -65,18 +49,18 @@ export const useEventStore = defineStore('events', () => {
       return events.value
     }
 
+    const request = ++collectionRequest
+    currentCategory.value = 'all'
+    searchQuery.value = ''
     isLoading.value = true
     error.value = null
     currentPage.value = page
 
     try {
       console.log('Fetching all events from API')
-      const response = await eventService.getAllEvents(
-        page,
-        itemsPerPage.value,
-        options,
-      )
+      const response = await eventService.getAllEvents(page, itemsPerPage.value, options)
 
+      if (request !== collectionRequest) return []
       console.log('Raw API response:', response)
 
       // âœ… FIX: Check for the transformed structure
@@ -100,11 +84,12 @@ export const useEventStore = defineStore('events', () => {
         throw new Error('Invalid data format received from API')
       }
     } catch (err) {
+      if (request !== collectionRequest) return []
       error.value = err.message || 'Failed to fetch events from API'
       console.error('âŒ Error fetching events:', err)
       throw err
     } finally {
-      isLoading.value = false
+      if (request === collectionRequest) isLoading.value = false
     }
   }
 
@@ -113,11 +98,14 @@ export const useEventStore = defineStore('events', () => {
       return currentEvent.value
     }
 
+    const request = ++detailRequest
+    currentEvent.value = null
     isLoadingEvent.value = true
     error.value = null
 
     try {
       const response = await eventService.getEventById(id)
+      if (request !== detailRequest) return null
 
       // show() returns { data: singleEventObject }, not an array
       const event = response?.data ?? null
@@ -130,14 +118,16 @@ export const useEventStore = defineStore('events', () => {
 
       return event
     } catch (err) {
+      if (request !== detailRequest) return null
       error.value = err.message || 'Failed to fetch event details'
       throw err
     } finally {
-      isLoadingEvent.value = false
+      if (request === detailRequest) isLoadingEvent.value = false
     }
   }
 
   const clearCurrentEvent = () => {
+    detailRequest++
     currentEvent.value = null
   }
 
@@ -156,6 +146,8 @@ export const useEventStore = defineStore('events', () => {
       return events.value
     }
 
+    const request = ++collectionRequest
+    searchQuery.value = ''
     isLoading.value = true
     error.value = null
     currentCategory.value = category
@@ -171,6 +163,7 @@ export const useEventStore = defineStore('events', () => {
         page,
         itemsPerPage.value,
       )
+      if (request !== collectionRequest) return []
       console.log('Category API response:', response)
 
       if (response && response.data && Array.isArray(response.data)) {
@@ -188,11 +181,12 @@ export const useEventStore = defineStore('events', () => {
         throw new Error('Invalid data format received from API')
       }
     } catch (err) {
+      if (request !== collectionRequest) return []
       error.value = err.message || 'Failed to fetch events by category'
       console.error('Error in fetchEventsByCategory:', err)
       throw err
     } finally {
-      isLoading.value = false
+      if (request === collectionRequest) isLoading.value = false
     }
   }
 
@@ -339,6 +333,7 @@ export const useEventStore = defineStore('events', () => {
     priceMin = null,
     priceMax = null,
   ) => {
+    const request = ++collectionRequest
     isLoading.value = true
     error.value = null
     searchQuery.value = query
@@ -353,7 +348,7 @@ export const useEventStore = defineStore('events', () => {
 
     try {
       // Build the query parameters with advanced filtering
-      let url = `${eventService.EVENTS_API_URL}?page=${page}&limit=${limit}`
+      let url = `${eventService.EVENTS_API_URL}?page=${page}&per_page=${limit}`
 
       // Add search query
       if (query && query.trim() !== '') {
@@ -392,35 +387,9 @@ export const useEventStore = defineStore('events', () => {
         url += `&price_max=${encodeURIComponent(priceMax)}`
       }
 
-      // Add security token
-      url += `&_token=${Math.random().toString(36).substring(2, 15)}`
+      const response = await api.get(url.replace(eventService.EVENTS_API_URL, '/events'))
 
-      // Log the search request for debugging (remove in production)
-      console.debug(`Performing search with URL: ${url}`)
-
-      // Try the main API endpoint first
-      let response
-      try {
-        response = await axios.get(url)
-      } catch (apiError) {
-        console.warn('Main API search failed, trying fallback:', apiError.message)
-
-        // If main API fails, try the fallback endpoint
-        let fallbackUrl = `${eventService.EVENTS_FALLBACK_API_URL}?page=${page}&limit=${limit}`
-
-        // Add basic search parameters to fallback
-        if (query && query.trim() !== '') {
-          fallbackUrl += `&search=${encodeURIComponent(query.trim())}`
-        }
-
-        if (category && category !== 'all') {
-          fallbackUrl += `&category=${encodeURIComponent(category)}`
-        }
-
-        console.debug(`Trying fallback search API: ${fallbackUrl}`)
-        response = await axios.get(fallbackUrl)
-      }
-
+      if (request !== collectionRequest) return []
       // Debug the raw response - Changed from .debug to .log
       console.log('<<< RAW API RESPONSE RECEIVED >>>:', response.data)
       console.log('Search response status:', response.status)
@@ -433,7 +402,9 @@ export const useEventStore = defineStore('events', () => {
       // Case 1: Response has data property that is an array (standard format)
       if (response.data && response.data.data && Array.isArray(response.data.data)) {
         eventData = response.data.data
-        paginationData = response.data.pagination || null
+        paginationData = response.data.meta
+          ? { total: response.data.meta.total, pages: response.data.meta.last_page }
+          : response.data.pagination || null
       }
       // Case 2: Response is an array directly
       else if (response.data && Array.isArray(response.data)) {
@@ -475,6 +446,7 @@ export const useEventStore = defineStore('events', () => {
         return []
       }
     } catch (err) {
+      if (request !== collectionRequest) return []
       error.value = err.message || 'Failed to search events'
       console.error('Search error:', err)
       // Set empty results and return empty array
@@ -483,7 +455,7 @@ export const useEventStore = defineStore('events', () => {
       totalPages.value = 0
       throw err
     } finally {
-      isLoading.value = false
+      if (request === collectionRequest) isLoading.value = false
     }
   }
 
@@ -530,11 +502,14 @@ export const useEventStore = defineStore('events', () => {
       return currentEvent.value
     }
 
+    const request = ++detailRequest
+    currentEvent.value = null
     isLoadingEvent.value = true
     error.value = null
 
     try {
       const apiResponse = await eventService.getEventBySlug(slug)
+      if (request !== detailRequest) return null
       console.log('Event by slug API response:', apiResponse)
 
       // Check if the response structure is { data: [eventObject, ...], ... }
@@ -561,7 +536,7 @@ export const useEventStore = defineStore('events', () => {
       currentEvent.value = null // Clear currentEvent on error
       throw err // Re-throw the error so the component can handle it
     } finally {
-      isLoadingEvent.value = false
+      if (request === detailRequest) isLoadingEvent.value = false
     }
   }
 

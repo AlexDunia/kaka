@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -180,7 +180,6 @@ const editorLoading = ref(false)
 const editorLoadError = ref('')
 const editorStatus = ref(null)
 const originalStartsAtLocal = ref(null)
-const isPublishedEdit = computed(() => isEditMode.value && editorStatus.value === 'active')
 const startTimeNeedsLeadValidation = computed(() => !isEditMode.value || !originalStartsAtLocal.value || toLocalDateTimeString(form.startsAt) !== originalStartsAtLocal.value)
 function fromLocalDateTimeString(value) {
   if (!value) return null
@@ -526,6 +525,7 @@ const backendErrorMap = {
 
 function normalizeRequestErrors(error) {
   const responseErrors = error?.response?.data?.errors
+  if (typeof responseErrors === 'string') return [{ key: 'request', message: responseErrors }]
   if (responseErrors && typeof responseErrors === 'object') {
     return Object.entries(responseErrors).flatMap(([key, value]) => {
       const messages = Array.isArray(value) ? value : [value]
@@ -535,7 +535,7 @@ function normalizeRequestErrors(error) {
 
   return [{
     key: 'request',
-    message: error?.response?.data?.message || error?.message || 'Something went wrong. Please try again.',
+    message: error?.userMessage || error?.response?.data?.message || error?.message || 'We could not save your event. Please try again.',
   }]
 }
 
@@ -1975,7 +1975,7 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
   --ce-p4: var(--color-border);
   --ce-acc: var(--color-accent);
   --ce-acc-soft: rgba(236, 72, 153, 0.1);
-  --ce-acc-border: rgba(236, 72, 153, 0.34);
+  --ce-acc-border: rgba(236,72,153,0.187);
   --ce-green: var(--success);
   --ce-greenbg: #e8f7ef;
   --ce-pinkbg: rgba(236, 72, 153, 0.08);
@@ -1999,7 +1999,7 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
   --ce-p4: var(--color-border);
   --ce-greenbg: rgba(26, 122, 74, 0.18);
   --ce-acc-soft: rgba(236, 72, 153, 0.14);
-  --ce-acc-border: rgba(236, 72, 153, 0.38);
+  --ce-acc-border: rgba(236,72,153,0.209);
   --ce-pinkbg: rgba(236, 72, 153, 0.12);
   --ce-pinkbdr: rgba(236, 72, 153, 0.34);
 }
@@ -2109,12 +2109,12 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
 .ce-step.active {
   background: var(--ce-acc-soft);
   color: var(--ce-ink);
-  box-shadow: inset 0 0 0 1px var(--ce-acc-border);
+  box-shadow: var(--shadow-subtle);
 }
 
 .ce-step.active .ce-step-number {
   background: var(--ce-acc);
-  color: #ffffff;
+  color: var(--color-on-action);
 }
 
 .ce-step.done {
@@ -2142,7 +2142,7 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
   gap: 4px;
   color: var(--ce-green);
   background: var(--ce-greenbg);
-  border: 1px solid rgba(26, 122, 74, 0.2);
+  border: 1px solid rgba(26,122,74,0.110);
   padding: 4px 10px;
   border-radius: 100px;
   font-size: 11px;
@@ -2266,7 +2266,7 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
 }
 
 :deep(.datetime-picker) {
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-subtle);
 }
 
 .preview-btn.on {
@@ -2327,7 +2327,7 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
   border: 1px solid var(--ce-p4);
   border-radius: 24px;
   padding: 1.75rem;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.035);
+  box-shadow: var(--shadow-subtle);
 }
 
 .ce-card.compact {
@@ -2394,7 +2394,7 @@ label span {
 :deep(.datetime-input:focus) {
   border-color: var(--ce-acc);
   background: var(--ce-paper);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ce-acc) 12%, transparent);
+  box-shadow: var(--focus-ring);
 }
 
 .field-input.error,
@@ -3020,7 +3020,7 @@ label span {
 
 .info-card.green {
   background: var(--ce-greenbg);
-  border-color: rgba(26, 122, 74, 0.2);
+  border-color: rgba(26,122,74,0.110);
 }
 
 .day-chip {
@@ -3140,7 +3140,7 @@ label span {
 .category-trigger:focus {
   border-color: var(--ce-acc);
   background: var(--ce-paper);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ce-acc) 12%, transparent);
+  box-shadow: var(--focus-ring);
 }
 
 .category-trigger:hover {
@@ -3236,7 +3236,7 @@ label span {
   background: var(--ce-paper);
   border: 1px solid var(--ce-p4);
   border-radius: 12px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.055);
+  box-shadow: var(--shadow-subtle);
   z-index: 10;
   overflow: hidden;
 }
@@ -3449,7 +3449,7 @@ label span {
   border-radius: 999px;
   border: 0;
   background: rgba(0, 0, 0, 0.62);
-  color: #ffffff;
+  color:var(--color-on-image);
   padding: 0;
   min-height: 0;
 }
@@ -3501,7 +3501,7 @@ label span {
   justify-content: center;
   gap: 4px;
   opacity: 0;
-  background: rgba(0, 0, 0, 0.62);
+  background: var(--color-surface-soft);
   transition: opacity 0.15s ease;
 }
 
@@ -3817,7 +3817,7 @@ label span {
     linear-gradient(135deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.015)),
     var(--ce-ink);
   transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.075);
+  box-shadow: var(--shadow-subtle);
 }
 
 .primary-btn:disabled,
@@ -3843,7 +3843,7 @@ label span {
 
 .primary-btn.publish {
   background: var(--ce-acc);
-  color: #ffffff;
+  color: var(--color-on-action);
 }
 
 .primary-btn.publish:hover {

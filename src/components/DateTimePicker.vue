@@ -428,9 +428,9 @@ watch(
 <style scoped>
 .datetime-picker {
   width: 320px;
-  background-color: #fff;
+  background-color: var(--color-surface);
   border-radius: 10px;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-subtle);
   overflow: hidden;
 }
 
@@ -439,28 +439,28 @@ watch(
   justify-content: space-between;
   align-items: center;
   padding: 15px 20px;
-  background-color: #f5f5f5;
-  border-bottom: 1px solid #e0e0e0;
+  background-color: var(--color-surface);
+  border-bottom: 1px solid color-mix(in srgb, #e0e0e0 55%, transparent);
 }
 
 .datetime-picker-header h3 {
   margin: 0;
   font-size: 18px;
   font-weight: 500;
-  color: #333;
+  color:var(--color-text);
 }
 
 .close-btn {
   background: none;
   border: none;
   font-size: 22px;
-  color: #666;
+  color:var(--color-muted);
   cursor: pointer;
 }
 
 .datetime-picker-tabs {
   display: flex;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid color-mix(in srgb, #e0e0e0 55%, transparent);
 }
 
 .datetime-picker-tabs button {
@@ -469,7 +469,7 @@ watch(
   border: none;
   padding: 12px;
   font-size: 15px;
-  color: #666;
+  color:var(--color-muted);
   cursor: pointer;
   position: relative;
 }
@@ -505,7 +505,7 @@ watch(
   background: none;
   border: none;
   font-size: 16px;
-  color: #666;
+  color:var(--color-muted);
   cursor: pointer;
   width: 30px;
   height: 30px;
@@ -513,7 +513,7 @@ watch(
 }
 
 .nav-btn:hover {
-  background-color: #f0f0f0;
+  background-color: var(--color-surface);
 }
 
 .calendar-weekdays {
@@ -525,7 +525,7 @@ watch(
 .weekday {
   text-align: center;
   font-size: 13px;
-  color: #888;
+  color:var(--color-muted);
   padding: 5px 0;
 }
 
@@ -546,12 +546,12 @@ watch(
 }
 
 .day-cell.empty {
-  color: #ccc;
+  color:var(--color-text);
   cursor: default;
 }
 
 .day-cell:not(.empty):not(.disabled):hover {
-  background-color: #f0f0f0;
+  background-color: var(--color-surface);
 }
 
 .day-cell.today {
@@ -561,11 +561,11 @@ watch(
 
 .day-cell.selected {
   background-color: #4a6cf7;
-  color: white;
+  color: var(--color-on-action);
 }
 
 .day-cell.disabled {
-  color: #ddd;
+  color:var(--color-text);
   cursor: not-allowed;
   filter: blur(0.5px);
   opacity: 0.35;
@@ -590,7 +590,7 @@ watch(
 
 .time-input-group label {
   font-size: 12px;
-  color: #888;
+  color:var(--color-muted);
   margin-bottom: 5px;
 }
 
@@ -613,8 +613,8 @@ watch(
   height: 30px;
   border-radius: 50%;
   border: none;
-  background-color: #f5f5f5;
-  color: #666;
+  background-color: var(--color-surface);
+  color:var(--color-muted);
   cursor: pointer;
 }
 
@@ -636,7 +636,7 @@ watch(
 
 .ampm-toggle button {
   padding: 5px 10px;
-  border: 1px solid #ddd;
+  border: 1px solid color-mix(in srgb, #ddd 55%, transparent);
   background: none;
   cursor: pointer;
   border-radius: 4px;
@@ -644,8 +644,8 @@ watch(
 
 .ampm-toggle button.active {
   background-color: #4a6cf7;
-  color: white;
-  border-color: #4a6cf7;
+  color: var(--color-on-action);
+  border-color: color-mix(in srgb, #4a6cf7 55%, transparent);
 }
 
 .datetime-picker-actions {
@@ -653,7 +653,7 @@ watch(
   justify-content: flex-end;
   gap: 10px;
   padding: 15px 20px;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid color-mix(in srgb, #e0e0e0 55%, transparent);
 }
 
 .cancel-btn,
@@ -666,13 +666,13 @@ watch(
 }
 
 .cancel-btn {
-  background-color: #f5f5f5;
-  color: #666;
+  background-color: var(--color-surface);
+  color:var(--color-muted);
 }
 
 .apply-btn {
   background-color: #4a6cf7;
-  color: white;
+  color: var(--color-on-action);
 }
 
 .cancel-btn:hover {
@@ -696,23 +696,23 @@ watch(
   text-align: center;
 }
 :global(:root:not(.light)) .datetime-picker {
-  background-color: #19181e;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #ffffff;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color:var(--color-text);
 }
 
 :global(:root:not(.light)) .datetime-picker-header,
 :global(:root:not(.light)) .datetime-picker-tabs,
 :global(:root:not(.light)) .datetime-picker-actions {
-  background-color: #19181e;
-  border-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--color-surface);
+  border-color: var(--color-border);
 }
 
 :global(:root:not(.light)) .datetime-picker-header h3,
 :global(:root:not(.light)) .calendar-header span,
 :global(:root:not(.light)) .time-buttons span,
 :global(:root:not(.light)) .time-separator {
-  color: #ffffff;
+  color: var(--color-text);
 }
 
 :global(:root:not(.light)) .datetime-picker-tabs button,
@@ -720,16 +720,16 @@ watch(
 :global(:root:not(.light)) .time-input-group label,
 :global(:root:not(.light)) .close-btn,
 :global(:root:not(.light)) .nav-btn {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--color-muted);
 }
 
 :global(:root:not(.light)) .day-cell,
 :global(:root:not(.light)) .time-btn,
 :global(:root:not(.light)) .cancel-btn,
 :global(:root:not(.light)) .ampm-toggle button {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.85);
-  border-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--color-surface-soft);
+  color: var(--color-muted);
+  border-color: var(--color-border);
 }
 
 :global(:root:not(.light)) .day-cell.selected,
@@ -737,22 +737,22 @@ watch(
 :global(:root:not(.light)) .apply-btn,
 :global(:root:not(.light)) .datetime-picker-tabs button.active::after {
   background-color: rgba(233, 75, 159, 0.25);
-  border-color: rgba(233, 75, 159, 0.4);
-  color: #ffffff;
+  border-color: rgba(233,75,159,0.220);
+  color: var(--color-text);
 }
 
 .datetime-picker {
   width: min(720px, calc(100vw - 32px));
   border-radius: 16px;
-  background: var(--color-surface, #ffffff);
-  border: 1px solid var(--color-border, #e4ded7);
+  background: var(--color-surface, var(--color-surface));
+  border: 1px solid var(--color-border, color-mix(in srgb, #e4ded7 55%, transparent));
   color: var(--color-text, #0d0d0d);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.24);
+  box-shadow: var(--shadow-subtle);
 }
 
 .datetime-picker-header {
-  background: var(--color-surface, #ffffff);
-  border-bottom: 1px solid var(--color-border, #e4ded7);
+  background: var(--color-surface, var(--color-surface));
+  border-bottom: 1px solid var(--color-border, color-mix(in srgb, #e4ded7 55%, transparent));
   padding: 16px 18px;
 }
 
@@ -778,7 +778,7 @@ watch(
   grid-template-columns: minmax(300px, 1.25fr) minmax(220px, 0.75fr);
   gap: 16px;
   padding: 16px;
-  background: var(--color-bg, #f5f2ee);
+  background: var(--color-bg, var(--color-surface));
 }
 
 .datetime-picker-body.single-panel {
@@ -788,9 +788,9 @@ watch(
 .date-picker-container,
 .time-picker-container {
   padding: 14px;
-  border: 1px solid var(--color-border, #e4ded7);
+  border: 1px solid var(--color-border, color-mix(in srgb, #e4ded7 55%, transparent));
   border-radius: 14px;
-  background: var(--color-surface, #ffffff);
+  background: var(--color-surface, var(--color-surface));
 }
 
 .section-label {
@@ -871,7 +871,7 @@ watch(
 .day-cell.selected {
   background: var(--color-accent);
   border-color: var(--color-accent);
-  color: #ffffff;
+  color: var(--color-on-action);
   border-radius: 50%;
   font-weight: 800;
 }
@@ -914,7 +914,7 @@ watch(
 .ampm-toggle button.active {
   background: var(--color-accent);
   border-color: var(--color-accent);
-  color: #ffffff;
+  color: var(--color-on-action);
   font-weight: 700;
 }
 
@@ -930,8 +930,8 @@ watch(
 }
 
 .datetime-picker-actions {
-  background: var(--color-surface, #ffffff);
-  border-top: 1px solid var(--color-border, #e4ded7);
+  background: var(--color-surface, var(--color-surface));
+  border-top: 1px solid var(--color-border, color-mix(in srgb, #e4ded7 55%, transparent));
   padding: 14px 18px;
 }
 
@@ -949,7 +949,7 @@ watch(
 
 .apply-btn {
   background: var(--color-accent, #ec4899);
-  color: #ffffff;
+  color: var(--color-on-action);
 }
 
 :global(:root:not(.light)) .datetime-picker,

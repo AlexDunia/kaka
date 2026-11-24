@@ -1,6 +1,6 @@
 <template>
   <div class="transactions-page">
-    <h1 class="text-2xl font-bold mb-6">Your Transactions</h1>
+    <h1 class="text-2xl font-bold mb-6">Your tickets</h1>
     <div class="bg-white rounded-lg shadow overflow-hidden">
       <table class="min-w-full divide-y divide-gray-200">
         <thead class="bg-gray-50">
@@ -117,36 +117,11 @@ const getStatusClass = (status) => {
   return classes[status.toLowerCase()] || 'bg-gray-100 text-gray-800'
 }
 
-onMounted(async () => {
-  try {
-    // TODO: Replace with actual API call
-    // const response = await fetch('/api/transactions')
-    // transactions.value = await response.json()
-
-    // Temporary mock data
-    transactions.value = [
-      {
-        id: 'TRX-001',
-        event_name: 'Summer Music Festival',
-        created_at: '2024-03-15',
-        amount: 150.0,
-        status: 'completed',
-      },
-      {
-        id: 'TRX-002',
-        event_name: 'Comedy Night',
-        created_at: '2024-03-14',
-        amount: 45.0,
-        status: 'pending',
-      },
-    ]
-  } catch (e) {
-    error.value = 'Failed to load transactions'
-    console.error('Error loading transactions:', e)
-  } finally {
-    loading.value = false
-  }
+onMounted(() => {
+  error.value = 'Your ticket history isn’t available yet. Keep your booking confirmation for your event details.'
+  loading.value = false
 })
+
 </script>
 
 <style scoped>

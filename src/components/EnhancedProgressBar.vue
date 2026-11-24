@@ -51,7 +51,7 @@ onMounted(() => {
 .progress-bar {
   position: relative;
   height: 8px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--color-surface-soft);
   border-radius: 4px;
   overflow: hidden;
   margin-bottom: 1rem;
@@ -81,7 +81,7 @@ onMounted(() => {
   width: 0%;
   background: linear-gradient(90deg, #e84393, #f368e0);
   border-radius: 4px;
-  box-shadow: 0 0 10px rgba(232, 67, 147, 0.3);
+  box-shadow: var(--shadow-subtle);
   transition: width 1.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -102,20 +102,20 @@ onMounted(() => {
 .tickets-left:hover .count,
 .tickets-sold:hover .count {
   transform: translateY(-2px);
-  text-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  text-shadow: none;
 }
 
 .tickets-left .count {
-  color: white;
+  color: var(--color-text);
 }
 
 .tickets-sold .count {
   color: #e84393;
-  text-shadow: 0 0 10px rgba(232, 67, 147, 0.3);
+  text-shadow: none;
 }
 
 .label {
-  color: rgba(255, 255, 255, 0.5);
+  color:var(--color-muted);
   margin-left: 0.5rem;
   font-size: 0.9rem;
 }

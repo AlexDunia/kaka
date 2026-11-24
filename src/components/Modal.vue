@@ -145,7 +145,7 @@ const handleOverlayClick = (event) => {
 .modal-container {
   background-color: var(--card-bg);
   border-radius: 10px;
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-subtle);
   overflow: hidden;
   max-height: calc(100vh - 2rem);
   display: flex;
@@ -176,7 +176,7 @@ const handleOverlayClick = (event) => {
   justify-content: space-between;
   align-items: center;
   padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .modal-title {
@@ -188,7 +188,7 @@ const handleOverlayClick = (event) => {
 .modal-close {
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.6);
+  color:var(--color-muted);
   cursor: pointer;
   padding: 5px;
   border-radius: 50%;
@@ -201,7 +201,7 @@ const handleOverlayClick = (event) => {
 }
 
 .modal-close:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--color-surface-soft);
   color: var(--text-color);
 }
 
@@ -212,7 +212,7 @@ const handleOverlayClick = (event) => {
 
 .modal-footer {
   padding: 1.25rem 1.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--color-border);
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;

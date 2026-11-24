@@ -225,19 +225,15 @@
 }
 
 .shadow-sm {
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-subtle);
 }
 
 .shadow {
-  box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.1),
-    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-subtle);
 }
 
 .shadow-lg {
-  box-shadow:
-    0 10px 15px -3px rgba(0, 0, 0, 0.1),
-    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-subtle);
 }
 
 .transition {
@@ -341,7 +337,7 @@
 
 .hover-lift:hover {
   transform: translateY(-4px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-subtle);
 }
 
 .hover-bright {
@@ -357,7 +353,7 @@
   border-radius: 10px;
   overflow: hidden;
   transition: all 0.3s ease;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-border);
 }
 
 .card-hover {
@@ -366,8 +362,8 @@
 
 .card-hover:hover {
   transform: translateY(-5px);
-  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.15);
-  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: var(--shadow-subtle);
+  border-color: var(--color-border);
 }
 
 .card-accent {
@@ -404,7 +400,7 @@
 .loader {
   width: 40px;
   height: 40px;
-  border: 3px solid rgba(255, 255, 255, 0.1);
+  border: 3px solid var(--color-border);
   border-radius: 50%;
   border-top-color: var(--primary);
   animation: spin 1s ease-in-out infinite;
@@ -424,21 +420,21 @@
 
 .btn-primary {
   background: linear-gradient(45deg, var(--primary), var(--accent));
-  color: white;
+  color: var(--color-on-action);
   border: none;
   padding: 0.75rem 1.5rem;
   border-radius: 6px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 10px rgba(232, 67, 147, 0.2);
+  box-shadow: var(--shadow-subtle);
   position: relative;
   overflow: hidden;
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 14px rgba(232, 67, 147, 0.3);
+  box-shadow: var(--shadow-subtle);
 }
 
 .btn-primary:active {
@@ -469,7 +465,7 @@
 .btn-outline {
   background: transparent;
   color: var(--text-color);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid var(--color-border);
   padding: 0.75rem 1.5rem;
   border-radius: 6px;
   font-weight: 600;
@@ -478,8 +474,8 @@
 }
 
 .btn-outline:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.3);
+  background-color: var(--color-surface-soft);
+  border-color: var(--color-border);
 }
 
 .md-only {

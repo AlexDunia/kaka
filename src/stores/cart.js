@@ -1,5 +1,101 @@
 ﻿import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-const CART_STORAGE_KEY='cartItems',CHECKOUT_ATTEMPT_KEY='checkoutAttemptToken'
-const readStoredItems=()=>{try{const parsed=JSON.parse(sessionStorage.getItem(CART_STORAGE_KEY)||'[]');return Array.isArray(parsed)?parsed:[]}catch{sessionStorage.removeItem(CART_STORAGE_KEY);return[]}}
-export const useCartStore=defineStore('cart',()=>{const items=ref(readStoredItems());const itemCount=computed(()=>items.value.reduce((sum,item)=>sum+Number(item.quantity||0),0));const displayTotal=computed(()=>items.value.reduce((sum,item)=>sum+Number(item.pricePerTicket||0)*Number(item.quantity||0),0));const total=displayTotal,isEmpty=computed(()=>!items.value.length),checkoutItems=computed(()=>items.value.map(item=>({ticket_type_id:Number(item.ticketId),quantity:Number(item.quantity)})));const persist=()=>sessionStorage.setItem(CART_STORAGE_KEY,JSON.stringify(items.value));const invalidateCheckoutAttempt=()=>sessionStorage.removeItem(CHECKOUT_ATTEMPT_KEY);const addItem=item=>{const eventId=Number(item.eventId),ticketId=Number(item.ticketId),quantity=Number(item.quantity);if(!Number.isInteger(eventId)||!Number.isInteger(ticketId)||!Number.isInteger(quantity)||quantity<1)return;const existing=items.value.find(x=>Number(x.eventId)===eventId&&Number(x.ticketId)===ticketId);if(existing)existing.quantity=Number(existing.quantity)+quantity;else items.value.push({...item,eventId,ticketId,quantity});invalidateCheckoutAttempt();persist()};const removeItem=(eventId,ticketId)=>{items.value=items.value.filter(item=>!(Number(item.eventId)===Number(eventId)&&Number(item.ticketId)===Number(ticketId)));invalidateCheckoutAttempt();persist()};const updateQuantity=(eventId,ticketId,quantity)=>{const item=items.value.find(x=>Number(x.eventId)===Number(eventId)&&Number(x.ticketId)===Number(ticketId));if(!item||!Number.isInteger(Number(quantity)))return;if(Number(quantity)<=0)return removeItem(eventId,ticketId);item.quantity=Number(quantity);invalidateCheckoutAttempt();persist()};const clearCart=({preserveCheckoutAttempt=false}={})=>{items.value=[];if(!preserveCheckoutAttempt)invalidateCheckoutAttempt();persist()};return{items,itemCount,displayTotal,total,isEmpty,checkoutItems,persist,invalidateCheckoutAttempt,addItem,updateQuantity,removeItem,clearCart}})
+const CART_STORAGE_KEY = 'cartItems',
+  CHECKOUT_ATTEMPT_KEY = 'checkoutAttemptToken'
+const readStoredItems = () => {
+  try {
+    const parsed = JSON.parse(sessionStorage.getItem(CART_STORAGE_KEY) || '[]')
+    return Array.isArray(parsed)
+      ? parsed.filter(
+          (item) =>
+            item.demo === true ||
+            !(
+              [900001, 900002].includes(Number(item.eventId)) &&
+              Number(item.ticketId) >= 990001 &&
+              Number(item.ticketId) <= 991004
+            ),
+        )
+      : []
+  } catch {
+    sessionStorage.removeItem(CART_STORAGE_KEY)
+    return []
+  }
+}
+export const useCartStore = defineStore('cart', () => {
+  const items = ref(readStoredItems())
+  const itemCount = computed(() =>
+    items.value.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
+  )
+  const displayTotal = computed(() =>
+    items.value.reduce(
+      (sum, item) => sum + Number(item.pricePerTicket || 0) * Number(item.quantity || 0),
+      0,
+    ),
+  )
+  const total = displayTotal,
+    isEmpty = computed(() => !items.value.length),
+    checkoutItems = computed(() =>
+      items.value.map((item) => ({
+        ticket_type_id: Number(item.ticketId),
+        quantity: Number(item.quantity),
+      })),
+    )
+  const persist = () => sessionStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items.value))
+  const invalidateCheckoutAttempt = () => sessionStorage.removeItem(CHECKOUT_ATTEMPT_KEY)
+  const addItem = (item) => {
+    const eventId = Number(item.eventId),
+      ticketId = Number(item.ticketId),
+      quantity = Number(item.quantity)
+    if (
+      !Number.isInteger(eventId) ||
+      !Number.isInteger(ticketId) ||
+      !Number.isInteger(quantity) ||
+      quantity < 1
+    )
+      return
+    const existing = items.value.find(
+      (x) => Number(x.eventId) === eventId && Number(x.ticketId) === ticketId,
+    )
+    if (existing) existing.quantity = Number(existing.quantity) + quantity
+    else items.value.push({ ...item, eventId, ticketId, quantity })
+    invalidateCheckoutAttempt()
+    persist()
+  }
+  const removeItem = (eventId, ticketId) => {
+    items.value = items.value.filter(
+      (item) =>
+        !(Number(item.eventId) === Number(eventId) && Number(item.ticketId) === Number(ticketId)),
+    )
+    invalidateCheckoutAttempt()
+    persist()
+  }
+  const updateQuantity = (eventId, ticketId, quantity) => {
+    const item = items.value.find(
+      (x) => Number(x.eventId) === Number(eventId) && Number(x.ticketId) === Number(ticketId),
+    )
+    if (!item || !Number.isInteger(Number(quantity))) return
+    if (Number(quantity) <= 0) return removeItem(eventId, ticketId)
+    item.quantity = Number(quantity)
+    invalidateCheckoutAttempt()
+    persist()
+  }
+  const clearCart = ({ preserveCheckoutAttempt = false } = {}) => {
+    items.value = []
+    if (!preserveCheckoutAttempt) invalidateCheckoutAttempt()
+    persist()
+  }
+  return {
+    items,
+    itemCount,
+    displayTotal,
+    total,
+    isEmpty,
+    checkoutItems,
+    persist,
+    invalidateCheckoutAttempt,
+    addItem,
+    updateQuantity,
+    removeItem,
+    clearCart,
+  }
+})

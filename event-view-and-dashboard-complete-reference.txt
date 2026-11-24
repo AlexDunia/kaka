@@ -1,0 +1,643 @@
+Viewing and managing an event: complete screen and behavior inventory
+Reviewed: 16 November 2026
+Project: C:\Users\HP\kaka
+
+1. Scope and how to read this report
+
+This inventory follows the active frontend: opening an event, the organiser
+dashboard, ticket details, promotions, discounts, messaging, door check-in,
+earnings, settings, editing, public ticket selection and issued tickets.
+It describes current working files, including uncommitted changes. No live
+orders, check-ins, messages, withdrawals or event changes were submitted.
+
+API-connected means a frontend request exists; it does not prove the endpoint
+works in production. Development preview means fixtures replace dashboard API
+data. Static sample means values are hardcoded even in production. Local
+interaction means browser state, navigation or clipboard rather than a database
+write. Backend storage and calculations were not independently verified.
+
+2. The main finding: implemented data and sample screens coexist
+
+Overview and Promote have API service paths. Development currently enables
+DASHBOARD_PREVIEW = import.meta.env.DEV && true in
+src/services/dashboardPreview.js. It replaces dashboard event list, overview and
+sharing-link reads with fixture data during npm run dev.
+
+Attendees, Discount codes, Message attendees, Door check-in, Earnings and
+Settings are static Vue templates. They have no script, event-specific props,
+API reads or mutation handlers. Their sample values do not follow the selected
+event. Disabling preview does not connect these screens.
+
+Door check-in currently does not scan or validate tickets. Discounts does not
+create codes. Messaging does not send email. Earnings does not withdraw money.
+Settings does not pause, cancel, delete or refund an event. These are visible
+interface designs, not completed operational features.
+
+3. Opening an event: public versus organiser experience
+
+Public event cards route through useSlug.getEventUrl to the public event page.
+/events/:id-:slug and legacy /event/:id render src/pages/EventDetails.vue.
+Attendees can read details, select tickets, share, like and enter checkout.
+
+/dashboard and /dashboard/events/:eventId render src/pages/Dashboard.vue.
+Both require authentication and use a full-screen organiser shell with sidebar,
+topbar and selected management view. Overview is the initial view.
+
+The sidebar My Events back link currently routes to '/', not to a separate
+organiser event-list screen. Event switching happens in its sidebar dropdown.
+The signed-in account menu outside the dashboard links to /dashboard.
+
+4. The public event card before you click
+
+Source: src/components/EventCard.vue.
+  Cover: main_image, else image; otherwise cover-photo placeholder.
+  Expired badge: sales_status.is_expired.
+  Title: title, else Untitled event.
+  Date: date or event_date, en-NG short weekday/month/day; else Date TBA.
+  Venue: address.venue_name, venue, location, else Venue TBA.
+  Price: price, starting_price or min_price; missing/blank/zero -> Free;
+    otherwise From naira amount.
+Click/Enter/Space opens details when showDetails is true. Create-event preview
+uses false. Loading/missing event shows a skeleton. No private earnings or
+attendee records appear on this card.
+
+5. Dashboard loading, selection, cache and errors
+
+Sources: src/pages/Dashboard.vue, src/stores/dashboard.js,
+src/services/dashboardService.js.
+Outside preview:
+  GET /api/dashboard/events -> response.data.data array.
+  GET /api/dashboard/events/{id}/overview -> response.data.data object.
+Requests use the central credentialed Axios client.
+
+Positive integer route eventId is preferred, otherwise first event ID. The route
+is checked against the returned owned-event list; absent/unrecognized IDs are
+replaced with the first owned event's dashboard URL. This is frontend selection,
+not a substitute for backend ownership checks.
+
+Switching event closes dropdown, resets view to Overview, changes route and
+loads its overview. Events cache in Pinia after successful load unless forced.
+Overview caches per event with a 30-second freshness TTL. TTL is checked when
+fetchOverview runs; it is not an automatic refresh interval.
+
+There is no dashboard polling, WebSocket or server-sent-event subscription.
+Live data copy does not imply continuous updates. Full reload clears memory.
+Active view is component state, not a URL tab/query; reload normally resets it.
+
+Loading: DashboardContentSkeleton while events/overview load.
+Failure: error card, error message and Try again action.
+No events: No events yet, explanation and Create event button.
+Overview must exist before any DashboardManageContent child view renders.
+Source TODOs mention distinct no-events/no-sales/no-traffic/no-attribution states
+still needing design after preview review.
+
+6. Sidebar: every destination and identity detail
+
+Main: Overview (overview), Attendees (attendees).
+Grow sales: Promote (share), Discount codes (promo), Message attendees (email).
+Event day: Door check-in (checkin).
+Money: Earnings (payout).
+Manage: Settings (settings).
+
+Sidebar includes branding, My Events back link, selected event cover and title.
+Multiple events: Change event dropdown, other event thumbnail/title/phase;
+live events have live dot. One event: phase instead of Change event.
+Phase labels: Live now, Upcoming, Ended, Draft; fallback status/Event.
+Footer: name, else first_name + last_name, else email, else Event organiser.
+Initials use up to two name parts, fallback EO; role label Event organiser.
+
+Insights component exists but no current sidebar item or action selects it.
+There is no standalone Tickets sidebar tab. Ticket performance appears under
+Overview/Promote; editing tickets happens through Edit event.
+
+7. Topbar: event details, account and navigation
+
+Source: DashboardTopbar.vue.
+  Event dashboard kicker; event title or Your event.
+  Status Live / Upcoming / Ended / Draft / status / Event.
+  Start date/time from starts_at, event.timezone (default Africa/Lagos).
+  Venue, fallback Venue TBA.
+  View public page; Edit event; account avatar/menu.
+
+View public page routes to event.public_path; missing value silently does
+nothing. Preview event has no public_path, so the visible action does nothing.
+Edit event routes to /events/{id}/edit. Preview's synthetic ID 900001 still
+reaches the real editing API, not a preview editor record.
+
+AccountMenu shows display name, optional email and avatar or initials. Dashboard
+menu offers Back to site and Log out. Outside-click/Escape closes it. Logout
+attempts backend logout, clears local state and routes home; menu ignores the
+store's serverLogoutSucceeded result.
+
+8. Overview: hero and headline metrics
+
+DashboardEventHero.vue:
+  Cover background and overlay; phase; title; start date/time; venue.
+  Countdown from supplied days_to_go: Today, 1 day to go, N days to go.
+  Live -> Happening now; ended -> Event ended; missing days hides countdown.
+Countdown is supplied data, not a ticking calculation, and preview may be stale.
+
+DashboardStatStrip.vue:
+  Tickets sold: sales.units_sold; week comparison; count out of capacity_units;
+    sold_percent and progress bar clamped 0-100%.
+  Revenue: total_minor and this_week_minor in supplied currency.
+  Spots left: available_units out of capacity_units; reserved_units note when
+    nonzero, described as temporarily reserved in checkout.
+  Page views: page_views and conversion_percent bought a ticket.
+
+Trend wording: new -> New this week (No change if zero); flat -> Same as last
+week; missing comparison -> No comparison yet; otherwise signed % vs last week.
+Money divides minor units by 100; en-NG format, currency default NGN. Compact
+amounts use K/M notation; standard dashboard amounts round display to no decimal
+places. Percent shows integer or one decimal. Sold units, buyers and admitted
+guests are different counts, especially for tables.
+
+9. Overview: ticket performance and event health
+
+Source: DashboardOverviewView.vue.
+How your tickets are doing lists each overview.ticket_types row:
+  Name, sold units, available units, sold percent, progress bar.
+  Noun table/tables if unit_type table; otherwise ticket/tickets.
+  >=80% hot/red; 50-79.99% good/teal; below 50% blue.
+  Empty message: no paid ticket tiers yet.
+  Open sharing links button selects Promote.
+Expected fields: id, name, unit_type, visible, effective_capacity_units,
+sold_units, available_units, reserved_units, sold_percent, revenue_minor.
+No inline price/quantity edit, barcode listing or stock mutation is provided.
+
+Event health:
+  Sales exist -> Your live sales picture; otherwise ready for first sale.
+  Overall sold percent; available ticket units.
+  Strongest tier: highest sold_percent with positive capacity, including hidden
+    tiers; sold percentage and remaining units.
+  Top source: first qualifying source returned, label and buyer count.
+  Weakest tier: lowest sold_percent among visible positive-capacity tiers;
+    displayed when different from strongest, with available count.
+Weakest is not computed as largest remaining quantity. Top source is not sorted
+by frontend; source ordering is assumed to be meaningful from backend.
+
+What the numbers say / Useful things to know now:
+  Source recommendation and buyer share, or start tracked links -> Promote.
+  Watch weakest tier and remaining count -> Discount codes.
+  admissions covered via admission_entries_covered -> Attendees.
+  Explains table guests count for door capacity; one table remains one sold unit.
+These actions select a view; they do not create discounts or alter stock.
+
+10. Overview: chart, buying patterns and channels
+
+Sales trend shows Tickets bought per day, paid ticket units rather than guests
+inside tables. 7d/30d/All pills select preloaded arrays; 30d default. No range
+request occurs. SVG line/area scales daily units_sold with endpoint dot. No
+interactive tooltip, date-axis labels or numeric y-axis labels. Summary below
+uses this_week_units and this_week_minor regardless of selected range.
+
+Mini metrics:
+  Average spend per buyer: buyers.average_spend_minor.
+  Best sales day this week: label + units_sold, else No sales yet.
+  Best sales day overall: label + units_sold, else No sales yet.
+  Peak buying time: supplied label or No sales yet.
+
+Top buyer channels:
+  Remove unattributed and zero-buyer rows, take first four.
+  Show label, buyers, unique_visitors, buyer_share_percent, bar clamped 0-100%.
+  Copy says buyer belongs to source of most recent paid purchase for this event.
+  Empty state encourages tracked sharing links.
+Traffic quality:
+  unique_visitors, converted_visitors, conversion_percent.
+  Copy claims hourly event/visitor deduplication; implementation belongs to
+    backend and is not established by this display component.
+
+11. Insights: component without normal navigation
+
+DashboardInsightsView.vue renders for internal key insights, but no inspected
+visible action chooses it. Shows sold tickets/week trend, revenue/week amount,
+spots left/capacity, page views/conversion, and 7d/30d/All daily SVG sales chart.
+Uses the same overview object; no separate insights endpoint.
+
+12. Promote: every detail and action
+
+Sources: DashboardShareView.vue, src/services/dashboardShareService.js.
+Loads on mount/event ID change:
+  GET /api/dashboard/events/{id}/share-links -> response.data.data.
+Development preview substitutes fixture links.
+
+Workspace totals: active links = length; tracked views = sum views; matched
+buyers = sum buyers. These are row sums, not cross-link deduplication by Vue.
+Each row: label, source guidance, views, buyers, conversion_percent, URL,
+Copy and Share buttons. Expected id/label/source_code/views/buyers/conversion.
+
+URL is built from router public event route, event ID and generated title slug,
+resolved against browser origin. ?src=<code> is appended. Display strips scheme.
+Does not use event.public_path or a stored URL from link record.
+Guidance codes:
+  wa chats/groups; ig Instagram posts/bio; direct flyers/bios/general;
+  x X/Twitter; fb Facebook; in LinkedIn; email email campaigns;
+  others Custom tracked link. Not all codes necessarily exist in returned data.
+
+Copy: navigator.clipboard; failure displays URL for manual copying.
+Share: navigator.share first with title/text/URL; fallback WhatsApp uses wa.me;
+other codes fall back to copying. Native-share cancellation also reaches fallback.
+Instagram source does not automatically publish an Instagram post.
+
+Custom link:
+  Create a link for another group reveals input maxlength 60.
+  Example church group, school alumni. Trimmed blank does nothing.
+  Creating flag prevents duplicate in-flight request.
+  CSRF bootstrap then POST /api/dashboard/events/{id}/share-links {label}.
+  Component assigns returned data as the complete links array.
+  Success clears/hides form, feedback, 4.2-second parent toast, forced overview
+    refresh. Cancel clears/hides form. Loading and backend error banner exist.
+
+Preview bug: preview create pushes to fixture array but returns a SINGLE object;
+component replaces links with it although length/reduce/v-for expect an array.
+Creating in preview can break rendering/totals. Preview writes are module-memory
+only, lost on reload. Confirm live endpoint returns the agreed array shape too.
+
+Further sections: ticket performance (name, sold/left, percent, revenue), top
+buyer channels (label, buyers, revenue, share/bar), base event link + Copy link.
+Source bar caps at 100 but does not clamp negative percent in this component.
+No rename/delete/disable link, referral payouts, QR generation, UTM editing or
+ad publishing controls are implemented here.
+
+13. Discount codes: exact static contents
+
+Source: DashboardPromoView.vue. No script or API in any environment.
+  Metrics: Active codes 3; Total uses 87; Revenue from codes NGN 620K.
+  LASVIP30: 30% off VIP; expires May 10; no use limit; 42 uses.
+  FRIENDS: NGN 2,000 off any ticket; no expiry; max 50 uses; 29 uses.
+  MEDIA50: free ticket /100% off; expires Apr 30; max 20 uses; 16 uses.
+  EARLYBIRD expired: 20% off Early Bird; expired Apr 1; count dash.
+  Create a new promo code is a styled div without handler.
+No create form, input bindings, update/delete, redemption log, scope selector,
+expiry calculation or validation. Dates lack year. No code is proven redeemable
+by this template; current Checkout.vue has no promo-code input.
+
+14. Attendees: exact static contents
+
+Source: DashboardAttendeesView.vue. No event props or API.
+  Meet your attendees, event-day introduction.
+  Total attendees 612; VIP guests 38; Need update 1.
+  Recent buyers; helper directs organiser to Door Check-in when doors open.
+Rows: initials | name | ticket/number | badge
+  AO | Adaeze Okonkwo | VIP #8821 | Paid.
+  BM | Biodun Martins | General #8822 | Paid.
+  CA | Chioma Adekunle | Early Bird #8823 | Email missing.
+  EI | Emeka Ifeanyi | VIP #8825 | Paid.
+No live attendee query, phone/email display, answers, sort, filter, pagination,
+export, resend, refund, detail modal or admission editor. Rows do not derive
+from overview or actual paid order tickets.
+
+15. Door check-in: exact static contents and missing operation
+
+Source: DashboardCheckinView.vue. No script/API/scanner.
+  Welcome them in; introduction says scan QR or find by name.
+  Checked in 312; Not yet arrived 300; Check-in rate 51%.
+  Event QR code card is decorative qr-frame/qr-inner divs, not QR data.
+  Helper suggests printing/displaying at entrance.
+  Download QR and Print page are divs with no handlers.
+  Search by name or ticket number... is a span, not an input.
+Rows:
+  Adaeze Okonkwo | VIP #8821 | In.
+  Biodun Martins | General #8822 | In.
+  Chioma Adekunle | Early Bird #8823 | Waiting.
+  Dami Olawale | General #8824 | In.
+  Emeka Ifeanyi | VIP #8825 | Waiting.
+No camera permission, scanner/decoder, scan input, manual check-in, lookup API,
+admission mutation, duplicate-scan response, invalid-ticket handling, event
+mismatch check, offline queue, timestamp, staff identity, undo or table-entry
+counter. Issued QR tokens cannot currently be admitted through this page.
+
+16. Message attendees: exact static contents
+
+Source: DashboardEmailView.vue.
+  Keep everyone in the loop; intro/warning mention all 612 attendees.
+  Recipient tag All attendees (612), fixed.
+  Subject input: Quick update about Comedy Meets Dance.
+  Native subject can be typed into but has no model/save/send handling.
+  Body is a fixed div, not textarea/contenteditable: greeting; doors 5:30 PM,
+    30 minutes before show; come early; free parking via Adetokunbo Ademola
+    Street gate; signoff Rush Hour Entertainment.
+  Link/list toolbar, Save draft and Send to 612 people are unbound divs.
+Past emails:
+  You're in! Comedy Meets Dance: Confirmation, 612 sent, Apr 14;
+    84% opened, 22% clicked.
+  VIP spots almost gone: Manual, 540 sent, Apr 22;
+    71% opened, 31% clicked.
+No segmentation, contact query, editable rich body, test send, draft persistence,
+attachment, queue API, delivery report, unsubscribe or analytics integration.
+
+17. Earnings: exact static contents
+
+Source: DashboardPayoutView.vue. No financial API.
+  Available to withdraw NGN 7,415,000.
+  After 5% platform fee; NGN 390,263 deducted.
+  Withdraw now: unbound div.
+  Bank GTBank; masked number ending 7823; Rush Hour Entertainment Ltd.
+Transactions:
+  4 tickets sold - General, VIP | Apr 27 11:34 PM | +NGN 50,000.
+  2 tickets sold - Early Bird | Apr 27 9:10 AM | +NGN 10,000.
+  Platform fee | Apr 27 9:10 AM | -NGN 500.
+  1 Gold Table sold | Apr 26 3:55 PM | +NGN 250,000.
+These are not selected-event bank details or overview.revenue. Displayed 5% is
+not proof of live fee policy. No withdrawal, bank-account edit/verification,
+payout history API, settlement state, refund reconciliation or ledger request.
+
+18. Settings: exact static contents
+
+Source: DashboardSettingsView.vue.
+Visibility:
+  Event is public on: anyone with link can find/buy.
+  Show on Rush Hour discovery on: search/browse.
+  Show exact attendee count off: example 612 people going.
+Notifications:
+  Email me every new ticket sale off.
+  Daily summary email on.
+  Notify when 90% sold out on.
+Important actions:
+  Pause ticket sales / Pause sales: copy says current tickets stay valid.
+  Cancel this event / Cancel event: copy promises full refunds, irreversible.
+  Delete this event / Delete event: copy says permanent event/data removal.
+All toggles/actions are unbound divs. No save/fetch/mutation, confirmation,
+refund processing or notification persistence. Refund copy is interface intent,
+not an implemented backend guarantee.
+
+19. Active event editing versus old dashboard edit components
+
+Topbar Edit event routes to src/pages/CreateEvent.vue at /events/:id/edit.
+GET /api/create-event/{id} expects data.id/status/form.
+PATCH /api/create-event/{id} saves full sanitized form after steps 1-3 validate.
+Same Basics, Details, Tickets and Attendees wizard as creation:
+  title, dates, recurrence, format, venue/link/category; images, description,
+  organiser/site, details/tags; free/paid capacity and ticket prices/quantities/
+  tables/caps/sales dates/visibility; attendee-field enablement.
+Unchanged original start can bypass final lead-time validation, though picker
+constraints still use current time. Save edit PATCHes instead of publish POST.
+Status active is its published-edit marker; some shared create labels remain.
+See onboarding-and-event-upload-reference.txt for full individual field rules.
+
+DashboardEditContent.vue and DashboardEditBasicsStep/DetailsStep/TicketsStep/
+AttendeesStep.vue exist but are not imported by active Dashboard or its view
+dispatcher. Their sample controls are not another active editor.
+
+20. Exact development fixture values
+
+Source: src/services/dashboardPreview.js.
+  ID 900001; Lagos after sunset; published; upcoming.
+  Start 2026-12-12T18:00:00+01:00; Africa/Lagos; days_to_go 33 fixed.
+  Venue Eko Hotel & Suites, Victoria Island, Lagos; Unsplash cover.
+  No public_path.
+Sales: units_sold 412; capacity 700; available 288; reserved 0; sold 58.9%;
+  this week 96; growth up 24.7%; admission_entries_covered 412.
+Revenue: NGN; total_minor 441000000 = NGN 4,410,000;
+  this_week_minor 102000000 = NGN 1,020,000.
+Traffic: views 4821; unique visitors 2300; converted 240; conversion 10.4%.
+Buyers: unique 240; average_spend_minor 1837500 = NGN 18,375.
+Tiers:
+  Early bird capacity 150, sold 110, left 40, revenue NGN 550,000, 73.3%.
+  General admission capacity 500, sold 260, left 240, NGN 2,600,000, 52%.
+  VIP capacity 50, sold 42, left 8, NGN 1,260,000, 84%.
+  All unit_type ticket, visible true, reserved 0; sold% calculated from capacity.
+Sources:
+  WhatsApp wa: 120 buyers, 800 visitors, NGN 2,205,000, 50% buyer share.
+  Instagram ig: 80 buyers, 900 visitors, NGN 1,470,000, 33.3%.
+  Direct link direct: 40 buyers, 600 visitors, NGN 735,000, 16.7%.
+  Link views copied from unique visitors; conversion buyers/views*100.
+Trend: 30 generated October 1-30 2026 rows; daily units =
+  5 + (zero-based index * 7 modulo 19). 7d last seven; 30d/all same 30.
+Best day this week Friday 28; overall October 21 42; peak 7 to 11 PM.
+These do not reconcile with static 612-attendee or NGN 7,415,000 payout samples.
+Independent fixture sources explain the mismatch, not a real sales discrepancy.
+
+21. Overview payload contract
+
+event: id,title,status,phase,starts_at,timezone,venue,cover_image,days_to_go.
+  Event-list record also needs public_path for topbar navigation.
+sales: units_sold,capacity_units,available_units,reserved_units,sold_percent,
+  this_week_units,week_growth_state,week_growth_percent,admission_entries_covered.
+revenue: currency,total_minor,this_week_minor.
+traffic: page_views,unique_visitors,converted_visitors,conversion_percent.
+buyers: unique_buyers,average_spend_minor.
+ticket_types[]: id,name,unit_type,visible,effective_capacity_units,sold_units,
+  available_units,reserved_units,sold_percent,revenue_minor.
+sources[]: source_code,label,buyers,unique_visitors,revenue_minor,
+  buyer_share_percent.
+sales_trend: {7d:[{date,units_sold}],30d:[...],all:[...]} (keys are strings).
+best_sales_day: {this_week:{label,units_sold} or null,
+  overall:{label,units_sold} or null}.
+peak_buying_time: {label} or null.
+Several components directly read nested fields; an incomplete object may cause
+rendering errors. Backend must define valid zero-data shapes and calculations.
+
+22. Public event details: everything displayed
+
+Source: src/pages/EventDetails.vue, directly routed; not similarly named unused
+EventDetail/EnhancedEventDetail components.
+  Back navigation, cover main_image, title.
+  Category from category.name or formatted category string, else Event.
+  Nonblank sub_categories chips.
+  Popular badge when calculated percentage sold >75.
+  Expired from sales_status.is_expired.
+  Date & Time from date: en-US full weekday/month/day/year/hour/minute.
+    No explicit event timezone is supplied here; browser timezone affects it.
+  Location directly reads address.venue_name; missing address can break render.
+  Duration from duration, else hardcoded 3 hours.
+  About This Event paragraph from description.
+  Highlights: eventOptions, else selectedEventOptions, else custom options with
+    defaults; final defaults Live performance, Food & drinks available,
+    Indoor event. These may not describe every event.
+  Owner Edit event if authenticated numeric user ID matches created_by.
+  Share, Like/count/loading feedback.
+  Ticket selection grid and fixed-footer Buy ticket now scroll action.
+
+This page does not render the create form's complete recurrence rules,
+secondaryImages gallery, extraDetails, organiserWebsite or attendeeFields as
+their own complete sections. No occurrence selector or structured FAQ accordion
+is wired in this template. Collecting a field does not prove it is displayed.
+
+23. Public ticket cards: mapping and fallback inventory
+
+event.ticketTypes array maps each item:
+  ID from lowercase name/spaces to hyphens, not necessarily backend type ID.
+  Name or Ticket N; description or '<name> admission ticket'.
+  price parsed number, formatted NGN.
+  availableQuantity from quantity || 0; available when >0.
+  Sold Out when unavailable; Only N left when <=5; normal buy action otherwise.
+  Rotating icon style; highest-priced tier(s) get Popular, not highest sales.
+  Table detected by word table in name, not unitType.
+  Seats parsed from 'table for N', else table default 4.
+  Table badge/seat count; mapped maxPerPurchase 2 tables, otherwise 10.
+  Modal does not enforce that mapped max; it uses global quantity 1-10.
+
+If ticketTypes is absent/not array, frontend invents:
+  Standard base price, regular admission, max 10.
+  VIP base*1.5, premium seating + complimentary drink, max 6.
+  Table for 4 base*3.6, reserved 4 seats, max 3.
+  Table for 8 base*7, reserved 8 seats, max 2.
+All fallback choices marked available; highest price Popular. They are not
+proof backend inventory exists. Empty array yields no cards, not fallback.
+
+Expired sales replace grid with sales-ended date/explanation. Opener checks
+expiry. Sold-out button is disabled, but card retains click handler and opener
+does not separately check availability. Backend must validate actual stock.
+
+24. Quick Purchase modal and cart handoff
+
+Ticket click uses 300ms debounce plus 50ms modal delay.
+Modal shows image/title, date/event.location, chosen type/unit price, quantity
+minus/plus 1-10, total price*quantity, cart and QR actions, close/outside-click.
+Cart object:
+  eventId,eventTitle,eventDate,eventLocation,ticketType,ticketId,quantity,
+  pricePerTicket,totalPrice,eventImage.
+Location fallback address.venue_name -> location -> Venue TBA.
+Add closes modal/reset quantity then toast and /checkout navigation after 4 sec.
+Toast reads quantity after reset, so can say 1 even for larger stored quantity.
+No payment or issued ticket is created by this cart action. Backend quote is
+the authority for real pricing/inventory, not the public fallback cards.
+
+Important current integration mismatch: src/stores/cart.js requires eventId,
+ticketId and quantity to convert to integers. Public EventDetails generates
+ticketId from names such as general-admission or standard. Those convert to
+NaN, so addItem silently returns without adding an item, while the public page
+still shows its success toast and proceeds toward checkout. This can leave an
+empty cart. The handoff above describes the attempted submission; it is not a
+guarantee that the cart accepts it. Real numeric backend ticket-type IDs must
+agree across event response, selection and cart for the path to work.
+Checkout items are mapped to {ticket_type_id:Number(ticketId),quantity}.
+Cart is sessionStorage-backed, merges by eventId/ticketId, sums quantity/total,
+and invalidates the checkout attempt when contents change. This is separate
+from issued order-ticket storage.
+
+25. Three distinct QR concepts
+
+Public shortcut QR in EventDetails.vue:
+  Encodes origin + /event/{id}?ticket={derived-type-id}.
+  QR modal, PNG download from '.qr-code canvas', title/type filename.
+  Revisits ticket selection; not paid admission entitlement.
+  Root /event path omits app deployment base such as /kaka/.
+Issued QR in PaymentSuccess.vue:
+  Encodes backend ticket.token for paid order; public_id and optional admits.
+Dashboard Door check-in QR:
+  Decorative divs, no payload/scanner/download.
+First two do not make the third a working admission system.
+
+26. Public sharing, likes, tracking and loading
+
+Sharing modal previews event and offers X/Twitter, Facebook, WhatsApp, LinkedIn,
+Copy; platform URLs/clipboard, close/outside-click. Does not automatically create
+a new tracked dashboard link.
+Likes: signed-out -> toast then login after 1.5 sec. Signed-in checks/toggles via
+events store; updates count/state and shows feedback. Current endpoints use
+hardcoded http://127.0.0.1:8000/api with credentials, unlike dashboard client:
+  GET /events/{id}/check-liked; POST /events/{id}/toggle-like.
+
+After successful event load, once per event ID per component instance:
+  POST /api/events/{id}/track-view {visitor_id, optional source_code}.
+  src query must match /^[A-Za-z0-9_-]{1,32}$/ and is lowercased.
+  Visitor ID in localStorage kakaVisitorId; crypto UUID/fallback; ephemeral if
+    storage unavailable. Tracking failures ignored by page.
+  Hourly deduplication/purchase attribution requires backend logic.
+SEO updates title, description, social metadata, event structured data.
+Public fetch: store -> eventService.getEventById -> plain Axios GET to
+  VITE_API_URL or http://127.0.0.1:8000/api, then /events/{id}.
+Uses a different API configuration from dashboard. Loading skeleton/error/back
+provided. Within five minutes of sales expiry page can start 30-second polling;
+this is different from dashboard's lack of polling.
+
+27. Checkout and actual issued ticket information
+
+Sources: src/pages/Checkout.vue, src/services/checkoutService.js.
+  POST /api/checkout/quote {items}: backend event-grouped ticket names,
+    quantities, line_total_minor, total_minor/currency in summary.
+  Buyer first name,last name,email,phone all required; email format checked;
+    trim and lowercase email before initialize.
+  Does not dynamically render onboarding attendeeFields or a promo-code input.
+  CSRF then POST /api/checkout/initialize:
+    checkout_token,visitor_id,customer {first_name,last_name,email,phone},items.
+  Expects order.public_id and applicable payment.reference/access_code.
+  Paystack resumeTransaction(accessCode); order polling every 2.5 sec up to
+    10 minutes, with overlap guard; manual Check payment.
+  Handles paid/payment_review,payment_failed,expired,cancelled,refunded.
+  Expired reservation keeps cart/refreshes quote. Completed/review navigation
+    remembers token and clears cart appropriately.
+Order endpoints:
+  GET /api/checkout/orders/{orderId}.
+  POST /api/checkout/payments/{reference}/verify (CSRF).
+  Optional X-Checkout-Token header.
+sessionStorage keys checkoutAttemptToken and checkoutOrderToken:{orderId}.
+These are order access tokens, separate from Google/authentication session.
+
+PaymentSuccess.vue, /payment-success/:orderId:
+  Confirming payment loading; optional reference/trxref query verifies first,
+    then order fetch on failed verification.
+  paid: confirmation, grouped event titles, ticket name, ticket.public_id,
+    Admits N if admit_count>1, ticket.token QR size 112 rendered SVG.
+  payment_review: payment received/checking availability, Check status.
+  other pending: still confirming, Check again.
+  forbidden/missing/generic order errors and Back to events.
+Actual paid tickets are not loaded into the static organiser Attendees/Door
+screens. Webhooks, locks, payment verification and admission security require
+backend inspection; frontend display does not establish those guarantees.
+
+28. Capability matrix: actual result of each click
+
+Event switcher: route change/overview load.
+Range pills: local selection among loaded chart arrays.
+Overview suggestions: select management view.
+Promote Copy/Share: clipboard/native/browser destination.
+Promote Create: API POST in production; inconsistent preview return in dev.
+Discount Create: no operation.
+Attendee row: static display, no detail action.
+Door Search/Download/Print/Scan: no operation.
+Message subject: locally editable native input, not persisted.
+Message body/toolbar/Save/Send: no operation.
+Withdraw/account settings: static display, no operation.
+Visibility/notification switches: no persistence or toggle operation.
+Pause/Cancel/Delete: no operation, no refund processing.
+View public page: route only when public_path exists.
+Edit event: navigate to active API-backed shared event editor.
+Public ticket selection: modal/cart then checkout.
+Public QR: ticket-choice link.
+Payment QR: backend-issued token display.
+
+29. Source map
+
+src/pages/Dashboard.vue - orchestration, selected route, loading/errors.
+src/stores/dashboard.js - event list, overview cache and TTL.
+src/services/dashboardService.js - dashboard reads.
+src/services/dashboardPreview.js - development fixtures and activation.
+src/components/dashboard/DashboardSidebar.vue - destinations/switcher.
+src/components/dashboard/DashboardTopbar.vue - title/status/actions.
+src/components/dashboard/DashboardManageContent.vue - active view dispatcher.
+src/components/dashboard/DashboardEventHero.vue - hero/phase/countdown.
+src/components/dashboard/DashboardStatStrip.vue - headline metrics.
+src/components/dashboard/DashboardOverviewView.vue - sales/health/trends.
+src/components/dashboard/DashboardInsightsView.vue - unlinked insights view.
+src/components/dashboard/DashboardShareView.vue - Promote.
+src/services/dashboardShareService.js - tracked-link reads/creation.
+src/components/dashboard/DashboardPromoView.vue - static discounts.
+src/components/dashboard/DashboardAttendeesView.vue - static buyers.
+src/components/dashboard/DashboardCheckinView.vue - static door design.
+src/components/dashboard/DashboardEmailView.vue - static email design.
+src/components/dashboard/DashboardPayoutView.vue - static earnings.
+src/components/dashboard/DashboardSettingsView.vue - static settings.
+src/components/dashboard/eventDashboard.css - dashboard layout/styling.
+src/components/dashboard/DashboardContentSkeleton.vue - loading variants.
+src/components/dashboard/dashboardLoading.css - loading styling.
+src/utils/dashboardFormat.js - money,date,percent,trend,source/unit labels.
+src/components/AccountMenu.vue - profile menu/logout.
+src/components/EventCard.vue - public preview card.
+src/pages/EventDetails.vue - routed public event/ticket selection.
+src/stores/events.js and src/services/eventService.js - public reads/likes.
+src/services/eventViewService.js - visit identity/source tracking.
+src/stores/cart.js - ticket cart and checkout item mapping.
+src/pages/Checkout.vue and src/services/checkoutService.js - quote/payment.
+src/pages/PaymentSuccess.vue - issued-ticket display.
+src/utils/checkoutStorage.js - checkout/order session tokens.
+src/pages/CreateEvent.vue and src/services/createEventService.js - editor.
+src/router/index.js,src/stores/auth.js,src/api/axios.js - routes/auth/API.
+vite.config.js - proxy/deployed app base.
+
+This report records current frontend behavior, not just intended features. No
+application source, layout or customer data was changed. Backend code is needed
+to confirm SQL, paid-order aggregation, source attribution, promo redemption,
+refunds, settlement and real admission validation.

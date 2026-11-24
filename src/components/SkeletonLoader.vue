@@ -182,7 +182,7 @@ defineProps({
   border-radius: 12px;
   overflow: hidden;
   background-color: var(--color-skeleton-surface);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-subtle);
   height: 100%;
   min-height: 350px;
   backdrop-filter: blur(10px);

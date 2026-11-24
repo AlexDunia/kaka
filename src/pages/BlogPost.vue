@@ -19,12 +19,7 @@ const loadBlogPost = async () => {
   error.value = null
 
   try {
-    const response = await fetch(`/api/blog-posts/${route.params.id}`)
-    if (!response.ok) {
-      throw new Error('Failed to load blog post')
-    }
-
-    const data = await response.json()
+    const data = await blogService.getPostBySlug(route.params.slug)
     post.value = data
 
     // Update SEO metadata
@@ -36,8 +31,8 @@ const loadBlogPost = async () => {
       image: post.value.image,
       url: window.location.href,
     })
-  } catch (e) {
-    error.value = 'Failed to load blog post. Please try again later.'
+  } catch {
+    error.value = 'This event story is not available yet. Please check back later.'
   } finally {
     loading.value = false
   }
@@ -292,7 +287,7 @@ const estimatedReadingTime = computed(() => {
   max-width: 800px;
   margin: 0 auto;
   padding: 2rem;
-  color: #fff;
+  color:var(--color-text);
   background: transparent;
   padding-top: 110px;
   animation: fadeIn 0.6s ease-out;
@@ -316,7 +311,7 @@ const estimatedReadingTime = computed(() => {
   font-size: 1.2rem;
   background: rgba(255, 82, 82, 0.1);
   border-radius: 8px;
-  border: 1px solid rgba(255, 82, 82, 0.2);
+  border: 1px solid rgba(255,82,82,0.110);
   backdrop-filter: blur(10px);
 }
 
@@ -365,15 +360,15 @@ const estimatedReadingTime = computed(() => {
   left: 0;
   width: 100%;
   z-index: 100;
-  background: rgba(18, 18, 18, 0.95);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--color-surface-soft);
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 0.7rem 1.5rem;
   gap: 2.5rem;
   backdrop-filter: blur(10px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-subtle);
   transition: transform 0.3s ease;
 }
 
@@ -385,7 +380,7 @@ const estimatedReadingTime = computed(() => {
   display: flex;
   align-items: center;
   gap: 0.7rem;
-  color: #b0b0b0;
+  color:var(--color-muted);
   font-size: 1.05rem;
   font-weight: 400;
   transition: transform 0.3s ease;
@@ -407,8 +402,8 @@ const estimatedReadingTime = computed(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  background: #222;
+  border: 2px solid var(--color-border);
+  background: var(--color-surface);
   transition: transform 0.3s ease;
 }
 
@@ -423,7 +418,7 @@ const estimatedReadingTime = computed(() => {
 }
 
 .post-author {
-  color: #fff;
+  color:var(--color-text);
   font-weight: 500;
   transition: color 0.2s ease;
 }
@@ -434,18 +429,18 @@ const estimatedReadingTime = computed(() => {
 
 .author-role {
   font-size: 0.8rem;
-  color: #888;
+  color:var(--color-muted);
   transition: color 0.2s ease;
 }
 
 .dot {
   font-size: 1.2em;
-  color: #666;
+  color:var(--color-muted);
   margin: 0 0.5rem;
 }
 
 .reading-time {
-  color: #b0b0b0;
+  color:var(--color-muted);
   font-size: 1.05rem;
   font-weight: 400;
   display: flex;
@@ -455,7 +450,7 @@ const estimatedReadingTime = computed(() => {
 }
 
 .reading-time:hover {
-  color: #fff;
+  color:var(--color-text);
 }
 
 .clock-icon {
@@ -472,12 +467,12 @@ const estimatedReadingTime = computed(() => {
   align-items: center;
   gap: 0.8rem;
   font-size: 1rem;
-  color: #b0b0b0;
+  color:var(--color-muted);
 }
 
 .share-links span {
   font-weight: 500;
-  color: #b0b0b0;
+  color:var(--color-muted);
 }
 
 .share-btn {
@@ -487,8 +482,8 @@ const estimatedReadingTime = computed(() => {
   width: 2.3rem;
   height: 2.3rem;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.05);
-  color: #fff;
+  background: var(--color-surface-soft);
+  color: var(--color-text);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   margin-left: 0.1rem;
   position: relative;
@@ -525,35 +520,35 @@ const estimatedReadingTime = computed(() => {
 .share-btn.twitter:hover {
   background: #1da1f2;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(29, 161, 242, 0.3);
+  box-shadow: var(--shadow-subtle);
 }
 
 .share-btn.facebook:hover {
   background: #1877f3;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(24, 119, 243, 0.3);
+  box-shadow: var(--shadow-subtle);
 }
 
 .share-btn.whatsapp:hover {
   background: #25d366;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+  box-shadow: var(--shadow-subtle);
 }
 
 .share-btn.linkedin:hover {
   background: #0077b5;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 119, 181, 0.3);
+  box-shadow: var(--shadow-subtle);
 }
 
 .blog-title {
   font-size: 2.7rem;
-  color: #fff;
+  color:var(--color-text);
   font-weight: 800;
   margin: 2rem 0;
   line-height: 1.15;
   animation: slideUp 0.8s ease-out;
-  background: linear-gradient(120deg, #fff, #4fc3f7);
+  background: linear-gradient(120deg, var(--color-surface), #4fc3f7);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -577,7 +572,7 @@ const estimatedReadingTime = computed(() => {
 }
 
 .text-block {
-  color: #f5f5f5;
+  color:var(--color-text);
   font-size: 1.18rem;
   font-weight: 400;
   margin: 0;
@@ -587,7 +582,7 @@ const estimatedReadingTime = computed(() => {
 }
 
 .text-block:hover {
-  color: #fff;
+  color:var(--color-text);
 }
 
 .image-block {
@@ -603,14 +598,14 @@ const estimatedReadingTime = computed(() => {
   margin: 0 auto;
   overflow: hidden;
   border-radius: 12px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-subtle);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   transform-style: preserve-3d;
 }
 
 .image-container:hover {
   transform: translateY(-5px) rotateX(2deg);
-  box-shadow: 0 15px 35px rgba(79, 195, 247, 0.2);
+  box-shadow: var(--shadow-subtle);
 }
 
 .blog-image {
@@ -627,7 +622,7 @@ const estimatedReadingTime = computed(() => {
 
 .image-caption {
   text-align: center;
-  color: #b0b0b0;
+  color:var(--color-muted);
   font-size: 0.98rem;
   margin-top: 1rem;
   font-style: italic;
@@ -635,12 +630,12 @@ const estimatedReadingTime = computed(() => {
 }
 
 .image-block:hover .image-caption {
-  color: #fff;
+  color:var(--color-text);
 }
 
 .section-heading {
   font-size: 1.8rem;
-  color: #fff;
+  color:var(--color-text);
   margin: 2.5rem 0 1.5rem;
   position: relative;
   padding-left: 1rem;
@@ -664,11 +659,11 @@ const estimatedReadingTime = computed(() => {
 }
 
 .quote-block {
-  border-left: 4px solid #4fc3f7;
+  border-left: 4px solid color-mix(in srgb, #4fc3f7 55%, transparent);
   padding: 1.5rem 2rem;
   font-style: italic;
   margin: 2rem 0;
-  color: #b0b0b0;
+  color:var(--color-muted);
   font-size: 1.1rem;
   background: rgba(79, 195, 247, 0.05);
   border-radius: 0 8px 8px 0;
@@ -676,7 +671,7 @@ const estimatedReadingTime = computed(() => {
 }
 
 .quote-block:hover {
-  color: #fff;
+  color:var(--color-text);
   background: rgba(79, 195, 247, 0.1);
   transform: translateX(5px);
 }
@@ -692,7 +687,7 @@ const estimatedReadingTime = computed(() => {
 .skeleton-title,
 .skeleton-meta,
 .skeleton-block {
-  background: linear-gradient(90deg, #222 0%, #333 50%, #222 100%);
+  background: linear-gradient(90deg, var(--color-surface) 0%, var(--color-surface) 50%, var(--color-surface) 100%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: 4px;
@@ -726,9 +721,9 @@ const estimatedReadingTime = computed(() => {
 .author-bio {
   margin-top: 4rem;
   padding: 2.5rem;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--color-surface-soft);
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-border);
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
@@ -751,9 +746,9 @@ const estimatedReadingTime = computed(() => {
 }
 
 .author-bio:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--color-surface-soft);
   transform: translateY(-2px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-subtle);
 }
 
 .author-bio-header {
@@ -767,18 +762,18 @@ const estimatedReadingTime = computed(() => {
   height: 80px;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid rgba(79, 195, 247, 0.2);
+  border: 3px solid rgba(79,195,247,0.110);
   transition: all 0.3s ease;
 }
 
 .author-bio:hover .author-bio-img {
-  border-color: rgba(79, 195, 247, 0.4);
+  border-color: rgba(79,195,247,0.220);
   transform: scale(1.05);
 }
 
 .author-bio-info h3 {
   margin: 0;
-  color: #fff;
+  color:var(--color-text);
   font-size: 1.4rem;
   transition: color 0.2s ease;
 }
@@ -788,20 +783,20 @@ const estimatedReadingTime = computed(() => {
 }
 
 .author-bio-role {
-  color: #888;
+  color:var(--color-muted);
   margin: 0.4rem 0 0;
   font-size: 1rem;
 }
 
 .author-bio-text {
-  color: #ddd;
+  color:var(--color-text);
   line-height: 1.8;
   font-size: 1.1rem;
   transition: color 0.2s ease;
 }
 
 .author-bio:hover .author-bio-text {
-  color: #fff;
+  color:var(--color-text);
 }
 
 .author-social-links {
@@ -824,7 +819,7 @@ const estimatedReadingTime = computed(() => {
 .author-social-link:hover {
   background: rgba(79, 195, 247, 0.2);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(79, 195, 247, 0.15);
+  box-shadow: var(--shadow-subtle);
 }
 
 .cta-block {
@@ -833,7 +828,7 @@ const estimatedReadingTime = computed(() => {
   background: linear-gradient(135deg, rgba(2, 13, 19, 0.8), rgba(2, 13, 19, 0.6));
   border-radius: 16px;
   text-align: center;
-  border: 1px solid rgba(79, 195, 247, 0.1);
+  border: 1px solid rgba(79,195,247,0.055);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
@@ -857,12 +852,12 @@ const estimatedReadingTime = computed(() => {
 
 .cta-block:hover {
   transform: translateY(-3px);
-  border-color: rgba(79, 195, 247, 0.2);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  border-color: rgba(79,195,247,0.110);
+  box-shadow: var(--shadow-subtle);
 }
 
 .cta-text {
-  color: #fff;
+  color:var(--color-text);
   font-size: 1.8rem;
   margin-bottom: 2rem;
   line-height: 1.4;
@@ -877,7 +872,7 @@ const estimatedReadingTime = computed(() => {
 .cta-button {
   display: inline-block;
   background: #4fc3f7;
-  color: #000;
+  color: var(--color-on-action);
   padding: 1rem 2.5rem;
   border-radius: 8px;
   font-weight: 600;
@@ -897,7 +892,7 @@ const estimatedReadingTime = computed(() => {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--color-surface-soft);
   transform: translateX(-100%) rotate(45deg);
   transition: transform 0.6s ease;
 }
@@ -909,7 +904,7 @@ const estimatedReadingTime = computed(() => {
 .cta-button:hover {
   background: #81d4fa;
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(79, 195, 247, 0.3);
+  box-shadow: var(--shadow-subtle);
 }
 
 @media (max-width: 768px) {

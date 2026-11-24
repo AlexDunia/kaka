@@ -27,9 +27,9 @@
   gap: 0.8rem;
   width: 100%;
   max-width: 300px;
-  background: rgba(30, 30, 40, 0.6);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--color-surface-soft);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
   border-radius: 50px;
   padding: 0.8rem 1.5rem;
   font-size: 0.95rem;
@@ -51,8 +51,8 @@
 
 .favorite-btn:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-  border-color: rgba(232, 67, 147, 0.3);
+  box-shadow: var(--shadow-subtle);
+  border-color: rgba(232,67,147,0.165);
 }
 
 .favorite-btn:hover::before {
@@ -71,7 +71,7 @@
 
 .favorite-btn:hover svg {
   transform: scale(1.15);
-  filter: drop-shadow(0 0 5px rgba(232, 67, 147, 0.5));
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,.035));
 }
 
 .favorite-btn span {

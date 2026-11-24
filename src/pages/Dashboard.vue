@@ -2,29 +2,39 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
-import DashboardContentSkeleton from '@/components/dashboard/DashboardContentSkeleton.vue'
-import DashboardManageContent from '@/components/dashboard/DashboardManageContent.vue'
-import DashboardSidebar from '@/components/dashboard/DashboardSidebar.vue'
-import DashboardTopbar from '@/components/dashboard/DashboardTopbar.vue'
+import EventWorkspace from '@/components/event-workspace/EventWorkspace.vue'
 import { useDashboardStore } from '@/stores/dashboard'
+import { useSlug } from '@/composables/useSlug'
+defineOptions({ name: 'EventDashboardPage' })
 
 const route = useRoute()
 const router = useRouter()
 const dashboardStore = useDashboardStore()
+const { generateSlug } = useSlug()
 
-const {
-  events,
-  eventsLoading,
-  eventsError,
-} = storeToRefs(dashboardStore)
+const { events, eventsLoading, eventsError } = storeToRefs(dashboardStore)
 
-const dropdownOpen = ref(false)
-const currentManageView = ref('overview')
-const loadingView = ref('overview')
+const viewKeys = [
+  'events',
+  'overview',
+  'event-page',
+  'attendees',
+  'purchase',
+  'share',
+  'promo',
+  'email',
+  'checkin',
+  'payout',
+  'settings',
+]
+const currentManageView = computed(() =>
+  viewKeys.includes(route.query.view) ? route.query.view : 'overview',
+)
 const toast = ref(null)
 const overviewLoading = ref(false)
 const pageError = ref('')
 let toastTimer = null
+let overviewRequest = 0
 
 const selectedEventId = computed(() => {
   const routeId = Number(route.params.eventId)
@@ -32,36 +42,22 @@ const selectedEventId = computed(() => {
   return Number(events.value[0]?.id || 0)
 })
 
-const selectedEvent = computed(() =>
-  events.value.find(
-    (event) => Number(event.id) === selectedEventId.value,
-  ) || null,
-)
+const selectedEvent = computed(() => {
+  const event = events.value.find((event) => Number(event.id) === selectedEventId.value)
+  return event ? { ...event, ...dashboardStore.getOverview(selectedEventId.value)?.event } : null
+})
 
 const overview = computed(() =>
-  selectedEventId.value
-    ? dashboardStore.getOverview(selectedEventId.value)
-    : null,
+  selectedEventId.value ? dashboardStore.getOverview(selectedEventId.value) : null,
 )
 
 const isDashboardLoading = computed(
   () =>
-    eventsLoading.value
-    || overviewLoading.value
-    || (
-      Boolean(selectedEventId.value)
-      && !overview.value
-      && !pageError.value
-    ),
+    eventsLoading.value ||
+    (currentManageView.value !== 'events' &&
+      (overviewLoading.value ||
+        (Boolean(selectedEventId.value) && !overview.value && !pageError.value))),
 )
-
-const toggleDropdown = () => {
-  dropdownOpen.value = !dropdownOpen.value
-}
-
-const closeDropdown = () => {
-  dropdownOpen.value = false
-}
 
 const showSuccessToast = (message) => {
   window.clearTimeout(toastTimer)
@@ -74,50 +70,44 @@ const showSuccessToast = (message) => {
   }, 4200)
 }
 
-const showManage = (key) => {
-  currentManageView.value = key
-  loadingView.value = key
+const showManage = (destination) => {
+  const { view: key, ...filters } =
+    typeof destination === 'string' ? { view: destination } : destination || {}
+  if (!viewKeys.includes(key)) return
+  router.push({ query: { view: key === 'overview' ? undefined : key, ...filters } })
+  window.scrollTo({ top: 0, behavior: 'instant' })
 }
 
 const loadOverview = async (eventId, { force = false } = {}) => {
   if (!eventId) return
 
+  const request = ++overviewRequest
   overviewLoading.value = true
   pageError.value = ''
 
   try {
-    await dashboardStore.fetchOverview(
-      eventId,
-      { force },
-    )
+    await dashboardStore.fetchOverview(eventId, { force })
   } catch (error) {
-    pageError.value =
-      error?.response?.data?.message
-      || 'We could not load this event dashboard.'
+    if (request === overviewRequest) pageError.value = error.userMessage || 'We could not load this event dashboard.'
   } finally {
-    overviewLoading.value = false
+    if (request === overviewRequest) overviewLoading.value = false
   }
 }
 
 const normalizeRouteToOwnedEvent = async () => {
+  if (currentManageView.value === 'events') return
   if (!events.value.length) return
 
   const requestedId = Number(route.params.eventId)
-  const requestedIsOwned = events.value.some(
-    (event) => Number(event.id) === requestedId,
-  )
+  const requestedIsOwned = events.value.some((event) => Number(event.id) === requestedId)
 
-  const targetId = requestedIsOwned
-    ? requestedId
-    : Number(events.value[0].id)
+  const targetId = requestedIsOwned ? requestedId : Number(events.value[0].id)
 
-  if (
-    route.name !== 'dashboard-event'
-    || Number(route.params.eventId) !== targetId
-  ) {
+  if (route.name !== 'dashboard-event' || Number(route.params.eventId) !== targetId) {
     await router.replace({
       name: 'dashboard-event',
       params: { eventId: targetId },
+      query: route.query,
     })
   }
 }
@@ -126,41 +116,48 @@ const loadDashboard = async () => {
   pageError.value = ''
 
   try {
-    await dashboardStore.fetchEvents()
+    await dashboardStore.fetchEvents({ force: Boolean(eventsError.value) })
     await normalizeRouteToOwnedEvent()
 
-    if (selectedEventId.value) {
+    if (selectedEventId.value && currentManageView.value !== 'events') {
       await loadOverview(selectedEventId.value)
     }
   } catch (error) {
     pageError.value =
-      error?.response?.data?.message
-      || eventsError.value
-      || 'We could not load your dashboard.'
+      error?.response?.data?.message || eventsError.value || 'We could not load your dashboard.'
   }
 }
 
-const selectEvent = async (eventId) => {
-  closeDropdown()
-
+const selectEvent = async (eventId, query = {}) => {
   const id = Number(eventId)
-  if (!id || id === selectedEventId.value) return
-
-  currentManageView.value = 'overview'
+  if (
+    !id ||
+    (id === selectedEventId.value &&
+      currentManageView.value !== 'events' &&
+      !Object.keys(query).length)
+  )
+    return
 
   await router.push({
     name: 'dashboard-event',
     params: { eventId: id },
+    query,
   })
 }
 
 const goBack = () => {
-  router.push('/')
+  router.push({ name: 'dashboard', query: { view: 'events' } })
 }
 
 const viewPublicEvent = () => {
-  if (!selectedEvent.value?.public_path) return
-  router.push(selectedEvent.value.public_path)
+  if (!selectedEventId.value) return
+  router.push({
+    name: 'event-details',
+    params: {
+      id: selectedEventId.value,
+      slug: generateSlug(selectedEvent.value?.title || 'event'),
+    },
+  })
 }
 
 const editEvent = () => {
@@ -178,9 +175,7 @@ watch(
     const id = Number(next)
     if (!id || id === Number(previous)) return
 
-    const owned = events.value.some(
-      (event) => Number(event.id) === id,
-    )
+    const owned = events.value.some((event) => Number(event.id) === id)
 
     if (!owned) {
       await normalizeRouteToOwnedEvent()
@@ -196,100 +191,24 @@ onBeforeUnmount(() => window.clearTimeout(toastTimer))
 </script>
 
 <template>
-  <div class="event-dashboard">
-    <DashboardSidebar
-      :dropdown-open="dropdownOpen"
-      :current-manage-view="currentManageView"
+  <div>
+    <EventWorkspace
+      :view="currentManageView"
+      :event="selectedEvent"
+      :overview="overview"
       :events="events"
-      :current-event="selectedEvent"
-      @toggle-dropdown="toggleDropdown"
-      @go-back="goBack"
-      @select-view="showManage"
+      :loading="isDashboardLoading"
+      :error="pageError"
+      @navigate="showManage"
       @select-event="selectEvent"
+      @retry="loadDashboard"
+      @public="viewPublicEvent"
+      @edit="editEvent"
+      @back="goBack"
+      @create="router.push({ name: 'CreateEvent' })"
+      @notify="showSuccessToast"
+      @refresh="loadOverview(selectedEventId, { force: true })"
     />
-
-    <main class="main">
-      <DashboardTopbar
-        :event="selectedEvent"
-        @view-public="viewPublicEvent"
-        @edit-event="editEvent"
-      />
-
-      <div id="page-body" class="page-body">
-        <DashboardContentSkeleton
-          v-if="isDashboardLoading"
-          :view="loadingView"
-        />
-
-        <section
-          v-else-if="pageError"
-          class="mv-wrap"
-          role="alert"
-        >
-          <div class="card" style="padding:var(--s6)">
-            <div class="chart-head-title">
-              We could not load this dashboard.
-            </div>
-            <p
-              style="
-                margin-top:var(--s3);
-                color:var(--t-lo);
-                line-height:1.6;
-              "
-            >
-              {{ pageError }}
-            </p>
-            <button
-              type="button"
-              class="btn btn-primary"
-              style="margin-top:var(--s4)"
-              @click="loadDashboard"
-            >
-              Try again
-            </button>
-          </div>
-        </section>
-
-        <section
-          v-else-if="!events.length"
-          class="mv-wrap"
-        >
-          <div class="card" style="padding:var(--s6)">
-            <div class="chart-head-title">
-              No events yet
-            </div>
-            <p
-              style="
-                margin-top:var(--s3);
-                color:var(--t-lo);
-                line-height:1.6;
-              "
-            >
-              Create an event first. Its live sales data will appear here.
-            </p>
-            <button
-              type="button"
-              class="btn btn-primary"
-              style="margin-top:var(--s4)"
-              @click="router.push({ name: 'CreateEvent' })"
-            >
-              Create event
-            </button>
-          </div>
-        </section>
-
-        <DashboardManageContent
-          v-else
-          :current-manage-view="currentManageView"
-          :event="selectedEvent"
-          :overview="overview"
-          @select-view="showManage"
-          @link-created="showSuccessToast"
-          @refresh-overview="loadOverview(selectedEventId, { force: true })"
-        />
-      </div>
-    </main>
-
     <Transition name="dashboard-toast">
       <div
         v-if="toast"
@@ -298,26 +217,50 @@ onBeforeUnmount(() => window.clearTimeout(toastTimer))
         role="status"
         aria-live="polite"
       >
-        <span
-          class="dashboard-success-toast__icon"
-          aria-hidden="true"
-        >
-          &#10003;
-        </span>
+        <span class="dashboard-success-toast__icon" aria-hidden="true"> i </span>
         <div>
-          <strong>Done</strong>
+          <strong>Event update</strong>
           <p>{{ toast.message }}</p>
         </div>
-        <span
-          class="dashboard-success-toast__progress"
-          aria-hidden="true"
-        ></span>
+        <span class="dashboard-success-toast__progress" aria-hidden="true"></span>
       </div>
     </Transition>
   </div>
 </template>
 
 <style>
-@import '@/components/dashboard/eventDashboard.css';
-@import '@/components/dashboard/dashboardLoading.css';
+.dashboard-success-toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 100;
+  max-width: 420px;
+  display: flex;
+  gap: 12px;
+  padding: 18px 24px;
+  border: 1px solid #e5e8ed;
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0 10px 40px #17121e20;
+  color: #343b46;
+  font:
+    14px/1.5 'DM Sans',
+    sans-serif;
+}
+.dashboard-success-toast p {
+  margin: 4px 0 0;
+}
+.dashboard-success-toast__icon {
+  color: #0f7055;
+}
+.dashboard-success-toast__progress {
+  display: none;
+}
+@media (max-width: 760px) {
+  .dashboard-success-toast {
+    left: 20px;
+    right: 20px;
+    bottom: 20px;
+  }
+}
 </style>

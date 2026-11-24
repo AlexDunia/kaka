@@ -76,13 +76,13 @@ const brandLogoUrl = computed(() => getRushHourLogo(theme.value))
 
 <style scoped>
 .navbar {
-  background-color: rgba(24, 24, 30, 0.8);
+  background-color: var(--color-surface-soft);
   backdrop-filter: blur(10px);
   padding: 1rem 0;
   position: sticky;
   top: 0;
   z-index: 1000;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .navbar__container {
@@ -93,7 +93,7 @@ const brandLogoUrl = computed(() => getRushHourLogo(theme.value))
 
 .navbar__logo {
   text-decoration: none;
-  color: white;
+  color: var(--color-text);
   font-weight: 700;
   font-size: 1.5rem;
   display: flex;
@@ -108,7 +108,7 @@ const brandLogoUrl = computed(() => getRushHourLogo(theme.value))
 }
 
 .navbar__logo-text {
-  background: linear-gradient(90deg, #fff, rgba(255, 255, 255, 0.7));
+  background: linear-gradient(90deg, var(--color-surface), rgba(255, 255, 255, 0.7));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -125,7 +125,7 @@ const brandLogoUrl = computed(() => getRushHourLogo(theme.value))
 }
 
 .navbar__menu-item {
-  color: rgba(255, 255, 255, 0.7);
+  color:var(--color-muted);
   text-decoration: none;
   font-weight: 500;
   font-size: 0.95rem;
@@ -135,11 +135,11 @@ const brandLogoUrl = computed(() => getRushHourLogo(theme.value))
 }
 
 .navbar__menu-item:hover {
-  color: white;
+  color: var(--color-text);
 }
 
 .navbar__menu-item--active {
-  color: white;
+  color: var(--color-text);
 }
 
 .navbar__menu-item--active::after {
@@ -160,7 +160,7 @@ const brandLogoUrl = computed(() => getRushHourLogo(theme.value))
 }
 
 .navbar__action {
-  color: rgba(255, 255, 255, 0.7);
+  color:var(--color-muted);
   text-decoration: none;
   display: flex;
   align-items: center;
@@ -171,21 +171,21 @@ const brandLogoUrl = computed(() => getRushHourLogo(theme.value))
 }
 
 .navbar__action:hover {
-  color: white;
+  color: var(--color-text);
 }
 
 .navbar__action--auth {
-  color: white;
-  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--color-text);
+  background-color: var(--color-surface-soft);
 }
 
 .navbar__action--auth:hover {
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: var(--color-surface-soft);
 }
 
 .navbar__action--create-event {
   background-color: var(--primary);
-  color: white;
+  color: var(--color-on-action);
   border-radius: 8px;
   padding: 0.5rem 1rem;
   font-weight: 600;
@@ -197,7 +197,7 @@ const brandLogoUrl = computed(() => getRushHourLogo(theme.value))
 .navbar__action--create-event:hover {
   background-color: var(--primary-dark, #d62e7e);
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(232, 67, 147, 0.3);
+  box-shadow: var(--shadow-subtle);
 }
 
 .navbar__action--cart {
@@ -206,7 +206,7 @@ const brandLogoUrl = computed(() => getRushHourLogo(theme.value))
   background: rgba(192, 72, 136, 0.12);
   border-radius: 50%;
   padding: 0.7rem;
-  border: 2.5px solid #fff;
+  border: 2.5px solid color-mix(in srgb, #fff 55%, transparent);
   color: var(--primary, #c04888);
   transition:
     background 0.2s,
@@ -215,8 +215,8 @@ const brandLogoUrl = computed(() => getRushHourLogo(theme.value))
 }
 
 .navbar__action--cart:hover {
-  color: #fff;
-  border-color: #fff;
+  color:var(--color-text);
+  border-color: color-mix(in srgb, #fff 55%, transparent);
 }
 
 .cart-badge {
@@ -224,15 +224,15 @@ const brandLogoUrl = computed(() => getRushHourLogo(theme.value))
   top: -6px;
   right: -6px;
   background: var(--primary, #c04888);
-  color: #fff;
+  color: var(--color-on-action);
   font-size: 1rem;
   font-weight: 900;
   border-radius: 50%;
   padding: 0.22em 0.7em;
   min-width: 1.5em;
   text-align: center;
-  box-shadow: 0 2px 8px rgba(232, 67, 147, 0.18);
-  border: 2.5px solid #fff;
+  box-shadow: var(--shadow-subtle);
+  border: 2.5px solid color-mix(in srgb, #fff 55%, transparent);
   z-index: 2;
   transition:
     background 0.2s,

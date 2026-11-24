@@ -1,0 +1,103 @@
+/* Geometry, colors and responsive rules come from reference.css, copied from
+   the supplied HTML in source order. Keep only app integration and the explicitly
+   requested routed discount page here; do not restyle reference controls. */
+.event-workspace .workspace-promote {
+  color: #343b46;
+  font:
+    400 14px/1.6 'DM Sans',
+    system-ui,
+    sans-serif;
+}
+.event-workspace .workspace-promote :is(button, a, input, select, summary) {
+  letter-spacing: normal;
+  text-transform: none;
+}
+/* The application's global margin reset also resets native dialog centering. */
+.event-workspace .workspace-promote dialog {
+  margin: auto;
+}
+.event-workspace .workspace-promote dialog:not([open]) {
+  display: none;
+}
+.event-workspace .workspace-promote .rh-icon-toggle svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  stroke: none;
+}
+.event-workspace .workspace-promote .promo-destination-copy {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.event-workspace .workspace-promote .promo-error {
+  margin-top: 16px;
+  color: var(--rh-color-danger);
+  font-size: 12px;
+}
+.event-workspace .workspace-promote .promo-selectable-link {
+  margin-top: 16px;
+  overflow-wrap: anywhere;
+  user-select: all;
+  color: #697480;
+  font-size: 12px;
+}
+.event-workspace .workspace-promote .promo-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-bottom: 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #59616d;
+  font:
+    500 13px 'DM Sans',
+    sans-serif;
+  cursor: pointer;
+}
+.event-workspace .workspace-promote .promo-back:hover {
+  color: #bf185b;
+}
+.event-workspace .workspace-promote .promo-form-page .rh33-intro p {
+  margin-top: 8px;
+  color: #59616d;
+  font-size: 13px;
+}
+.event-workspace .workspace-promote .promo-form-page .rh33-form {
+  margin: 0;
+}
+.event-workspace .workspace-promote .rh-table-scroll {
+  overflow-x: auto;
+}
+.event-workspace .workspace-promote .promo-detail-code {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0;
+  overflow-wrap: anywhere;
+}
+.event-workspace .workspace-promote .promo-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  margin: 0 0 32px;
+}
+.event-workspace .workspace-promote .promo-facts dt {
+  font-size: 12px;
+  color: #59616d;
+}
+.event-workspace .workspace-promote .promo-facts dd {
+  margin: 6px 0 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+@media (max-width: 700px) {
+  .event-workspace .workspace-promote .promo-facts {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,5 +1,5 @@
-@import '../styles/theme.css';
 @import '../styles/base.css';
+@import '../styles/theme.css';
 @import '../styles/utilities.css';
 
 /* Fonts from my HTML file */
@@ -61,7 +61,7 @@ a,
     padding: 1rem !important;
     font-size: 1rem !important;
     margin: 0 !important;
-    color: #fff !important;
+    color: var(--color-text) !important;
     opacity: 0.9 !important;
   }
 
@@ -82,8 +82,8 @@ a,
     margin: 0 auto !important;
     padding: 1.25rem 1rem !important;
     border-radius: 12px !important;
-    background: #1b1822 !important;
-    border: 1px solid #23202b !important;
+    background: var(--color-surface) !important;
+    border: 1px solid color-mix(in srgb, #23202b 55%, transparent) !important;
     display: flex !important;
     flex-direction: column !important;
     gap: 1.25rem !important;
@@ -98,7 +98,7 @@ a,
     transform: translateX(-50%) !important;
     width: 90% !important;
     height: 1px !important;
-    background: linear-gradient(to right, transparent, #23202b, transparent) !important;
+    background: linear-gradient(to right, transparent, var(--color-surface), transparent) !important;
   }
 
   .cart-item-top {
@@ -126,17 +126,17 @@ a,
     font-size: 1.1rem !important;
     line-height: 1.4 !important;
     font-weight: 600 !important;
-    color: #fff !important;
+    color:var(--color-text) !important;
   }
 
   .cart-ticket-type {
     font-size: 0.9rem !important;
-    color: #e0e0e0 !important;
+    color:var(--color-text) !important;
   }
 
   .cart-address {
     font-size: 0.85rem !important;
-    color: #bdbdbd !important;
+    color:var(--color-muted) !important;
     display: flex !important;
     align-items: center !important;
     gap: 0.4rem !important;
@@ -152,7 +152,7 @@ a,
     display: flex !important;
     align-items: center !important;
     gap: 0.75rem !important;
-    background: #23202b !important;
+    background: var(--color-surface) !important;
     padding: 0.35rem 0.75rem !important;
     border-radius: 8px !important;
     width: fit-content !important;
@@ -167,7 +167,7 @@ a,
   .qty-btn {
     font-size: 1.2rem !important;
     padding: 0.25rem !important;
-    color: #fff !important;
+    color: var(--color-text) !important;
     opacity: 0.9 !important;
     width: 28px !important;
     height: 28px !important;
@@ -179,14 +179,14 @@ a,
   .cart-qty {
     font-size: 1rem !important;
     min-width: 1.5rem !important;
-    color: #fff !important;
+    color:var(--color-text) !important;
     text-align: center !important;
   }
 
   .cart-price {
     font-size: 1.15rem !important;
     font-weight: 600 !important;
-    color: #fff !important;
+    color:var(--color-text) !important;
   }
 
   .cart-remove-inline {
@@ -207,8 +207,8 @@ a,
     bottom: 0 !important;
     left: 0 !important;
     right: 0 !important;
-    background: #1b1822 !important;
-    border-top: 1px solid #23202b !important;
+    background: var(--color-surface) !important;
+    border-top: 1px solid color-mix(in srgb, #23202b 55%, transparent) !important;
     padding: 1rem !important;
     z-index: 100 !important;
   }
@@ -219,7 +219,7 @@ a,
     align-items: center !important;
     font-size: 1.1rem !important;
     font-weight: 600 !important;
-    color: #fff !important;
+    color:var(--color-text) !important;
     width: 90% !important;
     margin: 0 auto 0.75rem !important;
   }
@@ -236,8 +236,8 @@ a,
     height: 3rem !important;
     border-radius: 8px !important;
     font-size: 0.9rem !important;
-    background: #23202b !important;
-    color: #fff !important;
+    background: var(--color-surface) !important;
+    color: var(--color-text) !important;
     border: none !important;
     cursor: pointer !important;
     min-width: 100px !important;
@@ -252,7 +252,7 @@ a,
     border-radius: 8px !important;
     font-size: 0.9rem !important;
     background: #c04888 !important;
-    color: #fff !important;
+    color: var(--color-on-action) !important;
     border: none !important;
     cursor: pointer !important;
     font-weight: 600 !important;

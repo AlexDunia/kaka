@@ -8,27 +8,39 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
+      path: '/events/:id-:slug/tickets',
+      name: 'event-tickets',
+      component: () => import('../pages/EventTickets.vue'),
+      meta: { title: 'Your selection', disableRouteSkeleton: true, fullScreenShell: true },
+    },
+    {
       path: '/',
       name: 'home',
       component: HomePage,
       meta: {
-        title: 'Home - Find and Book Amazing Events',
+        title: 'Find events worth showing up for',
+        publicSite: true,
         description:
-          'Discover and book tickets for the best events, concerts, movies, theatre shows, sports events, and festivals near you.',
+          'Find concerts, meetups, food events, and experiences near you with Rush Hour Ticket.',
         disableRouteSkeleton: true,
       },
     },
     {
       path: '/search',
       name: 'search',
-      component: () => import('../pages/SearchPage.vue'),
+      component: () => import('../pages/FindEvents.vue'),
       meta: {
-        title: 'Search Events',
+        title: 'Find events',
+        publicSite: true,
         description:
           'Search for events, concerts, movies, theatre shows, sports events, and festivals.',
         disableRouteSkeleton: true,
       },
     },
+    { path: '/find-events', name: 'find-events', component: () => import('../pages/FindEvents.vue'), meta: { title: 'Find events', publicSite: true, disableRouteSkeleton: true } },
+    { path: '/features', name: 'features', component: HomePage, props: { sectionOnly: 'features' }, meta: { title: 'Features', publicSite: true, disableRouteSkeleton: true } },
+    { path: '/event-moments', name: 'event-moments', component: HomePage, props: { sectionOnly: 'moments' }, meta: { title: 'Event moments', publicSite: true, disableRouteSkeleton: true } },
+    { path: '/about', alias: '/about-us', name: 'about', component: () => import('../pages/AboutPage.vue'), meta: { title: 'About us', publicSite: true, disableRouteSkeleton: true } },
     {
       path: '/login',
       name: 'login',
@@ -59,9 +71,9 @@ const router = createRouter({
     {
       path: '/music',
       name: 'music',
-      component: () => import('../pages/CategoryPage.vue'),
+      component: () => import('../pages/FindEvents.vue'),
       props: { category: 'music' },
-      meta: {
+      meta: { publicSite: true, discoveryCategory: 'music',
         title: 'Music Events',
         description:
           'Find and book tickets for the best music events, concerts, and performances near you.',
@@ -71,9 +83,9 @@ const router = createRouter({
     {
       path: '/movies',
       name: 'movies',
-      component: () => import('../pages/CategoryPage.vue'),
+      component: () => import('../pages/FindEvents.vue'),
       props: { category: 'movies' },
-      meta: {
+      meta: { publicSite: true, discoveryCategory: 'movies',
         title: 'Movie Events',
         description:
           'Find and book tickets for the latest movie screenings, premieres, and film festivals.',
@@ -83,9 +95,9 @@ const router = createRouter({
     {
       path: '/theatre',
       name: 'theatre',
-      component: () => import('../pages/CategoryPage.vue'),
+      component: () => import('../pages/FindEvents.vue'),
       props: { category: 'theatre' },
-      meta: {
+      meta: { publicSite: true, discoveryCategory: 'theatre',
         title: 'Theatre & Comedy Events',
         description:
           'Find and book tickets for theatre shows, plays, musicals, and comedy performances.',
@@ -95,9 +107,9 @@ const router = createRouter({
     {
       path: '/sports',
       name: 'sports',
-      component: () => import('../pages/CategoryPage.vue'),
+      component: () => import('../pages/FindEvents.vue'),
       props: { category: 'sports' },
-      meta: {
+      meta: { publicSite: true, discoveryCategory: 'sports',
         title: 'Sports Events',
         description:
           'Find and book tickets for sports events, matches, tournaments, and competitions.',
@@ -107,9 +119,9 @@ const router = createRouter({
     {
       path: '/festivals',
       name: 'festivals',
-      component: () => import('../pages/CategoryPage.vue'),
+      component: () => import('../pages/FindEvents.vue'),
       props: { category: 'festivals' },
-      meta: {
+      meta: { publicSite: true, discoveryCategory: 'festivals',
         title: 'Festivals',
         description:
           'Find and book tickets for the best festivals, celebrations, and cultural events.',
@@ -119,9 +131,9 @@ const router = createRouter({
     {
       path: '/others',
       name: 'others',
-      component: () => import('../pages/CategoryPage.vue'),
+      component: () => import('../pages/FindEvents.vue'),
       props: { category: 'others' },
-      meta: {
+      meta: { publicSite: true, discoveryCategory: 'others',
         title: 'Other Events',
         description:
           "Discover unique events and experiences that don't fit traditional categories.",
@@ -168,18 +180,6 @@ const router = createRouter({
       },
     },
     {
-      path: '/admin',
-      name: 'admin',
-      component: () => import('../pages/Admin.vue'),
-      meta: {
-        title: 'Admin Dashboard',
-        description: 'Manage events, users, and site settings.',
-        requiresAuth: true,
-        requiresAdmin: true,
-        disableRouteSkeleton: true,
-      },
-    },
-    {
       path: '/event/:id',
       name: 'event-details-legacy',
       component: EventDetails,
@@ -210,6 +210,7 @@ const router = createRouter({
       component: CreateEvent,
       meta: {
         title: 'Create Event',
+        requiresAuth: true,
         description: 'Create and publish your own event to sell tickets.',
       },
     },
@@ -225,6 +226,7 @@ const router = createRouter({
       component: () => import('../pages/Checkout.vue'),
       meta: {
         title: 'Checkout',
+        fullScreenShell: true,
         description: 'Complete your ticket purchase securely.',
         disableRouteSkeleton: true,
       },
@@ -268,7 +270,8 @@ const router = createRouter({
     },
 
     {
-      path: '/transactions',
+      path: '/my-tickets',
+      alias: '/transactions',
       name: 'transactions',
       component: () => import('../pages/TransactionHistory.vue'),
       meta: {
@@ -289,14 +292,15 @@ const router = createRouter({
     },
   ],
   // Add scrollBehavior to reset scroll position to top on route changes
-  scrollBehavior(to, from, savedPosition) {
-    // If the user is using the browser history (back/forward), restore the saved position
-    if (savedPosition) {
-      return savedPosition
+  scrollBehavior(to, from) {
+    // Ticket selection is a full-screen layer over the same event profile.
+    if (to.path === from.path && ['event-details', 'event-details-legacy'].includes(to.name)) {
+      return false
     }
+    if (to.hash) return { el: to.hash, top: 130, behavior: 'instant' }
 
     // Otherwise, scroll to top
-    return { top: 0 }
+    return { top: 0, left: 0, behavior: 'instant' }
   },
 })
 
@@ -305,7 +309,7 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const authStore = useAuthStore()
 
-  if (to.meta.requiresAuth || to.meta.requiresAdmin) {
+  if (to.meta.requiresAuth) {
     await authStore.initialize()
 
     if (!authStore.isAuthenticated) {
@@ -317,13 +321,10 @@ router.beforeEach(async (to) => {
       }
     }
 
-    if (to.meta.requiresAdmin && !authStore.isAdmin) {
-      return { name: 'home' }
-    }
   }
 
   if (to.meta.title) {
-    document.title = `${to.meta.title} | Kaka`
+    document.title = `${to.meta.title} | Rush Hour Ticket`
   }
 
   return true

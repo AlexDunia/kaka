@@ -1,0 +1,46 @@
+/* Use the final reference canvas and preserve the reference's native page flow. */
+.event-workspace:is(
+    [data-rh-page='attendees'],
+    [data-rh-page='purchase'],
+    [data-rh-history-view='true']
+  ) {
+  background: var(--canvas);
+}
+.event-workspace .workspace-attendees dialog:not([open]) {
+  display: none;
+}
+.event-workspace .workspace-attendees dialog {
+  box-sizing: border-box;
+  margin: auto;
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  color: var(--rh-color-text);
+  font-family: var(--rh-font-body);
+}
+.event-workspace .workspace-attendees .rh-v25-guest-section {
+  scroll-margin-top: calc(var(--rh-guest-header-bottom, 70px) + 88px);
+}
+.event-workspace .workspace-attendees .rh-v25-dialog .rh-v25-edit-controls {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.event-workspace .workspace-attendee-print {
+  display: none;
+}
+.event-workspace .rh28-photo-upload:focus-within {
+  outline: 3px solid var(--rh-color-brand);
+  outline-offset: 3px;
+}
+.event-workspace .rh-sticky-attendees-back svg {
+  width: 16px;
+  height: 16px;
+}
+@media print {
+  body:has(.workspace-attendee-print) .event-workspace > :not(#rh-v24-print-sheet) {
+    display: none !important;
+  }
+  body:has(.workspace-attendee-print) .event-workspace > #rh-v24-print-sheet {
+    display: block !important;
+  }
+}

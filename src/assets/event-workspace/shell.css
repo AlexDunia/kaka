@@ -1,0 +1,42 @@
+﻿/* Only the brand and current event stay above the scrolling navigation.
+   All other sidebar geometry and control states come from reference.css. */
+.event-workspace .rh-app-side {
+  padding: 0 !important;
+  overflow: hidden;
+}
+.event-workspace .workspace-sidebar-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  flex: none;
+  padding: 30px 15px 0;
+  background: #fff;
+}
+.event-workspace .workspace-sidebar-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #e2e2e6 transparent;
+  padding: 0 15px 23px;
+  display: flex;
+  flex-direction: column;
+}
+.event-workspace .workspace-sidebar-scroll > * {
+  flex-shrink: 0;
+}
+.event-workspace .workspace-sidebar-scroll :is(.rh-menu-title, .rh29-side-label),
+.event-workspace [data-route='events'] :is(.rh29-home-eyebrow, .rh29-overline, .rh29-next-date b),
+.event-workspace [data-route='events'] .rh29-featured-overlay > span {
+  text-transform: uppercase;
+}
+.event-workspace .workspace-event-picker select {
+  width: 100%;
+}
+@media (min-width: 801px) and (max-width: 980px) {
+  .event-workspace .workspace-sidebar-header,
+  .event-workspace .workspace-sidebar-scroll {
+    padding-inline: 11px;
+  }
+}

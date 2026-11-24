@@ -115,7 +115,7 @@ defineEmits([
 .cart-bg {
   min-height: 100vh;
   width: 100vw;
-  background: #14121a;
+  background: var(--color-surface);
   display: flex;
   flex-direction: column;
   padding: 0;
@@ -125,7 +125,7 @@ defineEmits([
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #fff;
+  color: var(--color-text);
   font-size: 1rem;
   padding: 1rem;
   cursor: pointer;
@@ -139,7 +139,7 @@ defineEmits([
 .cart-container {
   width: 100%;
   margin: 0;
-  background: #1b1822;
+  background: var(--color-surface);
   border-radius: 0;
   box-shadow: none;
   border: none;
@@ -152,7 +152,7 @@ defineEmits([
 .cart-title {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #fff;
+  color:var(--color-text);
   margin: 0.5rem 1rem 1rem;
   letter-spacing: -0.01em;
   text-align: left;
@@ -160,7 +160,7 @@ defineEmits([
 }
 
 .cart-empty {
-  color: #bdbdbd;
+  color:var(--color-muted);
   font-size: 1.15rem;
   text-align: center;
   padding: 2.5rem 1rem;
@@ -177,7 +177,7 @@ defineEmits([
 
 .continue-shopping {
   background: #c04888;
-  color: #fff;
+  color: var(--color-on-action);
   border: none;
   padding: 0.75rem 1.5rem;
   border-radius: 8px;
@@ -200,11 +200,11 @@ defineEmits([
 .cart-item {
   display: flex;
   gap: 1rem;
-  background: #18151f;
+  background: var(--color-surface);
   border-radius: 12px;
   padding: 1rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border: 1px solid #23202b;
+  box-shadow: var(--shadow-subtle);
+  border: 1px solid color-mix(in srgb, #23202b 55%, transparent);
   align-items: flex-start;
   width: 90%;
   margin: 0 auto;
@@ -241,18 +241,18 @@ defineEmits([
 .cart-event-title {
   font-size: 1rem;
   font-weight: 600;
-  color: #fff;
+  color:var(--color-text);
   line-height: 1.3;
 }
 
 .cart-ticket-type {
   font-size: 0.9rem;
-  color: #e0e0e0;
+  color:var(--color-text);
 }
 
 .cart-address {
   font-size: 0.85rem;
-  color: #bdbdbd;
+  color:var(--color-muted);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -269,7 +269,7 @@ defineEmits([
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  background: #23202b;
+  background: var(--color-surface);
   padding: 0.25rem 0.75rem;
   border-radius: 6px;
 }
@@ -277,7 +277,7 @@ defineEmits([
 .qty-btn {
   background: none;
   border: none;
-  color: #fff;
+  color: var(--color-text);
   font-size: 1.1rem;
   font-weight: 600;
   padding: 0.25rem;
@@ -293,7 +293,7 @@ defineEmits([
 .cart-qty {
   font-size: 0.95rem;
   font-weight: 500;
-  color: #fff;
+  color:var(--color-text);
   min-width: 1.5rem;
   text-align: center;
 }
@@ -301,7 +301,7 @@ defineEmits([
 .cart-price {
   font-size: 1.1rem;
   font-weight: 600;
-  color: #fff;
+  color:var(--color-text);
 }
 
 .cart-remove-inline {
@@ -316,8 +316,8 @@ defineEmits([
   bottom: 0;
   left: 0;
   right: 0;
-  background: #1b1822;
-  border-top: 1px solid #23202b;
+  background: var(--color-surface);
+  border-top: 1px solid color-mix(in srgb, #23202b 55%, transparent);
   padding: 1rem;
   z-index: 100;
 }
@@ -328,7 +328,7 @@ defineEmits([
   align-items: center;
   font-size: 1.1rem;
   font-weight: 600;
-  color: #fff;
+  color:var(--color-text);
   width: 90%;
   margin: 0 auto 0.75rem;
 }
@@ -345,8 +345,8 @@ defineEmits([
   height: 3rem;
   border-radius: 8px;
   font-size: 0.9rem;
-  background: #23202b;
-  color: #fff;
+  background: var(--color-surface);
+  color: var(--color-text);
   border: none;
   cursor: pointer;
   min-width: 100px;
@@ -361,7 +361,7 @@ defineEmits([
   border-radius: 8px;
   font-size: 0.9rem;
   background: #c04888;
-  color: #fff;
+  color: var(--color-on-action);
   border: none;
   cursor: pointer;
   font-weight: 600;

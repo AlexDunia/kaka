@@ -1,0 +1,39 @@
+/* Start workspace controls from browser defaults. The public site's Spotify-style
+   button/input rules must not become undocumented workspace design tokens. */
+.event-workspace :where(button, input, select, textarea, a, summary, table, th, td) {
+  all: revert;
+  box-sizing: border-box;
+}
+.event-workspace :where(button, input, select, textarea, a, summary) {
+  font-family: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+}
+.event-workspace :where(button, a, summary) {
+  -webkit-tap-highlight-color: transparent;
+}
+.event-workspace :where(button) {
+  cursor: pointer;
+}
+.event-workspace :where(button:disabled) {
+  cursor: not-allowed;
+}
+.event-workspace :where(a) {
+  color: inherit;
+  text-decoration: none;
+  padding: 0;
+}
+.event-workspace :where(a:hover) {
+  background-color: transparent;
+}
+.event-workspace :where(input, textarea, select) {
+  color: inherit;
+}
+.event-workspace :where(input[type='checkbox'], input[type='radio']) {
+  width: auto;
+}
+.event-workspace :is(button, input, textarea, select, a, summary):focus-visible {
+  outline: 3px solid var(--rh-color-brand);
+  outline-offset: 3px;
+  box-shadow: none;
+}

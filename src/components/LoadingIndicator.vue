@@ -35,15 +35,15 @@ defineProps({
 .loading-text {
   margin-top: 1rem;
   font-size: 0.875rem;
-  color: #4b5563;
+  color:var(--color-muted);
 }
 
 .spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid rgba(0, 0, 0, 0.1);
+  border: 3px solid rgba(0,0,0,0.055);
   border-radius: 50%;
-  border-top-color: #4f46e5;
+  border-top-color: color-mix(in srgb, #4f46e5 55%, transparent);
   animation: spin 1s ease-in-out infinite;
 }
 

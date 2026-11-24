@@ -1,0 +1,20 @@
+/* Additional states required by the database-backed catalog; reference layouts live in public-site.css. */
+.public-site .catalog-empty{text-align:center;padding:40px 24px;background:var(--canvas);border-radius:var(--rh-radius-card)}
+.public-site .catalog-empty h3{font:600 22px/1.3 var(--heading)}
+.public-site .catalog-empty p{color:var(--sub);margin:10px 0 20px}
+.public-site .catalog-note{color:var(--sub);display:flex;align-items:center;gap:15px}
+.public-site button.text-link{background:none;border:0;font:inherit;padding:0}
+.public-site .catalog-pagination{display:flex;align-items:center;justify-content:center;gap:20px;margin-top:40px}
+.public-site button:disabled{opacity:.45;cursor:default;transform:none}
+.public-site .missing-cover{display:grid;place-items:center;min-height:100%;color:var(--sub)}
+.public-site .catalog-skeleton{position:relative;overflow:hidden;background:#eeeff1;border-radius:8px}
+.public-site .catalog-skeleton:after{content:'';position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,#ffffffa6,transparent);animation:public-catalog-shimmer 1.2s ease-in-out infinite}
+.public-site .category-placeholder{height:210px}
+.public-site .skeleton-title{height:22px;width:75%;margin-top:16px}
+.public-site .skeleton-meta{height:14px;width:55%;margin-top:12px}
+.public-site .public-about{max-width:800px;min-height:50vh}
+.public-site .public-about h1{font:600 clamp(32px,4vw,52px)/1.15 var(--heading);margin-bottom:24px}
+.public-site .public-about p{font-size:16px;margin-top:16px}
+.public-site .public-about-actions{display:flex;gap:12px;margin-top:28px}
+@keyframes public-catalog-shimmer{to{transform:translateX(100%)}}
+@media(prefers-reduced-motion:reduce){.public-site .catalog-skeleton:after{animation:none}}

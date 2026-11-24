@@ -1,8 +1,13 @@
-﻿<script setup>
+<script setup>
+import { apiUrl } from '@/api/axios'
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import {
+  safeAuthDestination,
+  rememberAuthDestination,
+  takeAuthDestination,
+} from '@/utils/authDestination'
 import { useAuthStore } from '@/stores/auth'
-
 
 const email = ref('')
 const password = ref('')
@@ -11,6 +16,13 @@ const error = ref('')
 
 const authStore = useAuthStore()
 const router = useRouter()
+const route = useRoute()
+const authLink = (path) => ({
+  path,
+  query: safeAuthDestination(route.query.redirect)
+    ? { redirect: safeAuthDestination(route.query.redirect) }
+    : {},
+})
 
 const login = async () => {
   error.value = ''
@@ -25,8 +37,10 @@ const login = async () => {
   try {
     await authStore.login(email.value, password.value)
 
-    if (authStore.isAdmin) {
-      router.push('/admin')
+    const destination = safeAuthDestination(route.query.redirect) || takeAuthDestination()
+    rememberAuthDestination(null)
+    if (destination) {
+      await router.push(destination)
     } else {
       router.push('/dashboard')
     }
@@ -39,7 +53,8 @@ const login = async () => {
 
 // âœ… NEW: Google Sign-In
 const loginWithGoogle = () => {
-  window.location.href = '/api/auth/google'
+  rememberAuthDestination(route.query.redirect)
+  window.location.href = apiUrl('/auth/google')
 }
 
 const goToForgotPassword = () => {
@@ -47,7 +62,7 @@ const goToForgotPassword = () => {
 }
 
 const goToRegister = () => {
-  router.push('/register')
+  router.push(authLink('/register'))
 }
 </script>
 
@@ -164,7 +179,7 @@ const goToRegister = () => {
   display: block;
   margin-bottom: 0.5rem;
   font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--color-muted);
 }
 
 .login-form__input {
@@ -205,7 +220,7 @@ const goToRegister = () => {
 .login-form__register {
   text-align: center;
   font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--color-muted);
 }
 
 .login-form__register-link {
@@ -224,14 +239,14 @@ const goToRegister = () => {
   align-items: center;
   text-align: center;
   margin: 1.5rem 0;
-  color: #666;
+  color: var(--color-muted);
 }
 
 .login-form__divider::before,
 .login-form__divider::after {
   content: '';
   flex: 1;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid color-mix(in srgb, #ddd 55%, transparent);
 }
 
 .login-form__divider span {
@@ -242,10 +257,10 @@ const goToRegister = () => {
 .login-form__google {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid #ddd;
+  border: 1px solid color-mix(in srgb, #ddd 55%, transparent);
   border-radius: 4px;
-  background: white;
-  color: #333;
+  background: var(--color-surface);
+  color: var(--color-text);
   font-size: 1rem;
   cursor: pointer;
   display: flex;
@@ -256,8 +271,8 @@ const goToRegister = () => {
 }
 
 .login-form__google:hover {
-  background: #f8f9fa;
-  border-color: #bbb;
+  background: var(--color-surface);
+  border-color: color-mix(in srgb, #bbb 55%, transparent);
 }
 
 .login-form__google:active {
@@ -268,4 +283,3 @@ const goToRegister = () => {
   flex-shrink: 0;
 }
 </style>
-

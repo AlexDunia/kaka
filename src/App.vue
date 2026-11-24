@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { ref, onMounted, onUnmounted, computed, watch, provide } from 'vue'
 import { useCartStore } from '@/stores/cart'
@@ -9,14 +9,29 @@ import { playThemeToggleClick } from '@/utils/themeClickSound'
 import HeroSection from '@/components/HeroSection.vue'
 import PageSkeleton from '@/components/PageSkeleton.vue'
 import AccountMenu from '@/components/AccountMenu.vue'
+import PublicSite from '@/components/public/PublicSite.vue'
+import PublicBrandLoader from '@/components/public/PublicBrandLoader.vue'
+import { usePublicPageLoader } from '@/composables/usePublicPageLoader'
+import { usesPublicShell, usesPublicTypography } from '@/utils/routePresentation'
 import throttle from 'lodash.throttle' // âœ… use throttling to reduce scroll event calls
 
 const isMobileMenuOpen = ref(false)
 const currentYear = ref(new Date().getFullYear())
 const route = useRoute()
 const router = useRouter()
+const eventProfileHeaderCollapsed = ref(false)
+provide('eventProfileHeaderCollapsed', eventProfileHeaderCollapsed)
+const usesPublicSite = computed(() => usesPublicShell(route))
+const isEventProfileRoute = computed(() => ['event-details', 'event-details-legacy'].includes(route.name))
+watch(() => route.name, (name) => {
+  const screen = ['event-details', 'event-details-legacy'].includes(name) ? 'event-page' : name === 'event-tickets' ? 'event-tickets' : name === 'checkout' ? 'event-checkout' : null
+  if (screen) document.body.dataset.rhPage = screen
+  else if (['event-page', 'event-tickets', 'event-checkout'].includes(document.body.dataset.rhPage)) delete document.body.dataset.rhPage
+  document.body.classList.remove('rh30-scrolled')
+}, { immediate: true })
 const { updateMetaDescription, updateSocialMeta } = useSeo()
 const pageOwnedSkeletonRoutes = new Set([
+  'event-tickets',
   'home',
   'search',
   'music',
@@ -46,7 +61,7 @@ let routeLoadingReleaseTimer = null
 const chromeRoute = computed(() => (isRouteLoading.value ? skeletonRoute.value : route))
 const showHero = computed(
   () =>
-    !isRouteLoading.value && (chromeRoute.value.name === 'home' || chromeRoute.value.path === '/'),
+    !usesPublicSite.value && !isRouteLoading.value && (chromeRoute.value.name === 'home' || chromeRoute.value.path === '/'),
 )
 const isCreateEventRoute = computed(() =>
   chromeRoute.value.name === 'CreateEvent' || chromeRoute.value.name === 'EditEvent',
@@ -135,8 +150,8 @@ watch(
   },
 )
 
-const themePreferenceKey = 'kaka-theme-preference'
-const theme = ref('dark')
+const themePreferenceKey = 'kaka-theme-preference-v2'
+const theme = ref('light')
 const brandLogoUrl = computed(() => getRushHourLogo(theme.value))
 let themeInstantToken = 0
 
@@ -194,7 +209,7 @@ const initializeTheme = () => {
     return
   }
 
-  applyTheme('dark')
+  applyTheme('light')
 }
 
 const toggleTheme = () => {
@@ -235,12 +250,14 @@ const closeMenu = () => {
 watch(
   () => route.meta,
   (meta) => {
-    if (meta.description) {
+    if (meta.description && meta.publicSite) {
+      document.querySelector('meta[name="description"]')?.setAttribute('content', meta.description)
+    } else if (meta.description) {
       updateMetaDescription(meta.description)
     }
 
     updateSocialMeta({
-      title: meta.title ? `${meta.title} | Kaka` : 'Kaka - Find and Book Amazing Events',
+      title: meta.title ? `${meta.title} | Rush Hour Ticket` : 'Rush Hour Ticket | Find your next event',
       description: meta.description || 'Discover and book tickets for events near you',
       url: window.location.href,
     })
@@ -250,6 +267,8 @@ watch(
 
 const cartStore = useCartStore()
 const authStore = useAuthStore()
+const { visible: publicLoading, stage: publicLoadingStage, destination: publicLoadingDestination, sequence: publicLoadingSequence } = usePublicPageLoader(router)
+provide('publicPageLoading', publicLoading)
 const cartCount = computed(() => cartStore.itemCount)
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const avatarUrl = computed(
@@ -274,7 +293,6 @@ const handleScroll = throttle(() => {
 onMounted(() => {
   window.addEventListener('scroll', handleScroll)
   handleScroll()
-  authStore.initialize()
   initializeTheme()
   if (routeUsesShellSkeleton(route)) {
     hideRouteSkeleton()
@@ -293,11 +311,15 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="app-container" :class="{ 'has-global-header': showGlobalHeader }">
+  <PublicBrandLoader v-if="publicLoading" :stage="publicLoadingStage" :destination="publicLoadingDestination" :sequence="publicLoadingSequence" />
+  <PublicSite v-if="usesPublicSite" :header-collapsed="isEventProfileRoute && eventProfileHeaderCollapsed" :inert="publicLoading || undefined" :aria-busy="publicLoading || undefined"><RouterView /></PublicSite>
+  <div v-else :inert="publicLoading || undefined" class="app-container" :class="{ 'public-typography': usesPublicTypography(route), 'has-global-header': showGlobalHeader, 'event-profile-route': isEventProfileRoute, 'event-profile-header-collapsed': isEventProfileRoute && eventProfileHeaderCollapsed }">
     <header
       v-if="showGlobalHeader"
       class="app-header"
       :class="{ 'nav-shadow': scrollPosition > 20 }"
+      :inert="isEventProfileRoute && eventProfileHeaderCollapsed"
+      :aria-hidden="isEventProfileRoute && eventProfileHeaderCollapsed ? true : undefined"
     >
       <div class="container">
         <div class="logo">
@@ -623,11 +645,11 @@ onUnmounted(() => {
   position: sticky;
   top: 0;
   z-index: 1000;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .nav-shadow {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-subtle);
 }
 
 .container {
@@ -712,7 +734,7 @@ onUnmounted(() => {
 }
 
 .theme-toggle {
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid var(--color-border);
   border-radius: 999px;
   width: 40px;
   height: 40px;
@@ -734,11 +756,11 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #121212;
+  color: var(--color-on-action);
   font-weight: 700;
   font-size: 0.95rem;
   text-transform: uppercase;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-subtle);
   flex-shrink: 0;
 }
 
@@ -775,7 +797,7 @@ onUnmounted(() => {
 
 .auth-button {
   background: #34d36b;
-  color: #0b0b0f;
+  color: var(--color-on-action);
 }
 
 .cart-icon {
@@ -792,7 +814,7 @@ onUnmounted(() => {
   top: -5px;
   right: -5px;
   background: #e04e95;
-  color: #fff;
+  color: var(--color-on-action);
   font-size: 0.75rem;
   font-weight: 700;
   border-radius: 50%;
@@ -937,7 +959,7 @@ onUnmounted(() => {
   padding: 3rem 1rem 2rem;
   width: 100%;
   margin-top: 2rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.03);
+  border-top: 1px solid var(--color-border);
 }
 
 .footer-simple {
@@ -1013,23 +1035,23 @@ onUnmounted(() => {
     #cc2366 75%,
     #bc1888 100%
   );
-  box-shadow: 0 4px 12px rgba(220, 39, 67, 0.2);
+  box-shadow: var(--shadow-subtle);
 }
 
 .footer-social-link[aria-label='TikTok']:hover {
   background: #000000;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-subtle);
   color: #00f2ea;
 }
 
 .footer-social-link[aria-label='Facebook']:hover {
   background: #1877f2;
-  box-shadow: 0 4px 12px rgba(24, 119, 242, 0.2);
+  box-shadow: var(--shadow-subtle);
 }
 
 .footer-social-link[aria-label='X (Twitter)']:hover {
   background: #000000;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-subtle);
 }
 
 .footer-logo-img {
@@ -1060,7 +1082,7 @@ onUnmounted(() => {
 }
 
 .nav-shadow {
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--shadow-subtle);
 }
 
 .app-header .container {
@@ -1315,7 +1337,7 @@ onUnmounted(() => {
 
 .auth-button {
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-on-action);
 }
 
 /* One alignment rail for header, content, and footer */
@@ -1328,6 +1350,19 @@ onUnmounted(() => {
 </style>
 
 <style>
+.event-profile-route > .app-header {
+  transition: transform .28s cubic-bezier(.2,.75,.2,1), opacity .22s ease;
+}
+.event-profile-route > .app-header .container { width: 85%; max-width: 1500px; }
+.event-profile-route { --app-header-height: 81px; }
+.event-profile-header-collapsed > .app-header { transform: translateY(-104%); opacity: 0; pointer-events: none; }
+@media (max-width: 760px) {
+  .event-profile-route > .app-header .container { width: 80%; }
+  .event-profile-route > .app-footer { padding-bottom: 110px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .event-profile-route > .app-header { transition: none; }
+}
 .theme-instant,
 .theme-instant *,
 .theme-instant *::before,

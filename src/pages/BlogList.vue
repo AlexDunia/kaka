@@ -22,12 +22,7 @@ const loadBlogPosts = async () => {
   error.value = null
 
   try {
-    const response = await fetch('/api/blog-posts')
-    if (!response.ok) {
-      throw new Error('Failed to load blog posts')
-    }
-
-    const data = await response.json()
+    const data = await blogService.getAllPosts()
     posts.value = data
 
     // Get the first post's image for social sharing if available
@@ -46,8 +41,8 @@ const loadBlogPosts = async () => {
       url: window.location.href,
       image: socialImage,
     })
-  } catch (e) {
-    error.value = 'Failed to load blog posts. Please try again later.'
+  } catch {
+    error.value = 'Event stories are not available yet. Please check back later.'
   } finally {
     loading.value = false
   }
@@ -138,9 +133,9 @@ const navigateToPost = (slug) => {
 
 .blog-text {
   font-size: 2rem;
-  color: #fff;
+  color:var(--color-text);
   font-weight: 700;
-  background: linear-gradient(120deg, #fff, #4fc3f7);
+  background: linear-gradient(120deg, var(--color-surface), #4fc3f7);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -155,14 +150,14 @@ const navigateToPost = (slug) => {
 }
 
 .post-card {
-  background: rgba(37, 35, 46, 0.4);
+  background: var(--color-surface-soft);
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-subtle);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-border);
   backdrop-filter: blur(10px);
   transform-style: preserve-3d;
   animation: cardAppear 0.6s ease-out backwards;
@@ -183,10 +178,8 @@ const navigateToPost = (slug) => {
 
 .post-card:hover {
   transform: translateY(-5px);
-  box-shadow:
-    0 15px 30px rgba(0, 0, 0, 0.3),
-    0 0 15px rgba(79, 195, 247, 0.2);
-  border-color: rgba(79, 195, 247, 0.2);
+  box-shadow: var(--shadow-subtle);
+  border-color: rgba(79,195,247,0.110);
 }
 
 .post-image-container {
@@ -238,7 +231,7 @@ const navigateToPost = (slug) => {
 .post-title {
   font-size: 1.35rem;
   margin: 0 0 1.2rem;
-  color: #fff;
+  color:var(--color-text);
   cursor: pointer;
   transition: all 0.3s ease;
   line-height: 1.3;
@@ -277,10 +270,10 @@ const navigateToPost = (slug) => {
 }
 
 .skeleton {
-  background: rgba(37, 35, 46, 0.4);
+  background: var(--color-surface-soft);
   border-radius: 12px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-border);
   backdrop-filter: blur(10px);
   animation: skeletonAppear 0.6s ease-out backwards;
   animation-delay: calc(var(--index, 0) * 0.1s);
@@ -301,7 +294,7 @@ const navigateToPost = (slug) => {
   content: '';
   display: block;
   height: 220px;
-  background: linear-gradient(90deg, #232323 0%, #2c2c2c 50%, #232323 100%);
+  background: linear-gradient(90deg, var(--color-surface) 0%, var(--color-surface) 50%, var(--color-surface) 100%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
@@ -322,7 +315,7 @@ const navigateToPost = (slug) => {
 .skeleton-title,
 .skeleton-meta,
 .skeleton-content-line {
-  background: linear-gradient(90deg, #232323 0%, #2c2c2c 50%, #232323 100%);
+  background: linear-gradient(90deg, var(--color-surface) 0%, var(--color-surface) 50%, var(--color-surface) 100%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: 4px;
@@ -352,7 +345,7 @@ const navigateToPost = (slug) => {
   font-size: 1.1rem;
   background: rgba(255, 82, 82, 0.1);
   border-radius: 8px;
-  border: 1px solid rgba(255, 82, 82, 0.2);
+  border: 1px solid rgba(255,82,82,0.110);
   backdrop-filter: blur(10px);
   animation: fadeIn 0.6s ease-out;
 }

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 218" role="img" aria-label="Illustration of Lagos waterfront, skyscrapers and a moving car">
+<style>.water{animation:w 4s ease-in-out infinite alternate}.light{animation:blink 2s ease-in-out infinite alternate}@keyframes w{to{transform:translateX(8px)}}@keyframes blink{to{opacity:.32}}@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important}animateMotion{display:none}}</style>
+<rect width="400" height="218" fill="#d9e9e6"/><circle cx="326" cy="46" r="21" fill="#f5ddac"/>
+<path d="M0 145q60-24 136-11t141-16 123 6v94H0Z" fill="#bfd5c9"/>
+<path d="M0 176q61-18 138 1t145-5 117-2v48H0Z" fill="#81b6b7"/>
+<g fill="#f6f9f6"><path d="M53 154v-62l21-8 21 9v61Z"/><path d="M92 154V56l26-12 27 13v98Z"/><path d="M142 155V78l21-11 22 10v77Z"/><path d="M216 153V62l29-15 29 16v94Z"/><path d="M267 154V88l24-11 25 10v68Z"/></g>
+<path d="M92 56 118 44l27 13v98l-27 12Z" fill="#9dbab4"/><path d="M216 62 245 47l29 16v95l-29 13Z" fill="#8bb2af"/>
+<g stroke="#8eb3ad" stroke-width="4" stroke-linecap="round"><path d="M63 102v9m0 14v9m13-42v8m26-26v10m0 13v10m0 13v9m28-62v10m0 13v10m0 13v10m29-31v10m0 13v10m70-63v11m0 14v11m0 14v11m29-72v11m0 14v11m0 14v11"/></g>
+<path d="M0 177 400 147v17L0 195Z" fill="#a7afa7"/><path d="M0 170 400 140v14L0 184Z" fill="#464f54"/><path d="M0 177 400 147" stroke="#f6e6a9" stroke-width="1.8" stroke-dasharray="13 14"/>
+<g class="water" stroke="#d3ecea" stroke-width="3" opacity=".65"><path d="M15 201h49m36 3h62m71-2h43m34 7h58"/></g>
+<g><path d="m-20 160 29-2v7l-29 2Z" fill="#e2a161"/><path d="m-11 151 18-1 7 8-31 3Z" fill="#fff8ee"/><circle cx="-9" cy="168" r="3" fill="#263e46"/><circle cx="7" cy="166" r="3" fill="#263e46"/><animateMotion dur="7s" repeatCount="indefinite" path="M0 0 L425 -31"/></g>
+<path d="M343 145v-50" stroke="#628678" stroke-width="3"/><path d="M343 101q-19-21-28-11m28 11q8-21 24-20m-24 20q-10-28-2-34" fill="none" stroke="#5d9e81" stroke-width="5" stroke-linecap="round"/>
+</svg>

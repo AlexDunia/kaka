@@ -232,10 +232,10 @@ const apply = () => {
 
 .time-picker-modal {
   width: 320px;
-  background-color: #19181e;
+  background-color: var(--color-surface);
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-subtle);
   animation: modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   overflow: hidden;
 }
@@ -245,13 +245,13 @@ const apply = () => {
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .time-picker-header h3 {
   font-size: 18px;
   font-weight: 500;
-  color: #ffffff;
+  color:var(--color-text);
   margin: 0;
   letter-spacing: 0.3px;
 }
@@ -259,7 +259,7 @@ const apply = () => {
 .time-picker-close {
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.6);
+  color:var(--color-muted);
   cursor: pointer;
   padding: 5px;
   display: flex;
@@ -270,8 +270,8 @@ const apply = () => {
 }
 
 .time-picker-close:hover {
-  color: white;
-  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--color-text);
+  background-color: var(--color-surface-soft);
 }
 
 .time-picker-body {
@@ -290,7 +290,7 @@ const apply = () => {
   display: flex;
   align-items: center;
   background-color: rgba(233, 75, 159, 0.08);
-  border: 1px solid rgba(233, 75, 159, 0.2);
+  border: 1px solid rgba(233,75,159,0.110);
   border-radius: 10px;
   padding: 8px 16px;
   margin-bottom: 8px;
@@ -300,7 +300,7 @@ const apply = () => {
   width: 40px;
   background: transparent;
   border: none;
-  color: white;
+  color: var(--color-text);
   font-size: 20px;
   font-weight: 500;
   text-align: center;
@@ -318,14 +318,14 @@ const apply = () => {
 }
 
 .time-divider {
-  color: white;
+  color: var(--color-text);
   font-size: 20px;
   margin: 0 5px;
 }
 
 .time-input-note {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
+  color:var(--color-muted);
   margin-top: 4px;
 }
 
@@ -346,7 +346,7 @@ const apply = () => {
 }
 
 .time-picker-grid::-webkit-scrollbar-track {
-  background: rgba(25, 24, 30, 0.3);
+  background: var(--color-surface-soft);
   border-radius: 2px;
 }
 
@@ -363,9 +363,9 @@ const apply = () => {
   width: 100%;
   text-align: center;
   padding: 30px 0 5px;
-  background: linear-gradient(to bottom, transparent, #19181e);
+  background: linear-gradient(to bottom, transparent, var(--color-surface));
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
+  color:var(--color-muted);
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.3s ease;
@@ -378,24 +378,24 @@ const apply = () => {
 .time-option {
   padding: 10px 0;
   text-align: center;
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: var(--color-surface-soft);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.8);
+  color:var(--color-muted);
   border: 1px solid transparent;
 }
 
 .time-option:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--color-surface-soft);
   transform: translateY(-2px);
 }
 
 .time-option.selected {
   background-color: rgba(233, 75, 159, 0.15);
-  border-color: rgba(233, 75, 159, 0.3);
-  color: white;
+  border-color: rgba(233,75,159,0.165);
+  color: var(--color-text);
   font-weight: 500;
 }
 
@@ -408,23 +408,23 @@ const apply = () => {
 
 .time-period-btn {
   padding: 8px 20px;
-  background-color: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: var(--color-surface-soft);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--color-muted);
   cursor: pointer;
   transition: all 0.2s ease;
   font-size: 14px;
 }
 
 .time-period-btn:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--color-surface-soft);
 }
 
 .time-period-btn.selected {
   background-color: rgba(233, 75, 159, 0.15);
-  border-color: rgba(233, 75, 159, 0.3);
-  color: white;
+  border-color: rgba(233,75,159,0.165);
+  color: var(--color-text);
 }
 
 .time-picker-actions {
@@ -432,7 +432,7 @@ const apply = () => {
   justify-content: flex-end;
   gap: 10px;
   padding: 16px 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--color-border);
 }
 
 .time-picker-btn {
@@ -445,19 +445,19 @@ const apply = () => {
 
 .time-picker-cancel {
   background-color: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--color-border);
+  color:var(--color-muted);
 }
 
 .time-picker-cancel:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: white;
+  background-color: var(--color-surface-soft);
+  color: var(--color-text);
 }
 
 .time-picker-apply {
   background-color: rgba(233, 75, 159, 0.15);
-  border: 1px solid rgba(233, 75, 159, 0.3);
-  color: white;
+  border: 1px solid rgba(233,75,159,0.165);
+  color: var(--color-on-action);
 }
 
 .time-picker-apply:hover {

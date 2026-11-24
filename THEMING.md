@@ -1,60 +1,35 @@
-# Theming System
+# Theme system
 
-## Overview
+`src/styles/theme.css` is the single source of truth for the application palette.
+The default is white, with opaque dark text and Kaka's `#ED4CA1` secondary accent.
+`src/styles/base.css` owns layout, spacing, and typography, not palette values.
+`src/assets/main.css` loads the layout stylesheet before the theme stylesheet.
 
-This project now has a shared Light/Dark theming system. Dark mode is the default experience, and all colors across major components now reference the CSS custom properties declared in `:root`. Light mode is toggled simply by adding or removing the `.light` class on the `<html>` element, so components only need to listen to the same set of variables — they do not care which theme is currently active.
+## Switching themes
 
-## Variables
+`src/App.vue` applies `light` or `dark` to the document root and persists the choice
+under `kaka-theme-preference-v2`. The initial HTML uses `light` to prevent a dark
+flash. Dark mode is explicit (`:root.dark`), not driven by the operating system.
 
-`src/App.vue` defines the base palette:
+## Component colors
 
-```css
-:root {
-  --color-primary: #22c55e;
-  --color-accent: #ec4899;
-  --color-bg: #0b0f19;
-  --color-surface: #111827;
-  --color-text: #ffffff;
-  --color-muted: #9ca3af;
-  --color-border: rgba(255, 255, 255, 0.08);
-  --color-card-border: rgba(255, 255, 255, 0.05);
-  --color-shadow: rgba(0, 0, 0, 0.35);
-  --color-tab-bg: rgba(255, 255, 255, 0.06);
-  --color-tab-border: rgba(255, 255, 255, 0.04);
-  --color-hero-label: rgba(255, 255, 255, 0.75);
-  --color-hero-subtitle: rgba(255, 255, 255, 0.85);
-  --color-search-field: rgba(37, 35, 45, 0.4);
-}
+Use `--color-bg` for the page, `--color-surface` for cards and dialogs,
+`--color-surface-soft` for inset surfaces, and `--color-control` for inputs.
+Use `--color-text` for primary text and `--color-muted` for supporting text.
+Use `--color-border` for separators and `--color-accent` for brand highlights.
+`--color-on-image` and `--color-on-action` provide white foregrounds where needed.
+Keep photograph overlays, QR patterns, and third-party brand colors intentional.
+Do not paint ordinary cards with fixed dark hex values or pale white text.
 
-.light {
-  --color-bg: #ffffff;
-  --color-surface: #f3f4f6;
-  --color-text: #111827;
-  --color-muted: #6b7280;
-  --color-border: rgba(17, 24, 39, 0.2);
-  --color-card-border: rgba(203, 213, 224, 0.4);
-  --color-shadow: rgba(0, 0, 0, 0.1);
-  --color-tab-bg: rgba(15, 23, 42, 0.12);
-}
-```
+The dashboard's older `--bg-*`, `--t-*`, `--home-sidebar-*`, and `--metric-*`
+variables alias these shared tokens; they must not own another neutral palette.
+Both desktop and mobile cart styles, loading placeholders, and date/time dialogs
+follow the same tokens. Theme changes must not change layout, copy, or data.
 
-Brand colors (`--color-primary`, `--color-accent`) are intentionally kept constant; they are used for the date badge, prices, and the pill accents, so they never change between themes. Theme-specific colors (background, surface, text, muted, border, shadow) are the ones that update when `.light` is present.
+## Surface definition
 
-## Toggle behavior
-
-- The App-level state maintains a `theme` ref (`dark`/`light`) and exposes `toggleTheme`.
-- On `onMounted`, we call `initializeTheme`, which checks `localStorage` and falls back to `prefers-color-scheme`, then applies the result via `document.documentElement.classList.toggle('light', ...)`.
-- Clicking the header button toggles between the two and persists the selection in `localStorage`, while the button text/icon reflects the current mode.
-
-## Component usage rules
-
-- Always consume colors through the variables above (e.g., `background-color: var(--color-surface); color: var(--color-text);`).
-- Use `--color-primary` and `--color-accent` whenever the brand green/pink are needed; these should never change even in `.light`.
-- If you need a one-off shade (like the search bar background), create a descriptive variable (e.g., `--color-search-field`) under `:root` so the value is centralized.
-- For elements that must stay on-brand regardless of theme (like the pink static strip at the bottom of HomePage), rely on fixed literals or separate CSS since those colors should not respond to the `.light` class.
-
-## Extending safely
-
-1. Add new semantic tokens to `:root` (and override in `.light` only if the value should change).
-2. Reference those tokens in components. When adding new components, prefer theme-aware values for backgrounds/borders/text, and reserve brand tokens for logos/badges/prices.
-3. Keep UI logic (like the navbar toggle) scoped to `App.vue`. If you need to read the current theme elsewhere, you can derive it from `document.documentElement.classList.contains('light')`, but prefer passing props or using Pinia if global sync is required.
+Use `--shadow-subtle` for depth and `--shadow-elevated` for popovers: both are
+intentionally almost imperceptible. Avoid literal heavy shadows and text glows.
+Keyboard focus uses `--focus-ring` so focus remains visible independently of depth.
+Separators use the low-opacity border tokens. The active dashboard navigation
+item has a black background and white text/icons in both themes.

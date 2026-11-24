@@ -17,8 +17,8 @@
   border-radius: 50px;
   font-size: 0.95rem;
   font-weight: 500;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-subtle);
   transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
   position: relative;
   overflow: hidden;
@@ -39,8 +39,8 @@
 
 .feature-badge:hover {
   transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: var(--shadow-subtle);
+  border-color: var(--color-border-hover);
 }
 
 .feature-badge:hover::before {
@@ -59,7 +59,7 @@
 
 .feature-badge:hover .feature-icon {
   transform: scale(1.2);
-  filter: drop-shadow(0 0 5px rgba(232, 67, 147, 0.5));
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,.035));
 }
 
 .feature-badge span {

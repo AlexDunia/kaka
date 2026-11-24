@@ -1,0 +1,634 @@
+﻿Event upload and account onboarding: complete field reference
+Reviewed: 16 November 2026
+Project: C:\Users\HP\kaka
+
+1. Scope and source of truth
+
+This report follows the currently routed Vue implementation, especially
+src/pages/CreateEvent.vue and src/services/createEventService.js. It covers
+creating an event, configuring tickets and attendee questions, saving/publishing,
+and creating an account. Examples are illustrative, not real customer data.
+
+The active event wizard is /create-event, route name CreateEvent. The router
+imports CreateEvent.vue, not the .fixed, .original, .backup or .full-backup files.
+Editing uses the same component at /events/:id/edit, route name EditEvent.
+
+Important: the active frontend DOES send draft and publish API requests. The
+older docs/create-event-current-infrastructure.md says publishing is local-only;
+that description no longer matches the active code. A local-storage draft helper
+still exists in the service, but the current wizard does not import or call it.
+
+This repository establishes the frontend request contract, not the current
+separate backend's database schema. No live event was submitted, no account was
+created, and no database was queried for this report. A successful database write
+cannot be confirmed from frontend code alone. Legacy SQL is described separately.
+
+2. How the event form looks and works
+
+A four-step wizard shows Basics, Details, Tickets, Attendees across its header.
+The header includes home/back navigation, a theme toggle, draft save feedback,
+and Save draft. Continue moves through the steps after validation. Earlier
+reached steps can be revisited. The final action publishes the event.
+
+The main area has a form column and an optional live event-card preview with a
+rotating tip. Preview can be switched on/off. Dark and light themes are supported.
+The preview shows cover, title, start, location, category and a price. These are
+presentation values, not additional fields to fill in.
+
+Basics uses text input, pill selections, modal date/time pickers, conditional
+recurrence controls, venue suggestions and a category menu. Details uses image
+upload/URL tabs, cover/gallery thumbnails, textareas and optional detail chips.
+Tickets uses free/paid cards followed by capacity or repeatable ticket cards.
+Attendees uses rows of question toggles and a confirmation-email preview.
+
+3. Step 1: Basics - every field
+
+Event name
+  State/payload: title (string).
+  Label: Event name. Placeholder: e.g. Lagos Tech Summit 2026.
+  Required: yes, nonempty after trim. Input maxlength: 100 characters.
+  Default: empty. Sanitized before submission.
+
+Event type
+  State/payload: eventType (string enum).
+  Buttons: One-time -> one_time; Recurring -> recurring.
+  Default: one_time. Switching preserves the first start/end pair.
+  A one-time event sends recurrence: null.
+
+Starts / Ends
+  State/payload: startsAt and endsAt (Date in normal UI state).
+  Default: tomorrow at 18:00 and tomorrow at 22:00, based on browser date.
+  Required: both. Modal picker, readonly display input, calendar button.
+  Event input display: YYYY-MM-DD hh:mm AM/PM, e.g. 2026-12-20 06:00 PM.
+  Recurring labels: First occurrence starts / First occurrence ends.
+  Start must be at least 30 minutes ahead in the event timezone.
+  End must be strictly later than start. End picker minimum is start + 1 minute.
+  Changing start clears an end that is no longer later.
+  Clock-dependent validation refreshes every minute and at navigation/publish.
+  One-time dates spanning calendar days show a duration confirmation, not error.
+  There is no separate manually entered duration field.
+
+Timezone
+  State: venueTimezone; submitted as timeZone (string).
+  No explicit timezone dropdown. A suggested venue sets Africa/Lagos.
+  Fallback: VITE_APP_TIMEZONE, else browser timezone, else UTC.
+  Typing into venue clears its selected timezone and uses that fallback.
+  Example: Africa/Lagos. No standalone UTC offset is collected.
+
+Recurring-only fields
+  recurrence.frequency: null initially; daily, weekly or monthly.
+    Buttons: Every day, Every week, Every month. Required for recurring.
+  recurrence.weeklyDays: number array, initially [].
+    0 Sunday; 1 Monday; 2 Tuesday; 3 Wednesday; 4 Thursday; 5 Friday; 6 Saturday.
+    Weekly selection automatically includes the first occurrence's weekday.
+    That weekday cannot be toggled off; other weekdays can be added/removed.
+    Selected values are sorted. At least one weekday is required.
+  recurrence.monthlyMode: day_of_month initially, or nth_weekday.
+    Radio choices: On the same date every month / On the same weekday pattern.
+  recurrence.dayOfMonth: number or null; derived from first occurrence, 1-31.
+  recurrence.nthWeekday.ordinal: number or null; derived, 1-5.
+  recurrence.nthWeekday.weekday: number or null; derived, 0-6.
+    Monthly numbers come from the first occurrence rather than separate inputs.
+    Example: third Sunday -> ordinal 3, weekday 0.
+    Day-of-month rules clamp 29/30/31 to a shorter month's last day.
+    A fifth weekday skips months without that fifth weekday.
+  recurrence.seriesEndType: on_date initially, or after_occurrences.
+    There is no Never choice.
+  recurrence.seriesEndDate: empty initially; date input YYYY-MM-DD.
+    Required when ending on a date; must be after the first occurrence date.
+    Preview includes occurrence starts through the selected day's end.
+    Sent as null when after_occurrences is selected.
+  recurrence.occurrenceCount: null initially; numeric input, min 1, step 1.
+    Required positive integer when after_occurrences is selected.
+    Count includes the first occurrence. Sent as null for on_date.
+
+Recurring schedule behavior
+  One start time and first-occurrence duration apply throughout the series.
+  No repeat interval (such as every 2 weeks), bespoke dates, per-day times,
+  individual occurrence edits, or endless recurrence is collected here.
+  Preview displays recurrence description, shared times, first date, end rule
+  and up to five upcoming starts. Preview starts are not submitted as records.
+  Overlap validation compares up to 24 generated starts ignoring the end rule.
+  Daily duration >= 24 hours is rejected. Other patterns reject end > next start;
+  exact touching is allowed for those other patterns.
+  Generator scan caps: 3,660 days for daily/weekly; 1,200 months for monthly.
+  These are implementation scan limits, not explicit input maximums.
+
+Format
+  State/payload: format. Default in-person.
+  Buttons/values: In-person/in-person; Online/online; Hybrid/hybrid.
+
+Venue / Location
+  State/payload: venue (string), empty initially.
+  Required for in-person and hybrid; hidden for online.
+  Free text; placeholder Type a venue name or address.
+  Suggestions search hardcoded name + address, up to five matches:
+    Eko Hotel & Suites - Plot 1415 Adetokunbo Ademola St, Victoria Island, Lagos
+    The Civic Centre - Ozumba Mbadiwe Ave, Victoria Island, Lagos
+    Landmark Event Centre - Water Corporation Dr, Oniru, Lagos
+    Terra Kulture - 1376 Tiamiyu Savage St, Victoria Island, Lagos
+    Transcorp Hilton Abuja - 1 Aguiyi-Ironsi St, Maitama, Abuja
+  Selecting a suggestion stores its NAME and timezone, not its displayed address.
+  There are no separate street, city, state, country, postcode, latitude,
+  longitude, map URL or venue-capacity fields.
+
+Meeting link
+  State/payload: meetingLink (string), empty initially.
+  Required for online/hybrid; hidden for in-person. Input type url.
+  Placeholder: https://meet.google.com/... or Zoom link.
+  Helper says only confirmed attendees see it in their email. That is UI intent;
+  this frontend does not establish backend privacy or email-delivery enforcement.
+  Step validator checks nonblank text, not URL syntax or approved hosts.
+
+Category
+  State/payload: category (string name, not numeric ID).
+  Required. Initially empty; menu placeholder Choose a category...
+  Exact choices:
+    Conference & Summit
+    Music & Concert
+    Food & Dining
+    Art & Culture
+    Business & Networking
+    Sports & Fitness
+    Workshop & Training
+    Party & Social
+    Startup & Tech
+    Faith & Community
+    Theatre & Performing Arts
+    Education & Learning
+  One category per event. No subcategory selection in this wizard.
+
+4. Step 2: Details - every field
+
+Event images
+  coverImage: string or null in payload; empty string initially in state.
+  secondaryImages: ordered array of strings, initially [].
+  Cover is required; gallery optional. UI says max 6 total images.
+  Upload files: drag/drop or multi-file input, accept image/*.
+  UI guidance: JPG, PNG, WebP; best 1600x900 pixels.
+  Actual handler accepts MIME types beginning image/, not only those 3 formats.
+  There is no explicit byte-size limit, enforced dimensions, crop, alt text,
+  filename field, caption, copyright or image attribution field.
+  FileReader converts each accepted file to a Data URL, e.g.
+    data:image/png;base64,...
+  Payload sends those strings in JSON, not multipart files or media IDs.
+  No separate upload endpoint is called by this wizard.
+  First image becomes cover; later images become gallery. Removing cover promotes
+  the first gallery item. Set cover swaps a gallery image with the existing cover.
+  File selection is sliced to remaining space out of six total images.
+
+Image URL
+  Temporary input: urlImageValue; not itself a payload field.
+  Trimmed URL must end in .jpg, .jpeg, .png, .webp or .gif, optionally with query.
+  Case-insensitive extension check. No host, HTTPS or image-fetch validation here.
+  First URL becomes cover if empty, otherwise appended to gallery.
+  URL-add handler does not enforce the six-image cap used by file uploads.
+  urlImages tracks URL additions locally but is omitted from the request payload.
+
+Templates
+  Six gradient swatches update coverGradient (CSS gradient string).
+  coverGradient is not submitted; choosing a gradient does not create coverImage
+  and does not satisfy the required cover check.
+
+Description
+  State/payload: description (string), optional, initially empty.
+  Label Tell people what to expect; textarea rows 4.
+  Placeholder asks about experience, agenda and audience.
+  No explicit character limit or rich-text editor. Sanitized plain string.
+
+Organiser display name
+  State/payload: organiser (British spelling), string, optional, initially empty.
+  Label Name or org; example TechHub Lagos.
+  No account/user ID is entered through this input.
+
+Organiser website
+  State/payload: organiserWebsite (string), optional, initially empty.
+  Label Website; input type url, placeholder https://...
+  No step-level URL validation or explicit length limit.
+
+Extra details
+  State/payload: extraDetails, initially [], repeatable selected detail objects.
+  Structure sent: { type: string, label: string, value: string }.
+  UI state also contains icon, which is excluded from payload.
+  Click chip to add a textarea (rows 2); remove button removes that section.
+  One section of each type; values may remain blank. No required/max-length rule.
+  Exact type -> label -> suggested content:
+    parking -> Parking -> Free parking on-site from 5pm.
+    dress -> Dress code -> Smart casual, formal, or themed attire.
+    bring -> What to bring -> Valid ID, ticket, business cards, or supplies.
+    agenda -> Agenda -> 9:00 AM registration, 10:00 AM keynote...
+    speakers -> Speakers -> Speaker names, roles, and session topics.
+    food -> Food & drinks -> Cocktails, light bites, vegetarian or halal options.
+    transport -> Getting there -> Ride-share, public transport, or parking notes.
+    faq -> FAQs -> Answer common attendee questions.
+  Agenda/speakers/FAQs are single text values, not structured sessions,
+  speaker records or question-and-answer arrays.
+
+Tags
+  State/payload: tags (string), optional, initially empty.
+  Placeholder networking, AI, Lagos.
+  The expected human entry is comma-separated text, but the frontend submits ONE
+  string. It does not split, deduplicate, validate or create tag IDs.
+
+5. Step 3: Tickets - every field
+
+Admission mode
+  State/payload: ticketMode (free or paid). Default free.
+  Free admission card or Paid tickets card.
+  Switching modes does not clear tickets or freeCapacity. Both remain in payload.
+
+Free capacity
+  State/payload: freeCapacity; UI string, payload number or null.
+  Free-only input Max spots, optional; type number, min 1, example 200.
+  UI says leaving blank means unlimited.
+  Number(value) || null makes blank, zero or invalid numeric input null.
+  No explicit free-capacity validation exists in validateStep.
+
+Paid ticket categories
+  State/payload: tickets, initially [], array of ticket objects.
+  Paid mode requires at least one category. Templates can be added repeatedly;
+  there is no duplicate-name check or explicit maximum category count.
+  Each category can be removed. Fields in every object:
+
+  id
+    Client-generated incrementing number, not typed by organiser.
+    Starts at 1 for first added ticket. Sent to API. Backend meaning unverified.
+  name
+    Text input Ticket name; required nonblank after trim.
+    Example General Admission. Sanitized on submission; no explicit maxlength.
+  unitType
+    Select Seat type: individual (Individual seat) or table (Group / Table).
+  color
+    Hex string from template, e.g. #1a5fa6; shown as color dot.
+    Custom default #3d3935. No color-editing control in this wizard.
+  price
+    Numeric input Price (naira), min 0, default template price or custom 0.
+    Helper placeholder 0 = free; zero-price categories allowed in paid mode.
+    No explicit decimal step or currency selector. Payload is a plain number,
+    not a minor-unit integer and contains no currency field.
+    Table price is entered for the ticket/table unit, not calculated per seat.
+    Serializer Number(value) || 0. Negative price is rejected by step validator.
+  units
+    Numeric How many spots? or Number of tables; min 0, default 0.
+    Placeholder Leave blank for unlimited. Serializer Number(value) || 0.
+    Blank and explicit zero both send 0; no separate unlimited flag is collected.
+    Database interpretation of this ambiguity cannot be confirmed here.
+  peoplePerUnit
+    Numeric People per table, visible only for table; min 1.
+    Default 10 for table templates; 1 for individual/custom initial category.
+    Serializer Number(value) || 1. Switching seat type does not reset this value.
+    Hidden individual value remains in payload.
+  maxPerPerson
+    Numeric Each person can buy, optional label, min 1, default 1.
+    Placeholder explains a value of 2 caps one buyer at 2 tickets.
+    Serializer Number(value) || 1, so blank/zero becomes 1, not unlimited.
+  visible
+    Boolean checkbox Show on event page, initially true.
+    False hides the ticket according to UI intent but does not remove payload.
+    Frontend does not require at least one visible category.
+  perks
+    String, initially empty. Included and sanitized in payload.
+    Although helper mentions perks, the active wizard has no perks input.
+  salesStart
+    Optional Sales open Date; initial empty string -> payload null.
+    Picker displays MM/DD/YYYY hh:mm AM/PM by default.
+    Picker min date is venue's today and max datetime is event start.
+  salesEnd
+    Optional Sales close Date; initial empty string -> payload null.
+    Same picker limits. If both dates provided, close must be after open.
+    Close cannot be after event start; equality with event start is allowed.
+  salesStartLocal / salesEndLocal
+    Derived payload strings YYYY-MM-DDTHH:mm:ss or null for normal empty input.
+    No separate user inputs; see date serialization below.
+
+Ticket templates: name | unitType | color | starting price in naira
+  Early Bird | individual | #1a7a4a | 5000
+  General Admission | individual | #1a5fa6 | 10000
+  VIP | individual | #ec4899 | 30000
+  Gold Table | table | #ec4899 | 250000
+  Silver Table | table | #7a8fa6 | 150000
+  Student | individual | #302b63 | 3000
+  Custom | individual | #3d3935 | 0, blank name
+  All start with units 0, maxPerPerson 1, visible true, perks empty, sales empty.
+
+Capacity display
+  Individual seats = units. Table seats = units * peoplePerUnit.
+  Total sums all tickets, including hidden ones. This is calculated presentation;
+  no totalCapacity field is sent. Unlimited zero also displays as zero capacity.
+
+Validation boundaries
+  Numeric min attributes guide entry but are not equivalent to explicit publish
+  checks. No step-level checks ensure positive/integer stock, peoplePerUnit,
+  purchase cap or free capacity. No explicit price precision rule. Sales-open
+  date bounds are picker constraints; final validator checks close chronology.
+
+6. Step 4: Attendees - information configured for future attendees
+
+The organiser chooses WHICH questions to collect; this step does not collect
+actual attendee answers. Form state attendeeFields is an array with id, label,
+help, enabled, required. Request omits help and sends the other four properties
+for ALL fields, including disabled fields.
+
+id | label | enabled default | required default | displayed help
+name | Full name | true | true | First and last name
+email | Email address | true | true | For ticket delivery and updates
+phone | Phone number | true | false | For WhatsApp updates and emergency contact
+company | Organisation / Company | false | false | Where they work or study
+job | Job title | false | false | Their role or position
+dietary | Dietary requirements | false | false | Useful for catered events
+shirt | T-shirt size | false | false | If giving out merchandise
+source | How did you hear about us? | false | false | Useful for marketing insight
+
+Name/email show Required instead of an enable/disable checkbox. Other rows can
+be enabled/disabled. There is no control for changing labels, adding custom
+questions, setting input types/options, or making optional fields mandatory.
+There are no size choices, phone masks, dropdown options, answer validators,
+consent checkboxes, or actual answer values in this wizard's payload.
+No extra step-specific validation is implemented for Step 4.
+
+The confirmation-email preview is derived from organiser/title, event title,
+start date and preview location. It includes placeholder attendee name and ticket
+details. Subject, sender identity and email body are not editable inputs and no
+email-template configuration is submitted here.
+
+7. Complete outgoing event payload structure
+
+The following is a structural type reference. A nullable field may be incomplete
+in a draft even when publishing requires it.
+
+{
+  title: string,
+  startsAt: Date/string/null,
+  endsAt: Date/string/null,
+  startsAtLocal: string/null,
+  endsAtLocal: string/null,
+  timeZone: string,
+  eventType: "one_time"/"recurring",
+  recurrence: null or {
+    frequency: "daily"/"weekly"/"monthly"/null,
+    weeklyDays: number[],
+    monthlyMode: "day_of_month"/"nth_weekday",
+    dayOfMonth: number/null,
+    nthWeekday: { ordinal: number/null, weekday: number/null },
+    seriesEndType: "on_date"/"after_occurrences"/null,
+    seriesEndDate: string/null,
+    occurrenceCount: number/null
+  },
+  format: "in-person"/"online"/"hybrid",
+  venue: string,
+  meetingLink: string,
+  category: string,
+  description: string,
+  organiser: string,
+  organiserWebsite: string,
+  tags: string,
+  coverImage: string/null,
+  secondaryImages: string[],
+  ticketMode: "free"/"paid",
+  freeCapacity: number/null,
+  tickets: [{
+    id: number,
+    name: string,
+    unitType: "individual"/"table",
+    color: string,
+    price: number,
+    units: number,
+    peoplePerUnit: number,
+    maxPerPerson: number,
+    visible: boolean,
+    perks: string,
+    salesStart: Date/string/null,
+    salesEnd: Date/string/null,
+    salesStartLocal: string/null,
+    salesEndLocal: string/null
+  }],
+  attendeeFields: [{ id: string, label: string, enabled: boolean, required: boolean }],
+  extraDetails: [{ type: string, label: string, value: string }]
+}
+
+Datetime details
+  JavaScript Dates serialize into ISO UTC strings in JSON, e.g.
+  2026-12-20T17:00:00.000Z for a Lagos/browser-local 18:00 example.
+  Local companion value: 2026-12-20T18:00:00; timezone: Africa/Lagos.
+  Local strings do not include offset or timezone suffix.
+  UTC serialization reflects the browser Date's timezone, which may differ from
+  the chosen venue timezone. Local string plus timeZone expresses event intent.
+  Helper toLocalDateTimeString uses new Date(value). Blank string/undefined
+  returns null, but actual null becomes a local representation of Unix epoch.
+  Therefore a cleared null datetime can yield an epoch local companion alongside
+  a null primary date. Do not assume every null date serializes consistently.
+  No generated occurrence dates are included in the payload.
+
+Sanitization and normalization
+  A script-block regex removes script blocks, then all < and > characters are
+  removed, then whitespace at both ends is trimmed.
+  Applied to title, venue, meetingLink, category, description, organiser,
+  organiserWebsite, tags, ticket name/perks and extra detail value.
+  It is not a full HTML sanitizer or URL validator. Other string fields such as
+  image URLs, colors, attendee labels and extra-detail labels are not treated
+  by that helper. There is no automatic email/URL lowercasing or tag parsing.
+  Boolean fields use Boolean(value). Number defaults are listed above; negative
+  nonzero numbers survive serialization unless separate validation blocks them.
+  Inactive hidden values are still sent; recurrence alone becomes null for
+  one_time, and the inactive series-end field is explicitly nulled.
+
+8. API requests, saving, publishing and editing
+
+Axios baseURL: /api; withCredentials true; withXSRFToken true.
+Before writes/loads the service requests /sanctum/csrf-cookie with credentials.
+Vite development proxy targets http://127.0.0.1:8000 for /api and /sanctum.
+Local frontend port: 5174. Production build base path: /kaka/.
+
+Create draft: POST /api/create-event with the full payload above.
+  Expected usable response: { data: { id: ... } }.
+  Missing draft ID raises 'The backend did not return a draft ID.'
+Update draft: PATCH /api/create-event/{id} with the full payload.
+Publish: POST /api/create-event/{id}/publish, with no explicit JSON body.
+Load editor: GET /api/create-event/{id}.
+  Expects data.id, data.status and data.form; form contains the frontend shape.
+
+Save draft does not call the full step validator. Backend may still reject it.
+The first successful save stores draftId in component memory; later saves PATCH.
+Publish validates steps 1, 2, 3, persists the complete draft, then calls publish.
+Success UI appears only after publish resolves. Duplicate concurrent save/publish
+clicks are guarded. A failed publish may leave the successfully saved draft.
+
+No automatic create-page draft restore or autosave is wired here. draftId is not
+stored in the URL/localStorage by this flow, so reload loses that in-memory ID.
+The unused saveCreateEventDraft helper would store JSON under
+kaka-create-event-draft if called by another caller.
+
+Publish response is read from response.data for the event and response.message
+for success copy. public_url drives public link if present; a fallback is built
+from title. Server-generated ID/status/slug/ownership are not organiser inputs.
+The presence and persistence of those server fields need backend confirmation.
+
+Edit behavior
+  /events/:id/edit requires a positive integer route ID and authentication.
+  Fetch returns form state, then the same wizard can update it via PATCH.
+  Existing status 'active' is treated as published-edit state.
+  Saving changes validates steps 1-3 and PATCHes; it does not call publish.
+  Lead-time validation is skipped for an unchanged existing start during final
+  validation, though date picker constraints still use the current minimum.
+
+Backend errors
+  Reads response.errors object (single message or arrays) or response.message.
+  Displays error summary, maps recognized roots to wizard steps/inline fields.
+  Mapped roots include title, startsAt, category, coverImage, venue, meetingLink,
+  tickets, ticketPrice, recurrence and seriesEnd. Unmapped errors remain summary.
+
+Authentication boundary
+  /create-event has no requiresAuth route metadata, so the frontend guard does
+  not stop an unauthenticated visitor opening it. API authorization is separate.
+  /events/:id/edit does require authentication. Actual event ownership, account
+  association and database transactions must be confirmed in the backend.
+
+9. Account signup onboarding
+
+Route /register -> src/pages/Register.vue -> RegisterForm.vue -> stores/auth.js.
+Centered form card, page content max-width 500px and inner form max-width 400px.
+Heading: Let's get you started. Error/success area above vertically stacked
+fields. Create account button; Already have an account? Log in below.
+
+Full name
+  UI name variable -> API name.
+  Text, required, autocomplete name; placeholder Your full name.
+  Single string; no separate first/last names or max length.
+Email address
+  UI email variable -> API email.
+  type email, required, autocomplete email; placeholder Your email address.
+  Browser email syntax validation; no JS regex, trimming or lowercasing.
+Create a password
+  UI password variable -> API password.
+  type password, required, autocomplete new-password.
+  Client requires at least 6 characters. No strength/complexity rules in form.
+Confirm your password
+  UI confirmPassword variable, required, type password, new-password autocomplete.
+  Must equal password. This separate variable is checked locally.
+  Store builds API password_confirmation from password itself after that check.
+
+All four must be truthy. Whitespace-only name is not explicitly rejected by JS.
+There is no phone, address, date of birth, gender, avatar, business profile,
+organisation ID, role choice, payout account, identity document, country,
+terms acceptance, marketing preference or email verification code in signup UI.
+
+Exact registration request:
+  GET /sanctum/csrf-cookie, then POST /api/register
+  {
+    "name": "Ada Okafor",
+    "email": "ada@example.com",
+    "password": "example-password",
+    "password_confirmation": "example-password"
+  }
+  Then GET /api/user to obtain the authenticated user.
+  This is cookie/session authentication; no bearer token is generated by active
+  registration store. A successful /register response alone is insufficient:
+  the following /user fetch also must succeed.
+
+GET /api/user response is read as response.user or the response object itself.
+The frontend does not enforce a complete user schema; role === admin is used for
+admin access. Returned user is cached in localStorage key user; provider local
+is cached as authProvider. Cached data is not accepted as proof of login by the
+route guard; protected routes initialize against backend /user.
+
+On success, form clears all four inputs, shows a success message and redirects
+to /login after 2 seconds, even though store fetched an authenticated user.
+Backend field errors are surfaced via the store, using first available message.
+Backend password rules, email uniqueness, verification, password hashing and
+actual user table columns are not established by this frontend.
+
+Related access flows
+  Login collects email/password and POSTs /api/login, then GETs /api/user.
+  Google button navigates to /api/auth/google. Callback /auth/google/success
+  reads user/error query parameters, parses supplied user JSON, then verifies
+  backend session through GET /api/user before admin/dashboard navigation.
+  Exact Google scopes and provider profile schema are not defined here.
+  Forgot password POSTs { email } to /api/forgot-password.
+  Reset collects password/confirmation plus token/email from URL and POSTs
+  { token, email, password, password_confirmation } to /api/reset-password.
+  Reset frontend minimum is 8 characters, versus signup's 6.
+
+Legacy authService.js contains a simulated localStorage user database, UUIDs and
+plaintext-password demo behavior. RegisterForm uses stores/auth.js instead;
+that simulated service is not the active signup storage path.
+
+10. Database structures present in this repository
+
+The active create-event contract uses camelCase fields and nested arrays. The
+separate backend's migrations/controllers for /api/create-event and /api/register
+are not present in the inspected frontend paths, so exact active SQL types,
+foreign keys, nullability, indexes and storage normalization are unconfirmed.
+
+api/database.sql contains a LEGACY events schema, not a proven mapping for this
+wizard. Its columns are:
+  id INT auto-increment primary key
+  title VARCHAR(255) NOT NULL
+  description TEXT
+  category VARCHAR(50)
+  subCategories TEXT (comment: JSON subcategory IDs)
+  date DATETIME
+  location VARCHAR(255)
+  mainImage VARCHAR(255) (comment: Cloudinary link)
+  bannerImage VARCHAR(255) (comment: Cloudinary link)
+  price DECIMAL(10,2)
+  totalTickets INT
+  availableTickets INT
+  featured BOOLEAN DEFAULT FALSE
+  organizer VARCHAR(255)
+  duration VARCHAR(50)
+  ticketTypes TEXT (comment: JSON array)
+  faqs TEXT (comment: JSON array)
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+Except title/id, other legacy event columns do not declare NOT NULL.
+
+Legacy categories: id VARCHAR(50) PK; name VARCHAR(100) NOT NULL.
+Legacy subcategories: id VARCHAR(50) PK; name VARCHAR(100) NOT NULL;
+category_id VARCHAR(50) foreign key to categories.id.
+These category IDs/labels differ from the current wizard's category menu.
+
+api/database_setup.sql also defines transactions and purchased tickets. Those
+are purchase records, not ticket-category setup inputs:
+  transactions: id, reference, customer_first_name, customer_last_name,
+  customer_email, customer_phone, total_amount, currency, payment_status,
+  transaction_date, payment_method.
+  tickets: id, ticket_id, transaction_reference, event_id, event_title,
+  ticket_type, price_per_ticket, purchase_date, holder_name, holder_email, is_used.
+Neither schema file establishes the active account signup table.
+
+Do not assume title->title, startsAt->date, venue->location, coverImage->mainImage,
+organiser->organizer, tickets->ticketTypes is an implemented database mapping.
+The current wizard sends its richer contract to /api/create-event; it does not
+call the legacy events.php write path. The old schema also lacks dedicated
+columns for the complete recurrence, timezone, gallery and attendee-field data.
+
+11. Fields and behavior not collected by the event wizard
+
+No event slug input, visibility/private-event setting, age limit, refund policy,
+custom currency, tax, platform fee, promo code, payout/bank details, seating map,
+seat IDs, barcode format, ticket PDF template, sponsor records, staff roles,
+email consent setting, attendee answers or payment credentials are collected.
+Any such controls elsewhere in the dashboard/checkout are separate flows.
+Hidden ticket perks/color and generated payload date companions are documented
+above so they are not mistaken for editable inputs.
+
+12. Source references for review
+
+src/router/index.js - routed pages and auth guards.
+src/pages/CreateEvent.vue - active wizard, defaults, controls, validation, submit.
+src/services/createEventService.js - authoritative payload builder and requests.
+src/utils/eventDateTime.js - timezone, minimum start and local serialization.
+src/utils/recurrenceSchedule.js - recurrence generation and overlap behavior.
+src/components/DateTimePickerInput.vue - displayed date/time input format.
+src/components/DateTimePicker.vue - modal selection and constraints.
+src/api/axios.js - API prefix, session credentials and CSRF bootstrap.
+vite.config.js - local API proxy and frontend base path.
+src/pages/Register.vue and src/components/RegisterForm.vue - signup UI.
+src/stores/auth.js - active registration/login/session request contract.
+src/components/LoginForm.vue and GoogleCallback.vue - Google access flow.
+src/pages/ResetPassword.vue - reset request and password constraints.
+api/database.sql and api/database_setup.sql - legacy schema evidence.
+
+This report describes the inspected working files as they stand on review date.
+It does not rely on backup wizard files or assume the older infrastructure guide
+still describes the active API integration.

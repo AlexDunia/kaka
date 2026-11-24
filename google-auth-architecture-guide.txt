@@ -1,0 +1,536 @@
+﻿Google login and signup: architecture and frontend implementation guide
+Reviewed: 16 November 2026
+Project: C:\Users\HP\kaka
+
+1. What you built
+
+Your frontend uses Vue 3, Pinia, Vue Router, Axios and Vite. The Google entry
+point navigates the browser to your backend. The backend handles Google's OAuth
+exchange and establishes an application session. Vue receives a completion
+redirect and calls GET /api/user to verify that session.
+
+The frontend does not use a Google JavaScript SDK, Firebase Auth, a popup,
+client-side Google token verification or a bearer-token interceptor for this
+flow. Google client secrets and the authorization-code exchange belong on the
+backend. The active frontend authenticates subsequent requests with cookies.
+
+Important scope distinction: this guide verifies frontend source. The actual
+Google controller, provider credentials, backend OAuth callback route, account
+matching policy and database migrations are not in this frontend implementation.
+The Sanctum endpoint and repository README indicate a Laravel-compatible session
+architecture; they do not prove the separate backend's installed packages or
+configuration. Socialite below is a proposed Laravel implementation choice,
+not a package confirmed in your current backend. The root composer.json here
+only declares fruitcake/laravel-cors.
+
+2. Start with this code map
+
+src/main.js
+  Creates the Vue app. Installs Pinia before Router so route guards can use the
+  auth store. Waits for router.isReady() before mounting.
+src/pages/LoginPage.vue
+  Page wrapper that renders LoginForm.
+src/components/LoginForm.vue
+  loginWithGoogle(), Google button, local email/password login and navigation.
+src/components/RegisterForm.vue
+  Local account signup. Currently has no Google signup button.
+src/components/GoogleCallback.vue
+  Receives the frontend completion redirect, checks query parameters, verifies
+  /api/user and navigates to admin or dashboard.
+src/stores/auth.js
+  Central user/session state, fetchUser, initialize, setUser, login and logout.
+src/api/axios.js
+  Central API client and CSRF-cookie bootstrap helper.
+src/router/index.js
+  Callback route, protected-route metadata and authentication/admin guard.
+src/App.vue
+  Starts session initialization on mount, derives signed-in UI and avatar.
+vite.config.js
+  Local proxy, development port and deployed application base path.
+package.json and package-lock.json
+  Frontend dependencies and resolved package versions.
+src/services/authService.js
+  Older simulated localStorage authentication. Do not use as the reference for
+  the active Google/session flow: the active components use stores/auth.js.
+
+3. The full request journey
+
+Browser                   Application backend                 Google
+  | GET /api/auth/google ------>|                               |
+  | <---- redirect to Google ---|                               |
+  | ---------------- authorization request ------------------->|
+  | <--------------- account selection / consent ---------------|
+  | <------ redirect to BACKEND callback with code + state ------|
+  | --------------------------->|                               |
+  |                             |---- server-side exchange ---->|
+  |                             |<--- identity/token data -------|
+  |                             | validate identity, find/create |
+  |                             | local user, establish session  |
+  | <--- session cookie + redirect to FRONTEND completion page --|
+  | GET /api/user ------------->|                               |
+  | <--- authenticated user ----|                               |
+  | Vue opens dashboard/admin   |                               |
+
+Backend exchange, state checking and user creation in this diagram describe
+required server responsibilities. Their actual implementation needs inspection
+in your separate backend repository.
+
+There are TWO callback concepts:
+  A. Google -> backend OAuth callback: handles code/state and Google credentials.
+  B. Backend -> Vue /auth/google/success: finishes the frontend experience.
+Do not register the Vue success page as Google's code-exchange callback when
+implementing this server-side design. Confirm the real backend callback URL.
+
+4. The entry button
+
+File: src/components/LoginForm.vue
+
+const loginWithGoogle = () => {
+  window.location.href = '/api/auth/google'
+}
+
+The template calls it through:
+  <button type="button" @click="loginWithGoogle">
+    Continue with Google
+  </button>
+
+This starts a full browser navigation. It is not an Axios request and does not
+use api.baseURL. The hardcoded path already includes /api. A top-level browser
+navigation can follow Google's authorization redirects normally.
+
+The type="button" is important because this button sits inside the local login
+form: it should not submit the email/password form or trigger its validation.
+No email or password from those inputs is passed to Google by this handler.
+
+Login and Google signup typically share this same entry point. The backend
+chooses whether to authenticate an existing linked account or create a new one.
+The frontend contains no separate Google registration API call and no flag to
+choose signup versus login. Whether new accounts are actually created is a
+backend behavior to confirm.
+
+To offer Google signup on a new registration screen, add a button that starts
+the same redirect. This project currently offers it only on LoginForm, not on
+RegisterForm. You do not need a second Google OAuth client just for signup.
+
+5. Local infrastructure: why relative URLs work
+
+vite.config.js uses:
+  development port 5174, strictPort true
+  development base /
+  build base /kaka/
+  /api -> http://127.0.0.1:8000, changeOrigin true
+  /sanctum -> http://127.0.0.1:8000, changeOrigin true
+
+Opening http://localhost:5174/login then clicking Google requests
+http://localhost:5174/api/auth/google. Vite forwards it to the backend on port
+8000. The browser-facing application origin remains localhost:5174 for that
+request. The /api/user and CSRF-cookie requests use the same proxy arrangement.
+
+Do not mix localhost and 127.0.0.1 in browser-facing URLs. They are different
+cookie hosts. The proxy's upstream 127.0.0.1 address is an internal destination;
+that is different from sending the browser itself to that host.
+
+The Google-registered backend callback can use a browser-reachable proxied route
+or a directly exposed backend route, but its cookie host, state session and
+frontend return address must work together. Confirm which one the backend uses.
+An illustrative proxied local callback is:
+  http://localhost:5174/api/auth/google/callback
+This is an example, not a discovered route in your project.
+
+Vite's proxy only exists during development. A built static site cannot proxy
+/api by itself. Production needs a web server/reverse proxy forwarding /api and
+/sanctum to the backend, or explicitly configured separate API-origin URLs with
+credentialed CORS and compatible cookie settings.
+
+Your build base /kaka/ also matters: router history uses BASE_URL, so the browser
+completion page would be /kaka/auth/google/success on that deployment. The
+backend must redirect to the deployed frontend base. The Google entry remains
+root-relative /api/auth/google; it does not become /kaka/api/auth/google.
+History-mode hosting must serve the SPA entry for direct completion-page loads,
+while keeping real /api and /sanctum requests routed to the backend.
+
+6. Central Axios client and cookies
+
+File: src/api/axios.js
+
+const api = axios.create({
+  baseURL: '/api',
+  withCredentials: true,
+  withXSRFToken: true,
+})
+
+A call api.get('/user') becomes /api/user. Avoid api.get('/api/user'), which
+would duplicate the prefix. withCredentials supports cookie-bearing requests;
+withXSRFToken supports the Axios XSRF header behavior. Neither setting logs a
+user in or overrides browser cookie policy.
+
+The helper ensureCsrfCookie() requests /sanctum/csrf-cookie through plain Axios,
+with credentials and XSRF support. It shares concurrent in-flight requests and
+resets the stored promise when complete. It does not cache success forever.
+The active local login, register and logout methods await it before POSTs.
+
+Google login starts with browser navigation instead. The Google callback's
+GET /api/user does not call this helper. OAuth state verification protects the
+provider redirect flow; CSRF handling for application POST/PATCH/DELETE requests
+is a separate responsibility.
+
+The actual login credential is the backend's session cookie, normally HttpOnly
+as configured by the backend. A readable XSRF cookie serves a different purpose.
+No application auth token is minted by these Vue methods. Google access tokens
+are not stored by this frontend flow.
+
+7. What the callback component does today
+
+File: src/components/GoogleCallback.vue
+Route: /auth/google/success, name google-callback.
+The callback is public: it must render before the app has verified the session.
+
+On mount:
+  1. Parse window.location.search with URLSearchParams.
+  2. Read user and error query values.
+  3. If error exists, replace route with /login?error=<encoded error>.
+  4. If user is missing, replace with /login?error=session_not_established.
+  5. Parse JSON.parse(decodeURIComponent(userData)).
+  6. Call authStore.setUser(callbackUser, 'google').
+  7. Await authStore.fetchUser(), which makes GET /api/user.
+  8. Route authenticated role admin to /admin; everyone else to /dashboard.
+  9. Parsing/request failures log Google session verification failed and route
+     back to /login?error=session_not_established.
+
+It shows a Getting your account ready... screen during the operation.
+router.replace avoids leaving the completion page as a normal back-stack step.
+
+Current completion contract is approximately:
+  /auth/google/success?user=<URL-encoded JSON>
+The exact encoding emitted by the backend has not been verified. URLSearchParams
+already decodes query values, so the extra decodeURIComponent can incorrectly
+handle literal percent content. Match the actual encoding contract before
+changing one side.
+
+The query user is not proof of authentication. The later /api/user call is the
+meaningful check. However setUser applies the query object before verification,
+so the current implementation can transiently expose unverified user state to
+other components. It also places profile information in URL/history/logs.
+For a fresh project, let the backend redirect to a completion page without user
+JSON, and fetch the user directly from the authenticated session before setting
+any signed-in state. This requires changing the current missing-user check too.
+
+8. Pinia store: how session state is managed
+
+File: src/stores/auth.js
+
+State
+  user: null initially.
+  authProvider: null initially; set to google or local during those flows.
+  initialized: false initially.
+  isLoading: shared loading flag.
+  error: shared error string/null.
+  initializePromise: private promise for concurrent initialization.
+
+Computed values
+  isAuthenticated = Boolean(user).
+  isAdmin = user?.role === 'admin'.
+  getUser/getError expose current values.
+
+fetchUser()
+  GET /api/user, then accepts response.data.user or response.data itself.
+  Requires a truthy object, then applyUser writes state and localStorage user.
+  Failure clears local user/provider state and rethrows.
+  This check is loose: an array or generic object can pass. For a new project,
+  define and validate a stable response envelope with a usable user ID.
+  A backend redirect to an HTML login page must not count as a user response.
+
+setUser(userData, provider='google')
+  Applies user and caches it, records provider and sets initialized false.
+  It does not create a server session or validate credentials.
+
+initialize({ force=false })
+  Returns existing state when already initialized unless forced.
+  Shares one ongoing fetch when multiple consumers initialize together.
+  Otherwise fetches /user, returns null on failure, marks initialized true.
+  A network failure is therefore currently treated like signed-out state.
+  A later retry can call initialize({ force:true }).
+
+Caching
+  localStorage user contains returned profile JSON.
+  localStorage authProvider contains provider label.
+  The store starts with null values and does not restore auth from those keys.
+  The keys are UI/cache data, not credentials or authority for protected routes.
+  authProvider is not restored by fetchUser itself, so it can be null after a
+  reload even when the backend session remains authenticated.
+
+Initialization lifecycle
+  main.js installs Pinia then Router.
+  Protected navigation awaits initialize before allowing the page.
+  App.vue also calls initialize on mount for signed-in header state on public
+  pages. Concurrent initialize calls share the private promise.
+  Callback calls fetchUser directly, not initialize, so it can overlap with the
+  App.vue initialization fetch. A subsequent protected navigation can fetch
+  again because setUser reset initialized and fetchUser does not mark it true.
+  These explain extra /user requests; they are not automatically a login failure.
+
+UI integration
+  App.vue reads authStore.isAuthenticated for signed-in display.
+  Avatar falls back through avatar_url, profile_picture, photoURL.
+  Initials derive from display_name, name or email.
+  A fresh project should agree one profile shape rather than rely on aliases.
+
+Logout
+  POST /api/logout after CSRF bootstrap; clear local state in finally.
+  Returns serverLogoutSucceeded false if server request failed.
+  Local sign-out does not prove server invalidation: a reload may recover the
+  still-valid session when logout failed. Check this return value in logout UI.
+  Signing out here is application sign-out; Google account sign-out/revocation
+  is not performed by these methods.
+
+9. Router protection and return navigation
+
+File: src/router/index.js
+Uses createWebHistory(import.meta.env.BASE_URL).
+Protected routes include dashboard, dashboard-event, admin, transactions and
+EditEvent. The admin route requires both authentication and admin role.
+
+beforeEach:
+  If requiresAuth or requiresAdmin, await authStore.initialize().
+  If no authenticated user, navigate to login with redirect=to.fullPath.
+  If admin required and user is not admin, navigate home.
+
+Frontend guards support navigation UX. Backend endpoints still need independent
+session and role/ownership authorization. A local role edit must not grant API
+access. A validated session can also expire after initialization; the current
+store has no shared Axios 401 response interceptor to synchronize that state.
+
+Current return-navigation gap: LoginForm and GoogleCallback always choose admin
+or dashboard. They do not consume the guard's redirect query. Google navigation
+also does not preserve that query through its own flow.
+For a fresh project, carry a validated internal return path through backend
+session/OAuth state handling and use it after successful session verification.
+Reject external destinations and protocol-relative URLs. Do not use an arbitrary
+query URL as a redirect destination.
+
+10. How login and signup should share backend infrastructure
+
+The following is a recommended backend contract, not verified current code.
+
+GET /api/auth/google
+  Start a stateful provider redirect. Store/verify OAuth state through the
+  server session. Request only identity scopes your app needs.
+GET <backend Google callback>
+  Validate provider response/state. Exchange code on the server. Obtain a
+  verified provider identity, resolve its local user, authenticate with the
+  application's session guard, regenerate session, redirect to frontend.
+GET /api/user
+  Return canonical app user when authenticated; return JSON 401 otherwise.
+POST /api/logout
+  End/invalidate session and handle CSRF appropriately.
+
+Existing linked provider identity -> login to its local user.
+First-time permitted identity -> create local user + linked identity, then login.
+Existing email without a linked Google identity -> follow an explicit verified
+account-linking policy. Do not silently link based only on arbitrary email text.
+The provider's stable subject ID, not changing display name, identifies the
+external identity. Enforce uniqueness and handle concurrent first sign-ins.
+
+Suggested storage model for a fresh app:
+  users: application ID, display name, email, verified status, role, timestamps.
+  oauth_identities: local user ID, provider, provider subject, timestamps;
+                    unique(provider, provider_subject).
+  sessions: storage appropriate to your chosen session driver.
+These are suggested concepts, not the schema discovered in this project.
+A Google-only account need not have an invented known local password. Decide
+how later password setup, account deletion and provider unlinking will work.
+Do not store provider access/refresh tokens unless a separate feature needs
+Google APIs; keep needed tokens server-side with suitable storage protection.
+
+Laravel option
+  A matching backend can use Socialite for Google redirects/identity exchange
+  and Sanctum for the SPA's session-authenticated API requests.
+  Google start/callback routes need a working session middleware stack even if
+  their URLs begin /api. A default stateless API route stack is not sufficient
+  for session-based state checks. Do not disable state verification just to
+  suppress an InvalidStateException.
+  Protect /user and other private APIs through the configured session-aware
+  authentication middleware. Configure stateful SPA handling for the installed
+  Laravel/Sanctum version; verify its official version-specific instructions.
+
+11. Infrastructure checklist for a fresh project
+
+A. Frontend foundation
+  Create Vue app with Vite; install Pinia, Vue Router and Axios.
+  Register Pinia before Router. Set a deliberate router/base deployment path.
+  Build one central cookie-enabled API client, one auth store, one public
+  completion route and one consistent protected-route guard.
+  Add the same Google entry button to login and signup screens.
+  Keep provider/profile state separate from verified authentication state.
+
+B. Backend contract first
+  Agree exact start URL, backend callback URL, frontend completion URL, /user
+  envelope, error codes and logout behavior. Record them in one auth document.
+  Decide whether frontend/API share a public origin or use subdomains.
+  Confirm session storage survives the full Google round trip and multiple
+  application instances. Use shared session storage when needed.
+
+C. Google project
+  Configure OAuth consent/branding, intended audience and test-user access as
+  applicable. Create a Web application OAuth client for the backend flow.
+  Register the exact backend redirect URI: scheme, host, port, path and trailing
+  slash must match the authorization request. Keep local and production values
+  deliberate. The backend return-to-frontend URL is a separate app setting.
+  Keep the Google client secret in backend configuration, never VITE_* values
+  or browser code. Vite frontend environment values are public build inputs.
+  For a backend redirect flow the frontend does not need a Google SDK config.
+
+D. Cookies and origins
+  Set cookie domain/path/Secure/SameSite for the real topology and redirect flow.
+  Session cookie should be HttpOnly. HTTPS is required for production.
+  Configure stateful SPA origins including local port where required.
+  With separate frontend/API origins, allow the specific frontend origin and
+  credentialed CORS; wildcard origin is incompatible with credentialed access.
+  Keep cookie sharing and browser same-site restrictions in mind. Sanctum SPA
+  authentication is intended for SPA/API under the same top-level domain.
+  A same-public-origin reverse proxy reduces cross-origin configuration work.
+  Ensure the OAuth state cookie/session survives Google's return; an overly
+  restrictive cookie policy can break state checks.
+
+E. Production web server
+  Forward /api and /sanctum to the application backend.
+  Serve SPA history fallbacks for frontend routes including completion page.
+  Prevent the SPA fallback from swallowing API routes and returning HTML.
+  Ensure generated HTTPS URLs are correct behind trusted reverse proxies.
+  Update frontend return URL for a subpath such as /kaka/ if applicable.
+  Build base does not automatically create any backend/proxy routes.
+
+F. Configuration documentation
+  Record public frontend origin/base, backend origin, Google backend callback,
+  frontend completion URL, stateful domains and cookie settings in an example
+  config without secrets. Record the backend/framework/package versions.
+  The current Axios client uses literal /api: README VITE_API_URL does not
+  configure this auth client's URL. Do not copy that README assumption blindly.
+
+12. A cleaner completion page for the new project
+
+Conceptual implementation, not a patch to this repository:
+
+onMounted(async () => {
+  try {
+    // Backend has already set its application session cookie.
+    const user = await authStore.initialize({ force: true })
+    if (!user) {
+      await router.replace({ name: 'login', query: { error: 'session_not_established' } })
+      return
+    }
+    await router.replace(user.role === 'admin' ? '/admin' : '/dashboard')
+  } catch {
+    await router.replace({ name: 'login', query: { error: 'session_not_established' } })
+  }
+})
+
+This assumes initialize preserves the current return-null-on-failure behavior.
+A more explicit design can distinguish no session from network/server errors,
+show retry on temporary failures, and use a validated stored return path.
+Handle a backend error query before attempting completion. The login page must
+map known error codes to helpful messages. The example intentionally obtains
+user only from /user and requires no profile JSON in the completion URL.
+
+For a new store, strengthen /user schema validation and expose a verified-user
+operation rather than a general setUser function for authentication completion.
+Use one session-initialization path to reduce duplicate fetches and races.
+
+13. Bug-finding guide: follow the first failing boundary
+
+Open browser DevTools, Network, Preserve log before starting. Full navigation
+otherwise clears useful request history. Inspect status, redirect Location,
+request Cookies, response Set-Cookie and browser cookie rejection reasons.
+Avoid copying cookies, codes, secrets or full callback profiles into shared logs.
+
+Symptom: Google click returns 404.
+  Inspect GET /api/auth/google. Confirm frontend origin, Vite proxy, running
+  backend and actual route. In production confirm reverse proxy exists.
+Symptom: Google says redirect_uri_mismatch.
+  Compare the authorization request redirect_uri with the registered backend
+  URI character by character. Do not substitute Vue completion URL.
+Symptom: OAuth state error.
+  Inspect start/callback session continuity, cookie host/path/SameSite/Secure,
+  session middleware, storage and localhost/127.0.0.1 consistency.
+Symptom: Google completes but login page reappears.
+  Check frontend callback query: current code rejects a missing user value.
+  Then inspect /api/user: JSON 401 means app session was not established/sent;
+  200 HTML can mean a redirect/fallback routing error; 5xx means backend issue.
+Symptom: 200 /api/user but wrong UI user.
+  Confirm exact response shape. Store reads {user:...} or raw object, not
+  {data:{user:...}}; its current object-only validation can accept wrong shapes.
+Symptom: malformed user JSON or URIError.
+  Check backend encoding versus URLSearchParams and extra decodeURIComponent.
+Symptom: callback error exists in URL but no explanation is displayed.
+  Current LoginPage/LoginForm never read route.query.error. Add a known-code
+  message map in the fresh project; do not display arbitrary raw provider text.
+Symptom: signed in until refresh, then signed out.
+  Inspect /user on reload and session cookie persistence; localStorage presence
+  is not enough. Check /user origin, expiry and backend session storage.
+Symptom: extra /user requests.
+  Trace App.vue initialize, callback fetchUser and guard initialize. Current
+  direct fetchUser calls do not all participate in initialization deduplication.
+Symptom: redirected to dashboard instead of intended event editor.
+  Guard records redirect but login/callback ignore it. Implement safe return path.
+Symptom: protected API starts returning 401 after long use.
+  Guard initialization is cached. Current client has no common 401 interceptor.
+  Handle session expiry consistently and provide a recoverable sign-in path.
+Symptom: mutation returns 419 after Google login.
+  Check /sanctum/csrf-cookie, XSRF cookie/header, credentials and stateful handling.
+  OAuth success does not replace application mutation CSRF setup.
+Symptom: logout appears successful but refresh signs user back in.
+  Inspect serverLogoutSucceeded and POST /api/logout; local clearing occurs even
+  when the request failed and server session may still be valid.
+Symptom: works locally but production callback 404s.
+  Check deployed /kaka/ base, backend frontend-return URL, SPA history fallback
+  and API proxy. Vite development proxy is absent in built files.
+
+14. Useful verification scenarios before reusing the infrastructure
+
+Use a dedicated test account and isolated browser profile where appropriate.
+Test existing linked Google user; new allowed Google user; user cancel/deny;
+malformed/missing callback data for the current implementation; no valid server
+session; reload on a protected route; expired session; non-admin visiting admin;
+failed /user request; logout then reload; repeated sign-in; existing local email
+with Google identity; original-destination return; direct production callback
+load; two environments with different callback URLs.
+
+Expected success is not just reaching dashboard. Confirm canonical /user data,
+backend-authorized private API access, reload persistence and server logout.
+For automated coverage, use backend provider mocks for account-resolution/state
+cases and a browser integration test for redirects, session continuity and route
+behavior. Avoid hitting real Google for every routine test run.
+
+15. What to carry forward and what to improve
+
+Carry forward:
+  One central API client, one auth store, backend-owned OAuth exchange,
+  cookie-session verification via /user, route metadata/guard, explicit proxy
+  configuration and role-driven destination selection.
+Improve in the new project:
+  Add Google button to signup as well as login.
+  Remove callback profile JSON and apply only server-verified user state.
+  Validate a stable /user response shape.
+  Display callback errors and distinguish temporary failure from no session.
+  Honor a validated internal return destination.
+  Coordinate initialization and 401 handling; report unsuccessful server logout.
+  Document callback, cookie, base path and environment contracts together.
+
+These are recommendations. No authentication source files were changed while
+preparing this guide, and no live Google login or backend account creation was
+performed. To explain your exact account-creation queries, provider scopes,
+Google credentials setup and session settings, inspect the separate backend's
+OAuth controller/routes, provider config, auth/session middleware and migrations.
+
+16. Official references
+
+Google web-server authorization flow and redirect/state requirements:
+https://developers.google.com/identity/protocols/oauth2/web-server
+Google OpenID Connect identity setup and validation:
+https://developers.google.com/identity/openid-connect/openid-connect
+Laravel Sanctum 12.x: SPA sessions, CSRF and origin configuration:
+https://laravel.com/framework/docs/12.x/sanctum
+Laravel Socialite: provider integration and session-state verification:
+https://laravel.com/framework/docs/socialite
+Use docs matching the version chosen for the new backend. These sources support
+the recommended infrastructure; local source files establish current behavior.

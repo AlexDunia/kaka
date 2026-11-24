@@ -489,7 +489,7 @@ const rowCount = computed(() => Math.max(1, props.rows))
   background: var(--color-skeleton-surface);
   border: 1px solid var(--color-skeleton-border);
   border-radius: 8px;
-  box-shadow: 0 8px 24px var(--color-shadow);
+  box-shadow: var(--shadow-subtle);
 }
 
 .page-skeleton__card {
@@ -840,7 +840,7 @@ const rowCount = computed(() => Math.max(1, props.rows))
 
 .create-event-skeleton .ce-step:first-child {
   background: color-mix(in srgb, var(--color-accent) 14%, var(--color-surface));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 32%, transparent);
+  box-shadow: var(--shadow-subtle);
 }
 
 .create-event-skeleton .ce-step-number {
@@ -941,7 +941,7 @@ const rowCount = computed(() => Math.max(1, props.rows))
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 24px;
-  box-shadow: 0 10px 30px var(--color-shadow);
+  box-shadow: var(--shadow-subtle);
 }
 
 .create-event-skeleton .ce-card {
@@ -1036,7 +1036,7 @@ const rowCount = computed(() => Math.max(1, props.rows))
   border-radius: 8px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  box-shadow: 0 10px 30px var(--color-shadow);
+  box-shadow: var(--shadow-subtle);
 }
 
 .create-event-skeleton__event-media {
@@ -1142,12 +1142,12 @@ const rowCount = computed(() => Math.max(1, props.rows))
   --color-skeleton-base: rgba(255, 255, 255, .055);
   --color-skeleton-highlight: rgba(255, 255, 255, .13);
   --color-skeleton-surface: #151518;
-  --color-skeleton-border: rgba(255, 255, 255, .075);
+  --color-skeleton-border: var(--color-border);
   display: grid;
   grid-template-columns: 252px minmax(0, 1fr);
   min-height: 100vh;
-  background: #0c0c0e;
-  color: #f4f4f5;
+  background: var(--color-surface);
+  color:var(--color-text);
   font-family: 'Figtree', system-ui, sans-serif;
   overflow: hidden;
 }
@@ -1156,8 +1156,8 @@ const rowCount = computed(() => Math.max(1, props.rows))
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: #111113;
-  border-right: 1px solid rgba(255, 255, 255, .075);
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
 }
 
 .dashboard-skel-brand {
@@ -1180,8 +1180,8 @@ const rowCount = computed(() => Math.max(1, props.rows))
   align-items: center;
   gap: 12px;
   padding: 16px 20px;
-  border-top: 1px solid rgba(255, 255, 255, .055);
-  border-bottom: 1px solid rgba(255, 255, 255, .055);
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .dashboard-skel-thumb {
@@ -1225,7 +1225,7 @@ const rowCount = computed(() => Math.max(1, props.rows))
   min-height: 40px;
   padding: 0 10px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, .025);
+  background: var(--color-surface-soft);
 }
 
 .dashboard-skel-nav-icon,
@@ -1256,8 +1256,8 @@ const rowCount = computed(() => Math.max(1, props.rows))
   justify-content: space-between;
   gap: 24px;
   padding: 12px 32px;
-  background: rgba(24, 24, 30, .88);
-  border-bottom: 1px solid rgba(255, 255, 255, .075);
+  background: var(--color-surface-soft);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .dashboard-skel-auth {
@@ -1282,7 +1282,7 @@ const rowCount = computed(() => Math.max(1, props.rows))
   height: 282px;
   margin: 24px 32px 0;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, .075);
+  border: 1px solid var(--color-border);
   border-radius: 18px;
   background:
     radial-gradient(circle at 66% 18%, rgba(255, 255, 255, .11), transparent 34%),
@@ -1322,9 +1322,9 @@ const rowCount = computed(() => Math.max(1, props.rows))
 
 .dashboard-skel-stat-card,
 .dashboard-skel-panel {
-  border: 1px solid rgba(255, 255, 255, .075);
+  border: 1px solid var(--color-border);
   border-radius: 14px;
-  background: #151518;
+  background: var(--color-surface);
 }
 
 .dashboard-skel-stat-card {
@@ -1385,7 +1385,7 @@ const rowCount = computed(() => Math.max(1, props.rows))
   align-items: center;
   gap: 14px;
   padding: 14px 0;
-  border-top: 1px solid rgba(255, 255, 255, .055);
+  border-top: 1px solid var(--color-border);
 }
 
 .dashboard-skel-ticket-row {

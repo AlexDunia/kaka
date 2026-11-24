@@ -758,7 +758,7 @@ onUnmounted(() => {
   --surface: #ffffff;
   --surface-2: #f7f7f9;
   --surface-3: #f0f0f4;
-  --border: #e8e8ee;
+  --border: color-mix(in srgb, #e8e8ee 55%, transparent);
   --border-strong: #d0d0dc;
   --green: #16a34a;
   --green-soft: #dcfce7;
@@ -817,7 +817,7 @@ onUnmounted(() => {
 
 .sb-top {
   padding: 20px 16px 16px;
-  border-bottom: 0.5px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 0.5px solid var(--color-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -847,7 +847,7 @@ onUnmounted(() => {
   position: absolute;
   width: 12px;
   height: 12px;
-  border: 2px solid rgba(255, 255, 255, 0.9);
+  border: 2px solid var(--color-border);
   border-radius: 2px;
   transform: rotate(45deg);
   top: 6px;
@@ -857,7 +857,7 @@ onUnmounted(() => {
 .logo-text {
   font-size: 14px;
   font-weight: 700;
-  color: #fff;
+  color:var(--color-text);
   letter-spacing: -0.01em;
 }
 
@@ -869,11 +869,11 @@ onUnmounted(() => {
 #newBtn {
   width: 28px;
   height: 28px;
-  border: 0.5px solid rgba(255, 255, 255, 0.12);
+  border: 0.5px solid var(--color-border);
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--color-surface-soft);
   cursor: pointer;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--color-muted);
   font-size: 18px;
   line-height: 1;
   display: flex;
@@ -885,23 +885,23 @@ onUnmounted(() => {
 #newBtn:hover {
   background: var(--blue);
   border-color: var(--blue);
-  color: #fff;
+  color: var(--color-text);
   transform: scale(1.08);
 }
 
 .sb-search {
   padding: 10px 12px;
-  border-bottom: 0.5px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 0.5px solid var(--color-border);
 }
 
 .sb-search input {
   width: 100%;
-  background: rgba(255, 255, 255, 0.06);
-  border: 0.5px solid rgba(255, 255, 255, 0.1);
+  background: var(--color-surface-soft);
+  border: 0.5px solid var(--color-border);
   border-radius: var(--radius-sm);
   padding: 7px 10px;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
+  color:var(--color-muted);
   outline: none;
   font-family: 'Inter', sans-serif;
   transition:
@@ -910,7 +910,7 @@ onUnmounted(() => {
 }
 
 .sb-search input::placeholder {
-  color: rgba(255, 255, 255, 0.3);
+  color:var(--color-muted);
 }
 
 .sb-search input:focus {
@@ -924,7 +924,7 @@ onUnmounted(() => {
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.25);
+  color:var(--color-muted);
 }
 
 #noteList {
@@ -946,12 +946,12 @@ onUnmounted(() => {
 }
 
 .note-card:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--color-surface-soft);
 }
 
 .note-card.active {
   background: rgba(29, 111, 242, 0.12);
-  border-color: rgba(29, 111, 242, 0.3);
+  border-color: rgba(29,111,242,0.165);
 }
 
 .note-card.active::before {
@@ -969,7 +969,7 @@ onUnmounted(() => {
 .nc-title {
   font-size: 12.5px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.8);
+  color:var(--color-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -977,7 +977,7 @@ onUnmounted(() => {
 }
 
 .note-card.active .nc-title {
-  color: #fff;
+  color: var(--color-text);
 }
 
 .nc-meta {
@@ -1023,13 +1023,13 @@ onUnmounted(() => {
 
 .nc-date {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.25);
+  color:var(--color-muted);
   margin-top: 3px;
 }
 
 .sb-stats {
   padding: 14px 16px;
-  border-top: 0.5px solid rgba(255, 255, 255, 0.07);
+  border-top: 0.5px solid var(--color-border);
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 0;
@@ -1041,13 +1041,13 @@ onUnmounted(() => {
 }
 
 .stat-block + .stat-block {
-  border-left: 0.5px solid rgba(255, 255, 255, 0.07);
+  border-left: 0.5px solid var(--color-border);
 }
 
 .stat-val {
   font-size: 15px;
   font-weight: 700;
-  color: #fff;
+  color:var(--color-text);
   font-family: 'JetBrains Mono', monospace;
   letter-spacing: -0.02em;
 }
@@ -1062,7 +1062,7 @@ onUnmounted(() => {
 
 .stat-lbl {
   font-size: 9px;
-  color: rgba(255, 255, 255, 0.3);
+  color:var(--color-muted);
   text-transform: uppercase;
   letter-spacing: 0.07em;
   margin-top: 2px;
@@ -1217,7 +1217,7 @@ onUnmounted(() => {
 
 .trade-grid:focus-within {
   border-color: var(--blue);
-  box-shadow: 0 0 0 3px var(--blue-glow);
+  box-shadow: var(--focus-ring);
 }
 
 .info-cell {
@@ -1428,7 +1428,7 @@ onUnmounted(() => {
   position: absolute;
   top: 10px;
   right: 10px;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--color-surface-soft);
   border: 0.5px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 4px 10px;
@@ -1445,8 +1445,8 @@ onUnmounted(() => {
 
 .chart-remove:hover {
   color: var(--red);
-  border-color: #fca5a5;
-  background: #fff5f5;
+  border-color: color-mix(in srgb, #fca5a5 55%, transparent);
+  background: var(--color-surface);
 }
 
 .editor {
@@ -1519,49 +1519,49 @@ onUnmounted(() => {
 .e-calm.on {
   background: #dcfce7;
   color: #15803d;
-  border-color: #86efac;
+  border-color: color-mix(in srgb, #86efac 55%, transparent);
 }
 
 .e-confident.on {
   background: #dbeafe;
   color: #1d4ed8;
-  border-color: #93c5fd;
+  border-color: color-mix(in srgb, #93c5fd 55%, transparent);
 }
 
 .e-patient.on {
   background: #e0e7ff;
   color: #4338ca;
-  border-color: #a5b4fc;
+  border-color: color-mix(in srgb, #a5b4fc 55%, transparent);
 }
 
 .e-disciplined.on {
-  background: #f0fdf4;
+  background: var(--color-surface);
   color: #166534;
-  border-color: #86efac;
+  border-color: color-mix(in srgb, #86efac 55%, transparent);
 }
 
 .e-fear.on {
   background: #fef3c7;
   color: #92400e;
-  border-color: #fcd34d;
+  border-color: color-mix(in srgb, #fcd34d 55%, transparent);
 }
 
 .e-fomo.on {
-  background: #fff7ed;
+  background: var(--color-surface);
   color: #9a3412;
-  border-color: #fdba74;
+  border-color: color-mix(in srgb, #fdba74 55%, transparent);
 }
 
 .e-revenge.on {
   background: #fee2e2;
   color: #991b1b;
-  border-color: #fca5a5;
+  border-color: color-mix(in srgb, #fca5a5 55%, transparent);
 }
 
 .e-greedy.on {
   background: #fef9c3;
   color: #854d0e;
-  border-color: #fde047;
+  border-color: color-mix(in srgb, #fde047 55%, transparent);
 }
 
 .star-row {
@@ -1658,7 +1658,7 @@ onUnmounted(() => {
 
 .tag-input:focus {
   border-color: var(--blue);
-  box-shadow: 0 0 0 3px var(--blue-glow);
+  box-shadow: var(--focus-ring);
 }
 
 .divider {
@@ -1673,7 +1673,7 @@ onUnmounted(() => {
   left: 252px;
   right: 0;
   height: 50px;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--color-surface-soft);
   backdrop-filter: blur(12px);
   border-top: 0.5px solid var(--border);
   display: flex;
@@ -1709,7 +1709,7 @@ onUnmounted(() => {
 
 #saveBtn {
   background: var(--blue);
-  color: #fff;
+  color: var(--color-text);
   border: none;
   border-radius: var(--radius-sm);
   padding: 8px 22px;
@@ -1721,16 +1721,12 @@ onUnmounted(() => {
     background 0.15s,
     transform 0.12s,
     box-shadow 0.15s;
-  box-shadow:
-    0 1px 3px rgba(29, 111, 242, 0.3),
-    0 4px 12px rgba(29, 111, 242, 0.2);
+  box-shadow: var(--shadow-subtle);
 }
 
 #saveBtn:hover {
   background: var(--blue-dim);
-  box-shadow:
-    0 2px 8px rgba(29, 111, 242, 0.4),
-    0 8px 20px rgba(29, 111, 242, 0.2);
+  box-shadow: var(--shadow-subtle);
   transform: translateY(-1px);
 }
 
@@ -1743,7 +1739,7 @@ onUnmounted(() => {
   bottom: 72px;
   right: 28px;
   background: var(--ink);
-  color: #fff;
+  color:var(--color-text);
   padding: 10px 18px;
   border-radius: var(--radius-md);
   font-size: 13px;
@@ -1756,7 +1752,7 @@ onUnmounted(() => {
   transition: all 0.25s var(--ease-out-expo);
   pointer-events: none;
   z-index: 100;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-subtle);
 }
 
 #toast.show {
@@ -1831,7 +1827,7 @@ onUnmounted(() => {
   margin-top: 4px;
   padding: 9px 20px;
   background: var(--blue);
-  color: #fff;
+  color:var(--color-text);
   border: none;
   border-radius: var(--radius-sm);
   font-size: 13px;
@@ -1839,7 +1835,7 @@ onUnmounted(() => {
   cursor: pointer;
   font-family: 'Inter', sans-serif;
   transition: all 0.15s;
-  box-shadow: 0 2px 8px rgba(29, 111, 242, 0.3);
+  box-shadow: var(--shadow-subtle);
 }
 
 .empty-action:hover {
@@ -1880,19 +1876,19 @@ onUnmounted(() => {
   --surface: var(--color-surface, #fdfcfa);
   --surface-2: var(--color-bg, #f5f2ee);
   --surface-3: var(--color-tab-bg, #ede9e3);
-  --border: var(--color-border, #e4ded7);
+  --border: var(--color-border, color-mix(in srgb, #e4ded7 55%, transparent));
   --border-strong: var(--color-border-hover, #d8d0c8);
 }
 
 .tradelog-dashboard.light-mode #sidebar {
-  background: var(--color-surface, #fdfcfa);
-  border-right: 0.5px solid var(--color-border, #e4ded7);
+  background: var(--color-surface, var(--color-surface));
+  border-right: 0.5px solid var(--color-border, color-mix(in srgb, #e4ded7 55%, transparent));
 }
 
 .tradelog-dashboard.light-mode .sb-top,
 .tradelog-dashboard.light-mode .sb-search,
 .tradelog-dashboard.light-mode .sb-stats {
-  border-color: var(--color-border, #e4ded7);
+  border-color: var(--color-border, color-mix(in srgb, #e4ded7 55%, transparent));
 }
 
 .tradelog-dashboard.light-mode .logo-text,
@@ -1909,7 +1905,7 @@ onUnmounted(() => {
 .tradelog-dashboard.light-mode .sb-search input,
 .tradelog-dashboard.light-mode #newBtn {
   background: var(--color-tab-bg, #ede9e3);
-  border-color: var(--color-border, #e4ded7);
+  border-color: var(--color-border, color-mix(in srgb, #e4ded7 55%, transparent));
   color: var(--color-text, #0d0d0d);
 }
 
@@ -1923,7 +1919,7 @@ onUnmounted(() => {
 
 .tradelog-dashboard.light-mode .note-card.active {
   background: color-mix(in srgb, var(--color-primary, #22c55e) 12%, transparent);
-  border-color: color-mix(in srgb, var(--color-primary, #22c55e) 30%, transparent);
+  border-color: color-mix(in srgb, var(--color-primary, color-mix(in srgb, #22c55e 55%, transparent)) 30%, transparent);
 }
 
 .tradelog-dashboard.light-mode .nc-title,
@@ -1932,11 +1928,11 @@ onUnmounted(() => {
 }
 
 .tradelog-dashboard.light-mode .stat-block + .stat-block {
-  border-left-color: var(--color-border, #e4ded7);
+  border-left-color: var(--color-border, color-mix(in srgb, #e4ded7 55%, transparent));
 }
 
 .tradelog-dashboard.light-mode #savebar {
-  background: color-mix(in srgb, var(--color-surface, #fdfcfa) 90%, transparent);
+  background: color-mix(in srgb, var(--color-surface, var(--color-surface)) 90%, transparent);
 }
 
 @media (max-width: 760px) {

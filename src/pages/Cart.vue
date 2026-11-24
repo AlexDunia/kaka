@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
@@ -138,7 +138,7 @@ function proceedToCheckout() {
 .cart-bg {
   min-height: 100vh;
   width: 100vw;
-  background: #14121a;
+  background: var(--color-surface);
   display: flex;
   flex-direction: column;
   padding: 0;
@@ -148,7 +148,7 @@ function proceedToCheckout() {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #fff;
+  color: var(--color-text);
   font-size: 1rem;
   padding: 1rem;
   cursor: pointer;
@@ -167,7 +167,7 @@ function proceedToCheckout() {
 .cart-container {
   width: 100%;
   margin: 0;
-  background: #1b1822;
+  background: var(--color-surface);
   border-radius: 0;
   box-shadow: none;
   border: none;
@@ -180,7 +180,7 @@ function proceedToCheckout() {
 .cart-title {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #fff;
+  color:var(--color-text);
   margin: 0.5rem 1rem 1rem;
   letter-spacing: -0.01em;
   text-align: left;
@@ -188,7 +188,7 @@ function proceedToCheckout() {
 }
 
 .cart-empty {
-  color: #bdbdbd;
+  color:var(--color-muted);
   font-size: 1.15rem;
   text-align: center;
   padding: 2.5rem 1rem;
@@ -205,7 +205,7 @@ function proceedToCheckout() {
 
 .continue-shopping {
   background: #c04888;
-  color: #fff;
+  color: var(--color-on-action);
   border: none;
   padding: 0.75rem 1.5rem;
   border-radius: 8px;
@@ -228,11 +228,11 @@ function proceedToCheckout() {
 .cart-item {
   display: flex;
   gap: 1rem;
-  background: #18151f;
+  background: var(--color-surface);
   border-radius: 12px;
   padding: 1rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border: 1px solid #23202b;
+  box-shadow: var(--shadow-subtle);
+  border: 1px solid color-mix(in srgb, #23202b 55%, transparent);
   align-items: flex-start;
   width: 90%;
   margin: 0 auto;
@@ -270,18 +270,18 @@ function proceedToCheckout() {
 .cart-event-title {
   font-size: 1rem;
   font-weight: 600;
-  color: #fff;
+  color:var(--color-text);
   line-height: 1.3;
 }
 
 .cart-ticket-type {
   font-size: 0.9rem;
-  color: #e0e0e0;
+  color:var(--color-text);
 }
 
 .cart-address {
   font-size: 0.85rem;
-  color: #bdbdbd;
+  color:var(--color-muted);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -297,7 +297,7 @@ function proceedToCheckout() {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  background: #23202b;
+  background: var(--color-surface);
   padding: 0.25rem 0.75rem;
   border-radius: 6px;
 }
@@ -305,7 +305,7 @@ function proceedToCheckout() {
 .qty-btn {
   background: none;
   border: none;
-  color: #fff;
+  color: var(--color-text);
   font-size: 1.1rem;
   font-weight: 600;
   padding: 0.25rem;
@@ -321,7 +321,7 @@ function proceedToCheckout() {
 .cart-qty {
   font-size: 0.95rem;
   font-weight: 500;
-  color: #fff;
+  color:var(--color-text);
   min-width: 1.5rem;
   text-align: center;
 }
@@ -335,7 +335,7 @@ function proceedToCheckout() {
 .cart-price {
   font-size: 1.1rem;
   font-weight: 600;
-  color: #fff;
+  color:var(--color-text);
 }
 
 .cart-remove-inline {
@@ -352,8 +352,8 @@ function proceedToCheckout() {
   bottom: 0;
   left: 0;
   right: 0;
-  background: #1b1822;
-  border-top: 1px solid #23202b;
+  background: var(--color-surface);
+  border-top: 1px solid color-mix(in srgb, #23202b 55%, transparent);
   padding: 1rem;
   z-index: 100;
 }
@@ -364,7 +364,7 @@ function proceedToCheckout() {
   align-items: center;
   font-size: 1.1rem;
   font-weight: 600;
-  color: #fff;
+  color:var(--color-text);
   width: 90%;
   margin: 0 auto 0.75rem;
 }
@@ -381,8 +381,8 @@ function proceedToCheckout() {
   height: 3rem;
   border-radius: 8px;
   font-size: 0.9rem;
-  background: #23202b;
-  color: #fff;
+  background: var(--color-surface);
+  color: var(--color-text);
   border: none;
   cursor: pointer;
   min-width: 100px;
@@ -397,7 +397,7 @@ function proceedToCheckout() {
   border-radius: 8px;
   font-size: 0.9rem;
   background: #c04888;
-  color: #fff;
+  color: var(--color-on-action);
   border: none;
   cursor: pointer;
   font-weight: 600;
@@ -411,12 +411,12 @@ function proceedToCheckout() {
   top: 2.5rem;
   left: 50%;
   transform: translateX(-50%);
-  background: #2d2a36;
-  color: #fff;
+  background: var(--color-surface);
+  color:var(--color-text);
   padding: 1rem 2rem;
   border-radius: 8px;
   font-weight: 500;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-subtle);
   z-index: 1000;
 }
 

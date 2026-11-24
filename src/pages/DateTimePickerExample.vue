@@ -143,7 +143,7 @@ h1 {
   font-size: 28px;
   font-weight: 600;
   margin-bottom: 30px;
-  color: #333;
+  color:var(--color-text);
   text-align: center;
 }
 
@@ -151,7 +151,7 @@ h2 {
   font-size: 20px;
   font-weight: 500;
   margin-bottom: 20px;
-  color: #444;
+  color:var(--color-text);
 }
 
 .example-container {
@@ -162,27 +162,27 @@ h2 {
 }
 
 .form-group {
-  background-color: #fff;
+  background-color: var(--color-surface);
   padding: 25px;
   border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-subtle);
 }
 
 .selected-value {
   margin-top: 15px;
   font-size: 14px;
-  color: #666;
+  color:var(--color-muted);
 }
 
 .selected-value span {
   font-weight: 500;
-  color: #333;
+  color:var(--color-text);
 }
 
 .note {
   margin-top: 10px;
   font-size: 13px;
-  color: #888;
+  color:var(--color-muted);
   font-style: italic;
 }
 
@@ -190,7 +190,7 @@ h2 {
   margin-top: 15px;
   padding: 8px 16px;
   background-color: #4a6cf7;
-  color: white;
+  color: var(--color-on-action);
   border: none;
   border-radius: 5px;
   cursor: pointer;
@@ -203,7 +203,7 @@ h2 {
 }
 
 .code-example {
-  background-color: #f8f9fc;
+  background-color: var(--color-surface);
   padding: 25px;
   border-radius: 10px;
   margin-top: 40px;
@@ -215,8 +215,8 @@ h2 {
 
 pre {
   padding: 20px;
-  background-color: #282c34;
-  color: #abb2bf;
+  background-color: var(--color-surface);
+  color:var(--color-muted);
   border-radius: 6px;
   overflow-x: auto;
   font-family: 'Fira Code', Consolas, Monaco, 'Andale Mono', monospace;

@@ -81,7 +81,7 @@ const goBack = () => {
   background-color: var(--card-bg);
   border-radius: 10px;
   padding: 3rem 2rem;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-subtle);
 }
 
 .not-found-code {
@@ -90,7 +90,7 @@ const goBack = () => {
   line-height: 1;
   color: var(--primary);
   margin-bottom: 1rem;
-  text-shadow: 0 0 10px rgba(232, 67, 147, 0.5);
+  text-shadow: none;
 }
 
 .not-found-title {
@@ -99,7 +99,7 @@ const goBack = () => {
 }
 
 .not-found-message {
-  color: rgba(255, 255, 255, 0.8);
+  color:var(--color-muted);
   margin-bottom: 2rem;
   line-height: 1.6;
 }
@@ -116,7 +116,7 @@ const goBack = () => {
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
   background-color: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid var(--color-border);
   color: var(--text-color);
   border-radius: 6px;
   cursor: pointer;
@@ -124,7 +124,7 @@ const goBack = () => {
 }
 
 .not-found-btn:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--color-surface-soft);
 }
 
 .not-found-btn--primary {

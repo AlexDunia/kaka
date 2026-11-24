@@ -271,7 +271,7 @@ const handleSubmit = async () => {
 
 .contact-page__subtitle {
   font-size: 1.2rem;
-  color: rgba(255, 255, 255, 0.9);
+  color:var(--color-muted);
   max-width: 600px;
   margin: 0 auto;
   line-height: 1.6;
@@ -293,21 +293,21 @@ const handleSubmit = async () => {
 }
 
 .contact-info-card {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--color-surface-soft);
   backdrop-filter: blur(10px);
   border-radius: 16px;
   padding: 2rem;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: var(--shadow-subtle);
+  border: 1px solid var(--color-border);
   transition: all 0.3s ease;
   transform: translateY(0);
 }
 
 .contact-info-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-  border-color: rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.05);
+  box-shadow: var(--shadow-subtle);
+  border-color: var(--color-border);
+  background: var(--color-surface-soft);
 }
 
 .contact-info-card__icon {
@@ -342,7 +342,7 @@ const handleSubmit = async () => {
   font-size: 1.4rem;
   margin-bottom: 0.75rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.95);
+  color:var(--color-muted);
 }
 
 .contact-info-card__detail {
@@ -359,16 +359,16 @@ const handleSubmit = async () => {
 
 .contact-info-card__hours {
   font-size: 0.95rem;
-  color: rgba(255, 255, 255, 0.6);
+  color:var(--color-muted);
 }
 
 .contact-page__form-container {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--color-surface-soft);
   backdrop-filter: blur(10px);
   border-radius: 24px;
   padding: 3rem;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: var(--shadow-subtle);
+  border: 1px solid var(--color-border);
   animation: slideUp 0.8s ease-out;
 }
 
@@ -394,7 +394,7 @@ const handleSubmit = async () => {
 
 .contact-form-success p {
   margin-bottom: 2rem;
-  color: rgba(255, 255, 255, 0.9);
+  color:var(--color-muted);
   font-size: 1.1rem;
   line-height: 1.6;
 }
@@ -402,13 +402,13 @@ const handleSubmit = async () => {
 .contact-form__title {
   margin-bottom: 2rem;
   font-size: 1.8rem;
-  color: rgba(255, 255, 255, 0.95);
+  color:var(--color-muted);
   font-weight: 600;
 }
 
 .contact-form__error {
   background: rgba(255, 77, 77, 0.1);
-  border-left: 4px solid #ff5555;
+  border-left: 4px solid color-mix(in srgb, #ff5555 55%, transparent);
   color: #ff5555;
   padding: 1rem;
   border-radius: 8px;
@@ -425,34 +425,34 @@ const handleSubmit = async () => {
   display: block;
   margin-bottom: 0.75rem;
   font-size: 1rem;
-  color: rgba(255, 255, 255, 0.9);
+  color:var(--color-muted);
   font-weight: 500;
 }
 
 .contact-form__input,
 .contact-form__textarea {
   width: 100%;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 1rem;
-  color: rgba(255, 255, 255, 0.9);
+  color:var(--color-muted);
   font-size: 1rem;
   transition: all 0.3s ease;
 }
 
 .contact-form__input:hover,
 .contact-form__textarea:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: var(--color-surface-soft);
+  border-color: var(--color-border);
 }
 
 .contact-form__input:focus,
 .contact-form__textarea:focus {
-  background: rgba(255, 255, 255, 0.07);
+  background: var(--color-surface-soft);
   border-color: var(--primary);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(232, 67, 147, 0.1);
+  box-shadow: var(--focus-ring);
 }
 
 .contact-form__textarea {
@@ -468,7 +468,7 @@ const handleSubmit = async () => {
   background: linear-gradient(135deg, var(--primary) 0%, #ff79c6 100%);
   border: none;
   border-radius: 12px;
-  color: white;
+  color: var(--color-on-action);
   cursor: pointer;
   transition: all 0.3s ease;
   transform: translateY(0);
@@ -476,7 +476,7 @@ const handleSubmit = async () => {
 
 .contact-form__submit:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(232, 67, 147, 0.2);
+  box-shadow: var(--shadow-subtle);
 }
 
 .contact-form__submit:active:not(:disabled) {
