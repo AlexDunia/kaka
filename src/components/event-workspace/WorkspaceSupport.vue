@@ -8,24 +8,33 @@ const dialog = ref(null),
   mode = ref('scan'),
   video = ref(null),
   error = ref(''),
-  cameraRunning = ref(false)
+  cameraRunning = ref(false),
+  cameraStarting = ref(false)
 const order = ref(null),
   entrance = ref(null)
 let stream = null,
   frame = null,
-  previousFocus = null
+  previousFocus = null,
+  cameraVersion = 0,
+  disposed = false
 
-const money = (value) => formatMoneyMinor(value, 'NGN')
+const money = (value) => formatMoneyMinor(value, order.value?.currency || 'NGN')
 const samplePrice = { 'Early bird': 500000, 'General admission': 1000000, VIP: 2500000 }
 const orderGuests = computed(() => {
-  const ids = order.value?.guests?.map(g => typeof g === 'string' ? g : g.id) || []
-  return (props.guests || []).filter(g => ids.includes(g.id) || g.email === order.value?.email)
+  if (!props.preview)
+    return (props.guests || []).filter((guest) => order.value?.itemIds?.includes(guest.orderItemId))
+  const ids = order.value?.guests?.map((g) => (typeof g === 'string' ? g : g.id)) || []
+  return (props.guests || []).filter((g) => ids.includes(g.id) || g.email === order.value?.email)
 })
-const receiptTotal = computed(() => orderGuests.value.reduce((total, guest) => total + (samplePrice[guest.type] || 0), 0))
+const receiptTotal = computed(() =>
+  !props.preview
+    ? order.value?.amountMinor || 0
+    : orderGuests.value.reduce((total, guest) => total + (samplePrice[guest.type] || 0), 0),
+)
 const entranceUrl = computed(() => {
   const url = new URL(location.href)
   url.searchParams.set('view', 'checkin')
-  if (entrance.value?.name) url.searchParams.set('entrance', entrance.value.name)
+  if (entrance.value?.id) url.searchParams.set('entrance', String(entrance.value.id))
   return url.href
 })
 async function open(kind, value) {
@@ -39,6 +48,8 @@ async function open(kind, value) {
 }
 
 function stopCamera() {
+  cameraVersion++
+  cameraStarting.value = false
   if (frame) cancelAnimationFrame(frame)
   frame = null
   stream?.getTracks().forEach((track) => track.stop())
@@ -52,37 +63,57 @@ function close() {
   previousFocus?.focus()
 }
 async function startCamera() {
+  if (cameraStarting.value || cameraRunning.value || disposed) return
+  const version = ++cameraVersion
+  cameraStarting.value = true
   error.value = ''
   if (!('BarcodeDetector' in window)) {
     error.value =
       'Camera scanning isn’t supported in this browser. Close this window and enter the ticket code instead.'
+    cameraStarting.value = false
     return
   }
   if (!navigator.mediaDevices?.getUserMedia) {
     error.value =
       'We couldn’t open your camera. Use a secure browser connection or enter the ticket code instead.'
+    cameraStarting.value = false
     return
   }
   try {
-    stream = await navigator.mediaDevices.getUserMedia({
+    const acquired = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'environment' },
       audio: false,
     })
+    if (disposed || version !== cameraVersion) {
+      acquired.getTracks().forEach((track) => track.stop())
+      return
+    }
+    stream = acquired
+    cameraStarting.value = false
     cameraRunning.value = true
     await nextTick()
+    if (disposed || version !== cameraVersion || !video.value) return
     video.value.srcObject = stream
     await video.value.play()
     const detector = new window.BarcodeDetector({ formats: ['qr_code'] })
     const scan = async () => {
-      if (!stream) return
+      if (!stream || disposed || version !== cameraVersion) return
       try {
         const found = await detector.detect(video.value)
+        if (disposed || version !== cameraVersion) return
         if (found.length) {
           let code = found[0].rawValue
+          if (!props.preview) {
+            emit('scan', code)
+            close()
+            return
+          }
           try {
             const data = JSON.parse(code)
             code = data.ticket || data.id || code
-          } catch { /* A plain ticket code does not need JSON parsing. */ }
+          } catch {
+            /* A plain ticket code does not need JSON parsing. */
+          }
           const guest = props.guests?.find(
             (g) => g.id.toUpperCase() === String(code).trim().toUpperCase(),
           )
@@ -97,9 +128,9 @@ async function startCamera() {
       } catch {
         error.value = 'We couldn’t read that ticket. Hold the code steady and try again.'
       }
-      frame = requestAnimationFrame(scan)
+      if (!disposed && version === cameraVersion) frame = requestAnimationFrame(scan)
     }
-    frame = requestAnimationFrame(scan)
+    if (!disposed && version === cameraVersion) frame = requestAnimationFrame(scan)
   } catch {
     stopCamera()
     error.value =
@@ -109,7 +140,11 @@ async function startCamera() {
 function printReceipt() {
   window.print()
 }
-onBeforeUnmount(stopCamera)
+onBeforeUnmount(() => {
+  disposed = true
+  stopCamera()
+  dialog.value?.close()
+})
 defineExpose({ open })
 </script>
 <template>
@@ -135,7 +170,12 @@ defineExpose({ open })
       <p v-if="error" role="alert">{{ error }}</p>
       <div class="rh-form-actions">
         <button class="rh-button rh-button-outline" @click="close">Close</button
-        ><button v-if="!cameraRunning" class="rh-button rh-button-dark" @click="startCamera">
+        ><button
+          v-if="!cameraRunning"
+          :disabled="cameraStarting"
+          class="rh-button rh-button-dark"
+          @click="startCamera"
+        >
           Start camera
         </button>
       </div></template
@@ -146,7 +186,7 @@ defineExpose({ open })
           ><span class="rh-wordmark-name">Rush Hour</span
           ><span class="rh-wordmark-tickets">Tickets</span></span
         >
-        <p class="rh-note">Sample purchase receipt</p>
+        <p class="rh-note">{{ preview ? 'Sample purchase receipt' : 'Purchase receipt' }}</p>
         <h2>{{ event?.title }}</h2>
         <div class="rh-detail-list">
           <div>

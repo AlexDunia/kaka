@@ -1,9 +1,11 @@
 <script setup>
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import api, { ensureCsrfCookie } from '@/api/axios'
-import { buildCreateEventPayload, getEventForEditing } from '@/services/createEventService'
+import EventEditorConflict from '@/components/EventEditorConflict.vue'
+import { editorErrorMessages } from '@/utils/eventEditor'
+import { patchEvent, getEventForEditing } from '@/services/createEventService'
 import WorkspaceDoorCheckin from './WorkspaceDoorCheckin.vue'
+import WorkspaceEventLifecycle from './WorkspaceEventLifecycle.vue'
 import { DASHBOARD_PREVIEW as preview } from '@/services/dashboardPreview'
 import WorkspacePromote from './WorkspacePromote.vue'
 import WorkspaceDiscountCodes from './WorkspaceDiscountCodes.vue'
@@ -135,7 +137,10 @@ function codeStatus(c) {
   return 'available'
 }
 function persistCodes(next) {
-  if (!preview) { unavailable(); return false }
+  if (!preview) {
+    unavailable()
+    return false
+  }
   if (!save('codes', next)) return false
   codes.value = next
   return true
@@ -148,11 +153,48 @@ const settingsTab = ref('details'),
 const editableForm = ref(null)
 const ticketOverrides = ref(read('ticket-settings', {}))
 const settingsTickets = computed(() =>
-  (props.overview.ticket_types || []).map((ticket) => ({
-    ...ticket,
-    ...ticketOverrides.value[ticket.id],
-  })),
+  preview
+    ? (props.overview.ticket_types || []).map((ticket) => ({
+        ...ticket,
+        ...ticketOverrides.value[ticket.id],
+      }))
+    : (editableForm.value?.tickets || []).map((ticket) => ({
+        ...ticket,
+        price_minor: Math.round(Number(ticket.price) * 100),
+        configured_capacity_units: ticket.inventory.configured_capacity_units,
+        effective_capacity_units: ticket.inventory.configured_capacity_units,
+        ...ticket.inventory,
+      })),
 )
+const conflict = ref(false),
+  conflictRecord = ref(null),
+  conflictLoading = ref(false),
+  conflictError = ref('')
+async function loadConflictRecord() {
+  conflictLoading.value = true
+  conflictError.value = ''
+  try {
+    conflictRecord.value = (await getEventForEditing(props.eventId)).data
+  } catch {
+    conflictError.value = 'We could not load the saved event. Your edits are still here.'
+  } finally {
+    conflictLoading.value = false
+  }
+}
+async function handleConflict(error) {
+  if ([409, 428].includes(error.response?.status)) {
+    conflict.value = true
+    await loadConflictRecord()
+  }
+}
+async function reloadConflictedEvent() {
+  await loadConflictRecord()
+  if (!conflictRecord.value || conflictError.value) return
+  applyEditorRecord(conflictRecord.value)
+  editingTicket.value = null
+  conflict.value = false
+  ticketFeedback.value = ''
+}
 const editingTicket = ref(null),
   ticketEditor = ref(null),
   ticketSaving = ref(false),
@@ -163,7 +205,7 @@ async function editTicket(ticket) {
   ticketFeedback.value = ''
   Object.assign(ticketForm, {
     price: Number(ticket.price_minor || 0) / 100,
-    capacity: ticket.effective_capacity_units,
+    capacity: ticket.configured_capacity_units ?? ticket.effective_capacity_units,
     availability: ticket.visible === false ? 'off' : 'on',
   })
   await nextTick()
@@ -172,14 +214,17 @@ async function editTicket(ticket) {
 }
 async function saveTicket() {
   const ticket = editingTicket.value
-  if (!ticket || ticketSaving.value) return
+  if (!ticket || ticketSaving.value || conflict.value) return
   const capacity = Number(ticketForm.capacity),
     price = Number(ticketForm.price)
   if (
     !Number.isFinite(price) ||
-    price < 0 ||
+    price <= 0 ||
+    price > 999999.99 ||
+    !/^\d+(?:\.\d{1,2})?$/.test(String(ticketForm.price)) ||
     !Number.isSafeInteger(capacity) ||
-    capacity < Math.max(1, Number(ticket.sold_units || 0) + Number(ticket.reserved_units || 0))
+    capacity > 1000000 ||
+    capacity < Number(ticket.sold_units || 0) + Number(ticket.reserved_units || 0)
   ) {
     ticketFeedback.value =
       'Choose a valid price and keep enough tickets for existing purchases and reservations.'
@@ -203,37 +248,49 @@ async function saveTicket() {
           'We couldn’t load this ticket for editing. Reload the page and try again.'
         return
       }
-      const tickets = source.tickets.map((item) =>
-        String(item.id) === String(ticket.id)
-          ? { ...item, price, units: capacity, visible: patch.visible }
-          : item,
+      const result = await patchEvent(
+        props.eventId,
+        {
+          tickets: [
+            {
+              id: ticket.id,
+              price: String(ticketForm.price),
+              units: capacity,
+              visible: patch.visible,
+            },
+          ],
+        },
+        source.version,
       )
-      const payload = buildCreateEventPayload({ ...source, tickets })
-      await ensureCsrfCookie()
-      await api.patch(`/create-event/${encodeURIComponent(props.eventId)}`, {
-        tickets: payload.tickets,
-      })
-      editableForm.value = { ...source, tickets }
+      editableForm.value = { ...result.data.form, version: result.data.version }
       emit('refresh')
     }
-    ticketOverrides.value = next
+    if (preview) ticketOverrides.value = next
     editingTicket.value = null
     ticketFeedback.value = preview
       ? 'Ticket saved for this preview. Existing purchases keep their original price.'
       : 'Ticket saved. Existing purchases keep their original price.'
   } catch (error) {
-    ticketFeedback.value =
-      error.response?.data?.message ||
-      'We couldn’t save this ticket. Check the details and try again.'
+    ticketFeedback.value = editorErrorMessages(error)
+    await handleConflict(error)
   } finally {
     ticketSaving.value = false
   }
 }
 const checkout = reactive(
-  read('rhs-checkout-form', { limit: 10, collect: 'buyer', phone: 'optional', message: '' }),
+  read('rhs-checkout-form', {
+    limit: 10,
+    collect: 'buyer',
+    phone: 'optional',
+    message: '',
+  }),
 )
 const access = reactive(
-  read('rhs-access-form', { visibility: 'public', refund: 'review', transfer: 'yes' }),
+  read('rhs-access-form', {
+    visibility: 'public',
+    refund: 'review',
+    transfer: 'yes',
+  }),
 )
 watch(
   () => [props.page, route.query.tab],
@@ -262,22 +319,27 @@ const details = reactive({
 })
 const detailsSaving = ref(false),
   detailsReady = ref(preview)
+function applyEditorRecord(record) {
+  const source = { ...record.form, version: record.version }
+  editableForm.value = source
+  Object.assign(details, {
+    name: source.title || '',
+    description: source.description || '',
+    venue: source.venue || '',
+    date: source.startsAtLocal?.slice(0, 10) || '',
+    time: source.startsAtLocal?.slice(11, 16) || '',
+  })
+  detailsReady.value = true
+}
 if (preview) Object.assign(details, read('details', {}))
 if (!preview)
   getEventForEditing(props.eventId)
-    .then((result) => {
-      const form = result?.data?.form
-      if (form) {
-        editableForm.value = form
-        details.description = form.description || ''
-        details.date = form.startsAtLocal?.slice(0, 10) || details.date
-        details.time = form.startsAtLocal?.slice(11, 16) || details.time
-        detailsReady.value = true
-      }
+    .then((result) => applyEditorRecord(result.data))
+    .catch((error) => {
+      notify(editorErrorMessages(error))
     })
-    .catch(() => {})
 async function saveDetails() {
-  if (detailsSaving.value) return
+  if (detailsSaving.value || conflict.value) return
   if (!detailsReady.value) {
     notify('We couldn’t load your editable event details. Reload the page and try again.')
     return
@@ -290,22 +352,23 @@ async function saveDetails() {
         emit('refresh')
       }
     } else {
-      await ensureCsrfCookie()
-      await api.patch(`/create-event/${encodeURIComponent(props.eventId)}`, {
+      const source = editableForm.value
+      const startsAtLocal = `${details.date}T${details.time}:00`
+      const changes = {
         title: details.name,
         description: details.description,
         venue: details.venue,
-        startsAtLocal: `${details.date}T${details.time}:00`,
-        timeZone: event.value.timezone,
-      })
+      }
+      if (startsAtLocal.slice(0, 16) !== source.startsAtLocal?.slice(0, 16))
+        changes.startsAtLocal = startsAtLocal
+      const result = await patchEvent(props.eventId, changes, source.version)
+      applyEditorRecord(result.data)
       notify('Your event details are saved.')
       emit('refresh')
     }
   } catch (error) {
-    notify(
-      error.response?.data?.message ||
-        'We couldn’t save your event. Check the details and try again.',
-    )
+    notify(editorErrorMessages(error))
+    await handleConflict(error)
   } finally {
     detailsSaving.value = false
   }
@@ -326,7 +389,10 @@ function navigatePath(path) {
   if (key === 'event-page') emit('navigate', 'event-page')
   else if (key === 'events') router.push({ name: 'dashboard', query: { view: 'events' } })
   else if (map[key])
-    emit('navigate', { view: map[key], ...Object.fromEntries(new URLSearchParams(query)) })
+    emit('navigate', {
+      view: map[key],
+      ...Object.fromEntries(new URLSearchParams(query)),
+    })
 }
 function handleClick(e) {
   const b = e.target.closest('button,a')
@@ -387,7 +453,7 @@ function handleSubmit(e) {
     @keydown="tabKeys"
   >
     <WorkspaceAttendees
-      v-if="page !== 'checkin'"
+      v-if="['attendees', 'purchase'].includes(page)"
       :page="page"
       :overview="overview"
       :event-id="eventId"
@@ -512,6 +578,15 @@ function handleSubmit(e) {
         </div>
       </div>
     </section>
+    <EventEditorConflict
+      v-if="conflict"
+      class="rh-module rh-form-panel"
+      :record="conflictRecord"
+      :loading="conflictLoading"
+      :error="conflictError"
+      @retry="loadConflictRecord"
+      @reload="reloadConflictedEvent"
+    />
     <WorkspaceDoorCheckin
       v-if="page === 'checkin'"
       :overview="overview"
@@ -578,6 +653,7 @@ function handleSubmit(e) {
         data-settings-pane="details"
         v-show="settingsTab === &#x27;details&#x27;"
       >
+        <WorkspaceEventLifecycle v-if="!preview" :event-id="eventId" @changed="emit('refresh')" />
         <form class="rh-module rh-form-panel rhs-form" id="rh-settings-form">
           <div class="rh-module-title">
             <div>
@@ -588,12 +664,12 @@ function handleSubmit(e) {
           <div class="rh-form-grid">
             <label class="rh-field rh-span-2"
               ><span>Event name</span
-              ><input maxlength="70" name="name" required="" v-model="details.name"
+              ><input maxlength="100" name="name" required="" v-model="details.name"
             /></label>
             <label class="rh-field rh-span-2"
               ><span>About your event</span
               ><textarea
-                maxlength="1500"
+                maxlength="20000"
                 name="description"
                 placeholder="What should guests expect?"
                 rows="4"
@@ -604,18 +680,24 @@ function handleSubmit(e) {
               ><span>Event date</span
               ><input name="date" required="" type="date" v-model="details.date" /></label
             ><label class="rh-field"
-              ><span>Start time (WAT)</span
+              ><span
+                >Start time ({{ editableForm?.timeZone || event.timezone || 'Africa/Lagos' }})</span
               ><input name="time" required="" type="time" v-model="details.time"
             /></label>
             <label class="rh-field rh-span-2"
               ><span>Venue / address</span
-              ><input maxlength="130" name="venue" required="" v-model="details.venue"
+              ><input
+                maxlength="255"
+                name="venue"
+                :required="editableForm?.format !== 'online'"
+                v-model="details.venue"
             /></label>
           </div>
           <div class="rhs-divider"></div>
           <div class="rh-module-title">
             <div>
               <h2>How can guests reach you?</h2>
+              <p v-if="!preview">Contact details are not available for editing yet.</p>
               <p>Add a contact for questions about your event.</p>
             </div>
           </div>
@@ -626,7 +708,8 @@ function handleSubmit(e) {
                 name="email"
                 placeholder="you@example.com"
                 type="email"
-                v-model="details.email" /></label
+                v-model="details.email"
+                :disabled="!preview" /></label
             ><label class="rh-field"
               ><span>Phone number (optional)</span
               ><input
@@ -635,10 +718,16 @@ function handleSubmit(e) {
                 placeholder="0800 000 0000"
                 type="tel"
                 v-model="details.phone"
+                :disabled="!preview"
             /></label>
           </div>
           <div class="rh-form-actions">
-            <button class="rh-button rh-button-dark" type="submit">Save changes</button
+            <button
+              class="rh-button rh-button-dark"
+              type="submit"
+              :disabled="detailsSaving || !detailsReady || conflict"
+            >
+              Save changes</button
             ><span class="rhs-feedback" id="rhs-details-feedback" role="status"></span>
           </div>
         </form>
@@ -675,8 +764,15 @@ function handleSubmit(e) {
                   <td>
                     {{ ticket.price_minor == null ? 'View in editor' : money(ticket.price_minor) }}
                   </td>
-                  <td>{{ ticket.sold_units }}</td>
-                  <td>{{ ticket.available_units }}</td>
+                  <td>
+                    {{ ticket.sold_units }} sold &middot; {{ ticket.reserved_units || 0 }} reserved
+                  </td>
+                  <td>
+                    {{ ticket.available_units }} available &middot;
+                    {{ ticket.configured_capacity_units ?? ticket.effective_capacity_units }}
+                    configured &middot;
+                    {{ ticket.admission_capacity ?? 'Not available' }} admissions
+                  </td>
                   <td>
                     <span
                       class="rhs-ticket-status"
@@ -694,6 +790,7 @@ function handleSubmit(e) {
                     <button
                       class="rh-button rh-button-outline rhs-edit"
                       type="button"
+                      :disabled="conflict || ticketSaving"
                       @click="editTicket(ticket)"
                     >
                       Edit
@@ -737,8 +834,9 @@ function handleSubmit(e) {
                 v-model.number="ticketForm.price"
                 min="0"
                 name="price"
+                max="999999.99"
+                step="0.01"
                 required=""
-                step="1"
                 type="number" /></label
             ><label class="rh-field"
               ><span>Total tickets</span
@@ -746,12 +844,13 @@ function handleSubmit(e) {
                 v-model.number="ticketForm.capacity"
                 :min="
                   Math.max(
-                    1,
+                    0,
                     Number(editingTicket.sold_units || 0) +
                       Number(editingTicket.reserved_units || 0),
                   )
                 "
                 name="capacity"
+                max="1000000"
                 required=""
                 step="1"
                 type="number" /></label
@@ -764,7 +863,11 @@ function handleSubmit(e) {
             >
           </div>
           <div class="rh-form-actions">
-            <button class="rh-button rh-button-dark" type="submit" :disabled="ticketSaving">
+            <button
+              class="rh-button rh-button-dark"
+              type="submit"
+              :disabled="ticketSaving || conflict"
+            >
               {{ ticketSaving ? 'Saving ticket…' : 'Save ticket' }}</button
             ><button class="rh-button rh-button-outline" id="rhs-ticket-cancel" type="button">
               Cancel

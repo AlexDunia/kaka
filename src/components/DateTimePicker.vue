@@ -94,6 +94,12 @@
 </template>
 
 <script setup>
+import {
+  fromLocalDateTimeString,
+  toLocalDateTimeString,
+  isAfter,
+  isAfterOrEqual,
+} from '@/utils/eventDateTime'
 import { ref, computed, onMounted, watch } from 'vue'
 
 const props = defineProps({
@@ -140,9 +146,15 @@ const emit = defineEmits(['update:dateTime', 'close'])
 
 const currentMonth = ref(new Date().getMonth())
 const currentYear = ref(new Date().getFullYear())
-const selectedDate = ref(new Date(props.initialDateTime))
-const hours = ref(props.initialDateTime.getHours())
-const minutes = ref(props.initialDateTime.getMinutes())
+const selectedDate = ref(
+  fromLocalDateTimeString(toLocalDateTimeString(props.initialDateTime)),
+)
+const hours = ref(
+  Number(toLocalDateTimeString(props.initialDateTime).slice(11, 13)),
+)
+const minutes = ref(
+  Number(toLocalDateTimeString(props.initialDateTime).slice(14, 16)),
+)
 const period = ref(hours.value >= 12 ? 'PM' : 'AM')
 
 // Computed Properties
@@ -150,20 +162,39 @@ const weekDays = computed(() => ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'])
 
 const monthYearDisplay = computed(() => {
   const options = { month: 'long', year: 'numeric' }
-  return new Date(currentYear.value, currentMonth.value).toLocaleDateString(undefined, options)
+  return new Date(currentYear.value, currentMonth.value).toLocaleDateString(
+    undefined,
+    options,
+  )
 })
 
 const calendarDays = computed(() => {
   const days = []
-  const firstDayOfMonth = new Date(currentYear.value, currentMonth.value, 1).getDay()
-  const daysInMonth = new Date(currentYear.value, currentMonth.value + 1, 0).getDate()
+  const firstDayOfMonth = new Date(
+    currentYear.value,
+    currentMonth.value,
+    1,
+  ).getDay()
+  const daysInMonth = new Date(
+    currentYear.value,
+    currentMonth.value + 1,
+    0,
+  ).getDate()
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
   // Previous month days
-  const prevMonthDays = new Date(currentYear.value, currentMonth.value, 0).getDate()
+  const prevMonthDays = new Date(
+    currentYear.value,
+    currentMonth.value,
+    0,
+  ).getDate()
   for (let i = firstDayOfMonth - 1; i >= 0; i--) {
-    const date = new Date(currentYear.value, currentMonth.value - 1, prevMonthDays - i)
+    const date = new Date(
+      currentYear.value,
+      currentMonth.value - 1,
+      prevMonthDays - i,
+    )
     days.push({
       day: prevMonthDays - i,
       date,
@@ -217,10 +248,11 @@ const formattedMinutes = computed(() => {
 })
 
 const selectedSummary = computed(() =>
-  selectedDate.value.toLocaleString(
+  new Date(`${toLocalDateTimeString(selectedDate.value)}Z`).toLocaleString(
     undefined,
     props.mode === 'date'
       ? {
+          timeZone: 'UTC',
           weekday: 'short',
           month: 'short',
           day: 'numeric',
@@ -228,10 +260,12 @@ const selectedSummary = computed(() =>
         }
       : props.mode === 'time'
         ? {
+            timeZone: 'UTC',
             hour: '2-digit',
             minute: '2-digit',
           }
         : {
+            timeZone: 'UTC',
             weekday: 'short',
             month: 'short',
             day: 'numeric',
@@ -249,14 +283,19 @@ const applyButtonLabel = computed(() => {
 const selectionValid = computed(() => {
   const value = selectedDate.value?.getTime()
   if (!Number.isFinite(value)) return false
-  if (props.minDateTime && value < props.minDateTime.getTime()) return false
-  if (props.maxDateTime && value > props.maxDateTime.getTime()) return false
+  if (
+    props.minDateTime &&
+    !isAfterOrEqual(selectedDate.value, props.minDateTime)
+  )
+    return false
+  if (props.maxDateTime && isAfter(selectedDate.value, props.maxDateTime))
+    return false
   return true
 })
 
 const timeConstraintMessage = computed(() => {
   if (selectionValid.value) return ''
-  if (props.maxDateTime && selectedDate.value > props.maxDateTime) {
+  if (props.maxDateTime && isAfter(selectedDate.value, props.maxDateTime)) {
     return 'Choose a time no later than the allowed maximum.'
   }
   return props.invalidTimeMessage
@@ -366,15 +405,17 @@ function setPeriod(newPeriod) {
 }
 
 function updateSelectedDateTime() {
-  const newDateTime = new Date(selectedDate.value)
   let h = hours.value
   if (props.use12HourFormat && period.value === 'PM' && h < 12) {
     h += 12
   } else if (props.use12HourFormat && period.value === 'AM' && h === 12) {
     h = 0
   }
-  newDateTime.setHours(h, minutes.value, 0, 0)
-  selectedDate.value = newDateTime
+  const date = toLocalDateTimeString(selectedDate.value).slice(0, 10)
+  const pad = (part) => String(part).padStart(2, '0')
+  selectedDate.value = fromLocalDateTimeString(
+    `${date}T${pad(h)}:${pad(minutes.value)}:00`,
+  )
 }
 
 function applySelection() {
@@ -388,9 +429,15 @@ onMounted(() => {
   if (props.initialDateTime) {
     currentMonth.value = props.initialDateTime.getMonth()
     currentYear.value = props.initialDateTime.getFullYear()
-    selectedDate.value = new Date(props.initialDateTime)
-    hours.value = props.initialDateTime.getHours()
-    minutes.value = props.initialDateTime.getMinutes()
+    selectedDate.value = fromLocalDateTimeString(
+      toLocalDateTimeString(props.initialDateTime),
+    )
+    hours.value = Number(
+      toLocalDateTimeString(props.initialDateTime).slice(11, 13),
+    )
+    minutes.value = Number(
+      toLocalDateTimeString(props.initialDateTime).slice(14, 16),
+    )
     period.value = hours.value >= 12 ? 'PM' : 'AM'
 
     if (props.use12HourFormat && hours.value > 12) {
@@ -409,9 +456,11 @@ watch(
     if (newValue) {
       currentMonth.value = newValue.getMonth()
       currentYear.value = newValue.getFullYear()
-      selectedDate.value = new Date(newValue)
-      hours.value = newValue.getHours()
-      minutes.value = newValue.getMinutes()
+      selectedDate.value = fromLocalDateTimeString(
+        toLocalDateTimeString(newValue),
+      )
+      hours.value = Number(toLocalDateTimeString(newValue).slice(11, 13))
+      minutes.value = Number(toLocalDateTimeString(newValue).slice(14, 16))
       period.value = hours.value >= 12 ? 'PM' : 'AM'
 
       if (props.use12HourFormat && hours.value > 12) {

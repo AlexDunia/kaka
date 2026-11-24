@@ -89,14 +89,30 @@ export const useDashboardStore = defineStore('dashboard', () => {
   }
 
   const invalidateOverview = (eventId) => {
+    overviewRequests.delete(String(eventId))
+    const loading = new Set(overviewLoadingIds.value)
+    loading.delete(String(eventId))
+    overviewLoadingIds.value = loading
     const next = { ...overviewByEvent.value }
     delete next[String(eventId)]
     overviewByEvent.value = next
   }
 
+  const invalidateEvent = (eventId) => {
+    eventsRequest++
+    overviewRequests.delete(String(eventId))
+    eventsLoaded.value = false
+    eventsLoading.value = false
+    const loading = new Set(overviewLoadingIds.value)
+    loading.delete(String(eventId))
+    overviewLoadingIds.value = loading
+    invalidateOverview(eventId)
+  }
+
   const hasEvents = computed(() => events.value.length > 0)
   return {
     reset,
+    invalidateEvent,
     events,
     eventsLoaded,
     eventsLoading,

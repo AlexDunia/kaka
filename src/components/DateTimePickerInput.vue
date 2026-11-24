@@ -55,6 +55,7 @@
 </template>
 
 <script setup>
+import { toLocalDateTimeString } from '@/utils/eventDateTime'
 import { ref, computed } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
 import DateTimePicker from './DateTimePicker.vue'
@@ -124,17 +125,17 @@ const formattedValue = computed(() => {
 
   // Format date according to specified format
   try {
-    const date = new Date(props.modelValue)
+    const date = new Date(`${toLocalDateTimeString(props.modelValue)}Z`)
 
     // Replace format tokens with actual values
     let formattedDate = props.dateFormat
-      .replace('YYYY', date.getFullYear())
-      .replace('MM', String(date.getMonth() + 1).padStart(2, '0'))
-      .replace('DD', String(date.getDate()).padStart(2, '0'))
+      .replace('YYYY', date.getUTCFullYear())
+      .replace('MM', String(date.getUTCMonth() + 1).padStart(2, '0'))
+      .replace('DD', String(date.getUTCDate()).padStart(2, '0'))
 
     // Time formatting
-    let hours = date.getHours()
-    const minutes = String(date.getMinutes()).padStart(2, '0')
+    let hours = date.getUTCHours()
+    const minutes = String(date.getUTCMinutes()).padStart(2, '0')
     let period = ''
 
     if (props.use12HourFormat) {
@@ -147,7 +148,7 @@ const formattedValue = computed(() => {
 
     let formattedTime = props.timeFormat
       .replace('hh', formattedHours)
-      .replace('HH', String(date.getHours()).padStart(2, '0'))
+      .replace('HH', String(date.getUTCHours()).padStart(2, '0'))
       .replace('mm', minutes)
       .replace('A', period)
 
@@ -170,7 +171,6 @@ function updateDateTime(dateTime) {
   emit('update:modelValue', dateTime)
   closePicker()
 }
-
 </script>
 
 <style scoped>

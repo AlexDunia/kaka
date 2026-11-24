@@ -7,7 +7,8 @@ import {
   formatTrend,
 } from '@/utils/dashboardFormat'
 import { useWorkspacePrivacy } from '@/composables/useWorkspacePrivacy'
-import { useWorkspaceAttendees } from './attendeesModel'
+import { DASHBOARD_PREVIEW } from '@/services/dashboardPreview'
+import { usePreviewWorkspaceAttendees } from './previewAttendeesModel'
 import {
   clampPercent,
   daysUntilEvent,
@@ -21,10 +22,25 @@ const { amountsHidden: hidden, toggleAmounts } = useWorkspacePrivacy()
 const range = ref('30d')
 const privacyStatus = ref('')
 const event = computed(() => props.overview.event || {})
-const registrations = computed(() => useWorkspaceAttendees(event.value.id, event.value.ticket_mode))
-const registeredGuests = computed(() => registrations.value.guests.value)
-const arrivedGuests = computed(
-  () => registeredGuests.value.filter((guest) => registrations.value.everArrived(guest.id)).length,
+// A guest page is not an event-wide aggregate. Preview data never supplies live metrics.
+const registrations = computed(() =>
+  DASHBOARD_PREVIEW ? usePreviewWorkspaceAttendees(event.value.id, event.value.ticket_mode) : null,
+)
+const registeredGuests = computed(() => registrations.value?.guests.value || [])
+const arrivedGuests = computed(() =>
+  registrations.value
+    ? registeredGuests.value.filter((guest) => registrations.value.everArrived(guest.id)).length
+    : (props.overview.metrics?.actual_attendance ?? null),
+)
+const metricGroups = computed(() => props.overview.metrics?.by_currency || [])
+const registrationGuestTotal = computed(() =>
+  metricGroups.value.length
+    ? metricGroups.value.reduce((total, group) => total + group.admissions_covered, 0)
+    : null,
+)
+// An order can contain different currencies in historical data; do not sum distinct-order counts.
+const registrationOrders = computed(() =>
+  metricGroups.value.length === 1 ? metricGroups.value[0].orders : null,
 )
 const sales = computed(() => props.overview.sales || {})
 const revenue = computed(() => props.overview.revenue || {})
@@ -142,26 +158,39 @@ function chartDate(value) {
     </div>
   </section>
   <section
-    v-if="registrations.mode.value === 'free'"
+    v-if="event.ticket_mode === 'free'"
     id="rh-free-overview"
     class="rh-overview-section rh-free-overview"
   >
     <div class="section-title">
       <div>
         <h2 id="rh-free-overview-title">Your registrations</h2>
-        <p>See how many guests have registered and who has arrived.</p>
+        <p>
+          {{
+            DASHBOARD_PREVIEW
+              ? 'See how many guests have registered and who has arrived.'
+              : 'Registration and arrival totals come from confirmed event records.'
+          }}
+        </p>
       </div>
     </div>
     <div class="rh-summary-grid rh-v19-summary">
       <article class="rh-summary-card">
-        <span>Registrations</span><strong>{{ registrations.orders.value.length }}</strong>
+        <span>Registrations</span
+        ><strong>{{
+          registrations
+            ? registrations.orders.value.length
+            : (registrationOrders ?? 'Not available')
+        }}</strong>
       </article>
       <article class="rh-summary-card">
-        <span>Guests registered</span><strong>{{ registeredGuests.length }}</strong>
+        <span>Guests registered</span
+        ><strong>{{
+          registrations ? registeredGuests.length : (registrationGuestTotal ?? 'Not available')
+        }}</strong>
       </article>
       <article class="rh-summary-card">
-        <span>Guests who have arrived</span
-        ><strong>{{ arrivedGuests }} of {{ registeredGuests.length }}</strong>
+        <span>Guests who have arrived</span><strong>{{ arrivedGuests ?? 'Not available' }}</strong>
       </article>
     </div>
     <a

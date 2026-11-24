@@ -1,13 +1,8 @@
 <script setup>
-import { apiUrl } from '@/api/axios'
 import { ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import {
-  safeAuthDestination,
-  rememberAuthDestination,
-  takeAuthDestination,
-} from '@/utils/authDestination'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+
 
 const email = ref('')
 const password = ref('')
@@ -16,13 +11,6 @@ const error = ref('')
 
 const authStore = useAuthStore()
 const router = useRouter()
-const route = useRoute()
-const authLink = (path) => ({
-  path,
-  query: safeAuthDestination(route.query.redirect)
-    ? { redirect: safeAuthDestination(route.query.redirect) }
-    : {},
-})
 
 const login = async () => {
   error.value = ''
@@ -37,10 +25,8 @@ const login = async () => {
   try {
     await authStore.login(email.value, password.value)
 
-    const destination = safeAuthDestination(route.query.redirect) || takeAuthDestination()
-    rememberAuthDestination(null)
-    if (destination) {
-      await router.push(destination)
+    if (authStore.isAdmin) {
+      router.push('/admin')
     } else {
       router.push('/dashboard')
     }
@@ -53,8 +39,7 @@ const login = async () => {
 
 // âœ… NEW: Google Sign-In
 const loginWithGoogle = () => {
-  rememberAuthDestination(route.query.redirect)
-  window.location.href = apiUrl('/auth/google')
+  window.location.href = '/api/auth/google'
 }
 
 const goToForgotPassword = () => {
@@ -62,7 +47,7 @@ const goToForgotPassword = () => {
 }
 
 const goToRegister = () => {
-  router.push(authLink('/register'))
+  router.push('/register')
 }
 </script>
 

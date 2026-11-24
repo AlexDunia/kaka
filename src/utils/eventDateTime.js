@@ -1,7 +1,6 @@
 export const EVENT_START_LEAD_MINUTES = 30
 
-export const APP_DEFAULT_TIME_ZONE =
-  import.meta.env?.VITE_APP_TIMEZONE || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+export const APP_DEFAULT_TIME_ZONE = import.meta.env?.VITE_APP_TIMEZONE || 'Africa/Lagos'
 
 const dateTimeFormatter = (timeZone) =>
   new Intl.DateTimeFormat('en-CA', {
@@ -16,7 +15,9 @@ const dateTimeFormatter = (timeZone) =>
   })
 
 const partsToObject = (parts) =>
-  Object.fromEntries(parts.filter((part) => part.type !== 'literal').map((part) => [part.type, part.value]))
+  Object.fromEntries(
+    parts.filter((part) => part.type !== 'literal').map((part) => [part.type, part.value]),
+  )
 
 export function getZonedNowParts(timeZone = APP_DEFAULT_TIME_ZONE, now = new Date()) {
   return partsToObject(dateTimeFormatter(timeZone).formatToParts(now))
@@ -28,17 +29,8 @@ export function getVenueToday(timeZone = APP_DEFAULT_TIME_ZONE, now = new Date()
 }
 
 function wallTimeNumber(value) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return null
-  return Date.UTC(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate(),
-    date.getHours(),
-    date.getMinutes(),
-    date.getSeconds(),
-    date.getMilliseconds(),
-  )
+  const local = toLocalDateTimeString(value)
+  return local ? Date.parse(`${local}Z`) : null
 }
 
 export function getMinimumStartDateTime(
@@ -61,6 +53,9 @@ export function getMinimumStartDateTime(
 }
 
 export function toLocalDateTimeString(value) {
+  if (value === null || value === undefined || value === '') return null
+  if (value instanceof Date && value.eventLocalTime?.timestamp === value.getTime())
+    return value.eventLocalTime.local
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return null
   const pad = (part) => String(part).padStart(2, '0')
@@ -90,4 +85,50 @@ export function isAfterOrEqual(left, right) {
   const leftValue = wallTimeNumber(left)
   const rightValue = wallTimeNumber(right)
   return leftValue !== null && rightValue !== null && leftValue >= rightValue
+}
+
+// Pickers hold event-local wall clocks, not browser-local instants.
+export function fromLocalDateTimeString(value) {
+  if (!value) return null
+  const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/)
+  if (!match) return null
+  const date = new Date(...[Number(match[1]), Number(match[2]) - 1, ...match.slice(3).map(Number)])
+  // Keep the wall clock intact when the device's own DST gap differs from the event's.
+  Object.defineProperty(date, 'eventLocalTime', {
+    value: { local: value, timestamp: date.getTime() },
+  })
+  return date
+}
+
+export function instantToLocalDate(value, timeZone = APP_DEFAULT_TIME_ZONE) {
+  if (!value) return null
+  const parts = getZonedNowParts(timeZone, new Date(value))
+  return fromLocalDateTimeString(
+    `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}`,
+  )
+}
+
+// Unchanged saved instants keep their offset (including repeated DST hours).
+// Edited wall clocks are sent alone so Laravel validates and resolves the timezone.
+export function editorDateFields(source, keys, timeZone) {
+  return Object.fromEntries(
+    keys.map((key) => {
+      if (typeof source[key] === 'string' && /(?:Z|[+-]\d{2}:\d{2})$/i.test(source[key]))
+        return [key, source[key]]
+      const local = toLocalDateTimeString(source[key])
+      const saved = source._savedTimes?.[key]
+      if (saved?.instant && saved.local === local && saved.timeZone === timeZone)
+        return [key, saved.instant]
+      return [`${key}Local`, local]
+    }),
+  )
+}
+
+export function isValidTimeZone(timeZone) {
+  try {
+    new Intl.DateTimeFormat('en', { timeZone }).format()
+    return true
+  } catch {
+    return false
+  }
 }

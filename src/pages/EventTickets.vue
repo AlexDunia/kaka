@@ -25,9 +25,17 @@ async function load() {
   const request = ++version
   loading.value = true
   error.value = ''
+  event.value = null
   try {
     const response = await eventService.getEventById(route.params.id)
-    if (request === version) event.value = response.data
+    if (request === version) {
+      event.value = response.data
+      if (normalizeEventProfile(response.data).canRegister)
+        await router.replace({
+          name: 'checkout',
+          query: { event: route.params.id, registration: '1' },
+        })
+    }
   } catch {
     if (request === version) error.value = 'We couldn’t load these tickets. Please try again.'
   } finally {

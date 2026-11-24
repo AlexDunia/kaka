@@ -4,9 +4,10 @@ import { useRoute } from 'vue-router'
 import { DASHBOARD_PREVIEW } from '@/services/dashboardPreview'
 import { tierKey, sourceName } from './earningsModel'
 import Table from './WorkspaceEarningsTable.vue'
+import WorkspaceFinancialRecords from './WorkspaceFinancialRecords.vue'
 
 const props = defineProps({ model: Object, money: Function, overview: Object, tab: String })
-const emit = defineEmits(['navigate'])
+const emit = defineEmits(['navigate', 'refresh'])
 const route = useRoute(),
   search = ref('')
 const screen = computed(() => String(route.query.screen || ''))
@@ -242,7 +243,11 @@ const sampleNote = computed(() =>
 )
 </script>
 <template>
-  <section v-if="screen === 'buyers'" id="rhe-buyers">
+  <section v-if="!DASHBOARD_PREVIEW && screen" class="rhe-card">
+    <a class="rh-v26-back" :href="href({})" @click.prevent="go({})">Back to earnings</a
+    ><WorkspaceFinancialRecords :event-id="overview.event?.id" @changed="emit('refresh')" />
+  </section>
+  <section v-else-if="screen === 'buyers'" id="rhe-buyers">
     <a class="rh-v26-back" :href="href(back.values)" @click.prevent="go(back.values)"
       >← {{ back.label }}</a
     >

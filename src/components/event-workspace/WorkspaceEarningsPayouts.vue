@@ -1,56 +1,116 @@
 <script setup>
-import { nextTick, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { getBanks, getPayoutAccounts, createPayoutAccount } from '@/services/eventFinanceService'
+import { operationsError } from '@/services/eventOperationsService'
 import { DASHBOARD_PREVIEW } from '@/services/dashboardPreview'
-defineProps({ money: Function, overview: Object })
-const banks = [
-  'Access Bank',
-  'First Bank',
-  'GTBank',
-  'Kuda Bank',
-  'Moniepoint',
-  'OPay',
-  'UBA',
-  'Zenith Bank',
-  'Other bank',
-]
-// Like the reference, this is an in-memory sample, never a verified payout account.
-const bank = ref(null),
-  editing = ref(false),
+import { financeStatus } from './financialModel'
+import { useAuthStore } from '@/stores/auth'
+const auth = useAuthStore()
+const accounts = ref([]),
+  banks = ref([]),
+  page = ref(1),
+  lastPage = ref(1)
+const editing = ref(false),
+  busy = ref(false),
   error = ref(''),
-  bankSelect = ref(null),
-  addButton = ref(null)
-const form = reactive({ bank: '', number: '', holder: '' })
-async function showForm() {
-  Object.assign(form, bank.value || { bank: '', number: '', holder: '' })
-  error.value = ''
-  editing.value = true
-  await nextTick()
-  bankSelect.value?.focus()
+  bankPage = ref(0)
+const form = reactive({ bank_code: '', account_number: '' })
+const latest = computed(() => accounts.value[0])
+let active = true,
+  timer,
+  generation = 0
+const reading = ref(false)
+async function refresh(next = page.value) {
+  if (reading.value || DASHBOARD_PREVIEW || !auth.user?.id) return
+  const version = generation
+  reading.value = true
+  try {
+    const result = await getPayoutAccounts(next)
+    if (!active || version !== generation) return
+    accounts.value = result.data
+    page.value = result.current_page
+    lastPage.value = result.last_page
+    error.value = ''
+  } catch (e) {
+    if (active && version === generation) error.value = operationsError(e)
+  } finally {
+    if (version === generation) reading.value = false
+  }
 }
-async function closeForm() {
+async function loadBanks() {
+  if (busy.value || bankPage.value >= 100) return
+  busy.value = true
+  const version = generation
+  try {
+    const result = await getBanks(bankPage.value + 1)
+    if (!active || version !== generation) return
+    banks.value = [...new Map([...banks.value, ...result.data].map((b) => [b.code, b])).values()]
+    bankPage.value++
+  } catch (e) {
+    if (active && version === generation)
+      error.value = operationsError(e, 'We could not load banks. Please try again.')
+  } finally {
+    if (version === generation) busy.value = false
+  }
+}
+function closeForm() {
   editing.value = false
+  form.account_number = ''
+}
+async function showForm() {
+  editing.value = true
+  form.account_number = ''
+  if (!banks.value.length) await loadBanks()
+}
+async function saveBank() {
+  if (busy.value || DASHBOARD_PREVIEW) return
+  if (!/^\d{3,9}$/.test(form.bank_code) || !/^\d{10}$/.test(form.account_number)) {
+    error.value = 'Choose a bank and enter your 10-digit account number.'
+    return
+  }
+  busy.value = true
   error.value = ''
-  await nextTick()
-  addButton.value?.focus()
-}
-function saveBank() {
-  if (!DASHBOARD_PREVIEW) {
-    error.value = 'Bank account setup isn’t connected yet.'
-    return false
+  const version = generation
+  try {
+    await createPayoutAccount({ ...form })
+    if (!active || version !== generation) return
+    form.account_number = ''
+    editing.value = false
+    await refresh(1)
+  } catch (e) {
+    if (active && version === generation)
+      error.value = operationsError(
+        e,
+        'Bank setup could not be confirmed. Submit the same details to check again.',
+      )
+  } finally {
+    if (version === generation) busy.value = false
   }
-  if (
-    !banks.includes(form.bank) ||
-    !/^\d{10}$/.test(form.number) ||
-    !form.holder.trim() ||
-    form.holder.trim().length > 100
-  ) {
-    error.value = 'Choose a bank, enter a 10-digit account number and add the account name.'
-    return false
-  }
-  bank.value = { bank: form.bank, number: form.number, holder: form.holder.trim() }
-  closeForm()
-  return true
 }
+watch(
+  () => auth.user?.id,
+  () => {
+    generation++
+    accounts.value = []
+    form.account_number = ''
+    editing.value = false
+    busy.value = false
+    reading.value = false
+    error.value = ''
+    page.value = lastPage.value = 1
+    clearInterval(timer)
+    void refresh(1)
+    timer = setInterval(() => {
+      if (document.visibilityState !== 'hidden') void refresh()
+    }, 15000)
+  },
+  { immediate: true },
+)
+onBeforeUnmount(() => {
+  active = false
+  form.account_number = ''
+  clearInterval(timer)
+})
 </script>
 <template>
   <div id="rhe-payouts" role="tabpanel" aria-labelledby="earnings-tab-payouts">
@@ -58,118 +118,86 @@ function saveBank() {
       <div class="rhe-section-head">
         <div>
           <h2>Where should we send your money?</h2>
-          <p>Add a bank account in your name or your business name.</p>
+          <p>Add a Nigerian NGN bank account in your name or your business name.</p>
         </div>
-        <span class="rhe-status">{{
-          bank
-            ? 'Saved for demo'
-            : overview.setup?.payout_account_added
-              ? 'Account added'
-              : 'Not set up'
-        }}</span>
+        <span class="rhe-status">{{ latest ? financeStatus(latest.status) : 'Not set up' }}</span>
       </div>
-      <form v-if="editing" id="rhe-bank-form" @submit.prevent="saveBank">
-        <p class="rhe-demo-note">
-          {{
-            DASHBOARD_PREVIEW
-              ? 'This is a demo. Use sample bank details only.'
-              : 'Bank account setup isn’t connected yet.'
-          }}
+      <p v-if="DASHBOARD_PREVIEW">Bank setup is unavailable in this preview.</p>
+      <form v-else-if="editing" @submit.prevent="saveBank">
+        <p>
+          Verification continues after you submit. Your existing active account stays in use until
+          the new account is active.
         </p>
         <div class="rhe-form">
           <label
-            >Bank<select ref="bankSelect" v-model="form.bank" required>
+            >Bank<select v-model="form.bank_code" required>
               <option value="">Select your bank</option>
-              <option v-for="name in banks" :key="name">{{ name }}</option>
+              <option v-for="bank in banks" :key="bank.code" :value="bank.code">
+                {{ bank.name }}
+              </option>
             </select></label
-          ><label
+          >
+          <label
             >Account number<input
-              v-model="form.number"
+              v-model="form.account_number"
               inputmode="numeric"
               maxlength="10"
               pattern="[0-9]{10}"
-              placeholder="10-digit account number"
-              required /></label
-          ><label class="rhe-wide"
-            >Account name<input
-              v-model="form.holder"
-              maxlength="100"
-              placeholder="Name on the account"
+              autocomplete="off"
               required
           /></label>
         </div>
-        <p v-if="error" role="alert">{{ error }}</p>
         <div class="rhe-actions">
-          <button class="rh-button rh-button-dark" type="submit">Save bank details</button
-          ><button class="rh-button rh-button-outline" type="button" @click="closeForm">
+          <button class="rh-button rh-button-dark" :disabled="busy">
+            {{ busy ? 'Checking details…' : 'Submit bank details' }}
+          </button>
+          <button
+            type="button"
+            class="rh-button rh-button-outline"
+            :disabled="busy"
+            @click="closeForm"
+          >
             Cancel
+          </button>
+          <button
+            type="button"
+            class="rhea-inline-link"
+            :disabled="busy || bankPage >= 100"
+            @click="loadBanks"
+          >
+            Load more banks
           </button>
         </div>
       </form>
-      <div v-else-if="bank" id="rhe-bank-saved">
-        <strong>{{ bank.holder }}</strong>
-        <p>{{ bank.bank }} · ••••••{{ bank.number.slice(-4) }}</p>
-        <p>Bank details saved for this demo. Verification is not connected.</p>
-        <button ref="addButton" class="rh-button rh-button-outline" @click="showForm">
-          Change bank details
-        </button>
-      </div>
-      <div v-else>
-        <button
-          v-if="DASHBOARD_PREVIEW"
-          ref="addButton"
-          class="rh-button rh-button-dark"
-          @click="showForm"
-        >
-          Add bank account
-        </button>
-        <p v-else class="rhe-demo-note">
-          Bank account setup isn’t connected yet. Your ticket revenue is shown in Earnings.
+      <button v-else class="rh-button rh-button-outline" @click="showForm">
+        {{ accounts.length ? 'Change bank details' : 'Add bank account' }}
+      </button>
+      <p v-if="error" role="alert">{{ error }}</p>
+      <div v-for="account in accounts" :key="account.id" class="rhe-ledger">
+        <strong>{{ account.account_name || 'Account verification pending' }}</strong>
+        <p>
+          {{ account.bank_name || 'Bank details submitted' }} · Account ending
+          {{ account.account_last4 }}
         </p>
+        <p>{{ financeStatus(account.status) }} · {{ financeStatus(account.onboarding_state) }}</p>
+        <p v-if="account.last_error">{{ account.last_error }}</p>
       </div>
-    </section>
-    <div class="rhe-summary rhe-payout-summary">
-      <article class="rhe-card">
-        <span>Amount you’ll receive</span><strong>—</strong><small>After fees and refunds</small>
-      </article>
-      <article class="rhe-card">
-        <span>Next payment to your bank</span><strong>—</strong
-        ><small>No payment date confirmed</small>
-      </article>
-      <article class="rhe-card">
-        <span>Money sent to your bank</span><strong>—</strong
-        ><small>No payment data connected</small>
-      </article>
-    </div>
-    <section class="rhe-card">
-      <div class="rhe-section-head">
-        <div>
-          <h2>Money from your tickets</h2>
-          <p>See what will be deducted before your money is sent.</p>
-        </div>
-      </div>
-      <div class="rhe-ledger">
-        <div>
-          <span>Ticket value at original prices</span
-          ><strong>{{ money(overview.revenue?.total_minor) }}</strong>
-        </div>
-        <div
-          v-for="label in ['Discounts', 'Fees', 'Refunds', 'Amount you’ll receive']"
-          :key="label"
-        >
-          <span>{{ label }}</span
-          ><strong>Not confirmed</strong>
-        </div>
-      </div>
+      <nav aria-label="Bank account pages">
+        <button :disabled="page <= 1 || reading" @click="refresh(page - 1)">Previous</button> Page
+        {{ page }} of {{ lastPage }}
+        <button :disabled="page >= lastPage || reading" @click="refresh(page + 1)">Next</button>
+      </nav>
     </section>
     <section class="rhe-card">
-      <div class="rhe-section-head">
-        <div>
-          <h2>Money sent to your bank</h2>
-          <p>Track your transfers here once payment processing is connected.</p>
-        </div>
-      </div>
-      <div class="rhe-empty">No transfer records to show yet.</div>
+      <h2>Settlement history</h2>
+      <p>
+        Confirmed seller settlement is shown in your earnings records. Individual settlement
+        statements and payment dates are not available here yet.
+      </p>
+      <p>
+        Pending proceeds are not a withdrawable balance. Payments needing review require
+        reconciliation.
+      </p>
     </section>
   </div>
 </template>

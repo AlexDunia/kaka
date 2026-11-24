@@ -26,86 +26,23 @@ export async function getPublicCategories(signal) {
 }
 
 export async function getPublicEvents(filters = {}, signal) {
-  // The existing Laravel endpoint accepts category_id, but has no search/city
-  // filters. Search the complete matching database collection before paginating.
   const numericCategory = /^\d+$/.test(String(filters.category || ''))
-  const localFiltering = Boolean(
-    filters.q || filters.city || (filters.category && !numericCategory),
-  )
   const params = {
-    page: localFiltering ? 1 : filters.page || 1,
-    per_page: localFiltering ? 100 : 12,
-    ...(numericCategory ? { category_id: filters.category } : {}),
+    page: filters.page || 1,
+    per_page: 12,
+    ...(filters.q ? { q: filters.q } : {}),
+    ...(filters.city ? { city: filters.city } : {}),
+    ...(filters.category
+      ? { [numericCategory ? 'category_id' : 'category']: filters.category }
+      : {}),
+    ...(filters.sort ? { sort: filters.sort } : {}),
   }
   const { data } = await catalog.get('/events', { signal, params })
-  const meta = data.meta || data.pagination || {}
-  if (localFiltering) {
-    let events = collection(data)
-    const lastPage = Number(meta.last_page || meta.pages || 1)
-    for (let page = 2; page <= lastPage; page++) {
-      const response = await catalog.get('/events', { signal, params: { ...params, page } })
-      events = events.concat(collection(response.data))
-    }
-    events = events.filter((event) => matchesPublicFilters(event, filters))
-    const offset = (Math.max(1, Number(filters.page) || 1) - 1) * 12
-    return {
-      events: events.slice(offset, offset + 12),
-      total: events.length,
-      pages: Math.max(1, Math.ceil(events.length / 12)),
-    }
-  }
   return {
     events: collection(data),
-    total: Number(meta.total ?? collection(data).length),
-    pages: Number(meta.last_page || meta.pages || 1),
+    total: Number(data.meta.total),
+    pages: Number(data.meta.last_page),
   }
-}
-
-export function matchesPublicFilters(event, filters) {
-  const category = typeof event.category === 'object' ? event.category?.name : event.category
-  const categoryKey = String(event.category_id || event.category?.id || '')
-  const wanted = String(filters.category || '').toLowerCase()
-  if (
-    wanted &&
-    wanted !== categoryKey &&
-    !String(category || '')
-      .toLowerCase()
-      .includes(wanted)
-  )
-    return false
-  const location = [
-    event.address?.city,
-    event.address?.state,
-    event.address?.venue_name,
-    event.city,
-    event.venue,
-    event.location,
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase()
-  if (filters.city && !location.includes(filters.city.toLowerCase())) return false
-  const search = [
-    event.title,
-    event.description,
-    category,
-    event.tags,
-    location,
-    event.organizer?.name,
-    event.organiser?.name,
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .replace(/<[^>]+>/g, ' ')
-    .toLowerCase()
-  return (
-    !filters.q ||
-    filters.q
-      .toLowerCase()
-      .trim()
-      .split(/\s+/)
-      .every((word) => search.includes(word))
-  )
 }
 
 export function categoryArtIndex(name) {

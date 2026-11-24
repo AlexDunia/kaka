@@ -119,7 +119,9 @@ export function normalizeEventProfile(source = {}, now = new Date()) {
       : { name: text(organiserSource) }
   const rawTickets = array(source.ticketTypes || source.ticket_types || source.tickets)
   const tickets = rawTickets
-    .filter((ticket) => ticket.visible !== false && ticket.is_visible !== false)
+    .filter(
+      (ticket) => !ticket.retired_at && ticket.visible !== false && ticket.is_visible !== false,
+    )
     .map((ticket, index) => {
       const price = Number(ticket.price ?? Number(ticket.price_minor) / 100) || 0
       const stockValue =
@@ -157,6 +159,10 @@ export function normalizeEventProfile(source = {}, now = new Date()) {
         name: text(ticket.name) || 'Admission',
         price,
         remaining,
+        configured: ticket.configured_capacity_units ?? ticket.quantity ?? ticket.units ?? null,
+        sold: ticket.sold_units ?? null,
+        reserved: ticket.reserved_units ?? null,
+        admissionCapacity: ticket.admission_capacity ?? null,
         max,
         description: text(ticket.description || ticket.perks),
         unit:
@@ -164,7 +170,7 @@ export function normalizeEventProfile(source = {}, now = new Date()) {
           ticket.unit_type ||
           (/table/i.test(ticket.name) ? 'table' : 'individual'),
         people: Number(ticket.peoplePerUnit || ticket.people_per_unit) || 1,
-        available: max > 0 && remaining !== 0 && !pending && !ended && purchasableId,
+        available: max > 0 && remaining !== 0 && !pending && !ended && purchasableId && price > 0,
         status:
           remaining === 0
             ? 'Sold out'
@@ -262,6 +268,16 @@ export function normalizeEventProfile(source = {}, now = new Date()) {
   ]
     .map((item) => text(typeof item === 'object' ? item.name : item))
     .filter(Boolean)
+  const ticketMode = source.ticket_mode || source.ticketMode || null
+  const displayedPrices = tickets.filter((ticket) => ticket.price > 0).map((ticket) => ticket.price)
+  const price =
+    ticketMode === 'free'
+      ? 0
+      : displayedPrices.length
+        ? Math.min(...displayedPrices)
+        : Number(source.price) > 0
+          ? Number(source.price)
+          : null
   return {
     id: source.id,
     demo: source.demo === true,
@@ -293,18 +309,30 @@ export function normalizeEventProfile(source = {}, now = new Date()) {
     },
     tickets,
     salesEnded,
+    lifecycleState: source.lifecycle_state,
     guests,
     schedule,
     images,
     faq,
-    price: tickets.length ? Math.min(...tickets.map((ticket) => ticket.price)) : null,
-    canBuy: !salesEnded && tickets.some((ticket) => ticket.available),
+    ticketMode,
+    registrationFields: array(source.registration_fields),
+    canRegister:
+      ticketMode === 'free' &&
+      !salesEnded &&
+      source.booking_supported !== false &&
+      source.event_type !== 'recurring',
+    price,
+    canBuy:
+      ticketMode !== 'free' &&
+      source.booking_supported !== false &&
+      !salesEnded &&
+      tickets.some((ticket) => ticket.available && ticket.price > 0),
     extras: details
       .filter(
         (detail) => !['speakers', 'agenda', 'faq'].includes(detail.type) && text(detail.value),
       )
       .map((detail) => ({ label: text(detail.label) || detail.type, value: text(detail.value) })),
-    highlights: array(source.eventOptions || source.selectedEventOptions)
+    highlights: array(source.event_options || source.eventOptions || source.selectedEventOptions)
       .map((item) => text(typeof item === 'object' ? item.name : item))
       .filter(Boolean),
     related: array(source.related_events || source.relatedEvents),

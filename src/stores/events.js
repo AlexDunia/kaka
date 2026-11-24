@@ -330,8 +330,6 @@ export const useEventStore = defineStore('events', () => {
     direction = 'asc',
     dateFrom = null,
     dateTo = null,
-    priceMin = null,
-    priceMax = null,
   ) => {
     const request = ++collectionRequest
     isLoading.value = true
@@ -352,22 +350,22 @@ export const useEventStore = defineStore('events', () => {
 
       // Add search query
       if (query && query.trim() !== '') {
-        url += `&search=${encodeURIComponent(query.trim())}`
+        url += `&q=${encodeURIComponent(query.trim())}`
       }
 
       // Add category filter
       if (category && category !== 'all') {
-        url += `&category=${encodeURIComponent(category)}`
+        url += `&${/^\d+$/.test(String(category)) ? 'category_id' : 'category'}=${encodeURIComponent(category)}`
       }
 
-      // Add sort parameters
-      if (sort) {
-        url += `&sort=${encodeURIComponent(sort)}`
-      }
-
-      if (direction) {
-        url += `&direction=${encodeURIComponent(direction)}`
-      }
+      const sortValue = ['date-asc', 'date-desc', 'price-asc', 'price-desc', 'latest'].includes(
+        sort,
+      )
+        ? sort
+        : sort === 'price'
+          ? `price-${direction === 'desc' ? 'desc' : 'asc'}`
+          : `date-${direction === 'desc' ? 'desc' : 'asc'}`
+      url += `&sort=${sortValue}`
 
       // Add date range filters
       if (dateFrom) {
@@ -376,15 +374,6 @@ export const useEventStore = defineStore('events', () => {
 
       if (dateTo) {
         url += `&date_to=${encodeURIComponent(dateTo)}`
-      }
-
-      // Add price range filters
-      if (priceMin !== null && priceMin !== '') {
-        url += `&price_min=${encodeURIComponent(priceMin)}`
-      }
-
-      if (priceMax !== null && priceMax !== '') {
-        url += `&price_max=${encodeURIComponent(priceMax)}`
       }
 
       const response = await api.get(url.replace(eventService.EVENTS_API_URL, '/events'))
@@ -540,6 +529,18 @@ export const useEventStore = defineStore('events', () => {
     }
   }
 
+  const invalidateEvent = (id) => {
+    collectionRequest++
+    detailRequest++
+    if (Number(currentEvent.value?.id) === Number(id)) currentEvent.value = null
+    events.value = []
+    featuredEvents.value = []
+    lastFetch.value = null
+    forceRefresh.value = true
+    isLoading.value = false
+    isLoadingEvent.value = false
+  }
+
   return {
     // State
     events,
@@ -560,6 +561,7 @@ export const useEventStore = defineStore('events', () => {
     fetchLikedEvents,
 
     // Actions
+    invalidateEvent,
     fetchAllEvents,
     fetchEventById,
     fetchEventsByCategory,

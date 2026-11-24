@@ -81,7 +81,8 @@ const money = (value) =>
       : new Intl.NumberFormat('en-NG', {
           style: 'currency',
           currency: 'NGN',
-          maximumFractionDigits: 0,
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 2,
         }).format(value)
 const displayDate = computed(
   () =>
@@ -97,11 +98,13 @@ const displayTime = computed(() =>
 )
 const paragraphs = computed(() => profile.value.description.split(/\n\s*\n/).filter(Boolean))
 const purchaseLabel = computed(() =>
-  profile.value.salesEnded
-    ? 'Ticket sales have ended'
-    : profile.value.canBuy
-      ? 'View all tickets available'
-      : 'Tickets unavailable',
+  profile.value.canRegister
+    ? 'Register for this event'
+    : profile.value.salesEnded
+      ? 'Ticket sales have ended'
+      : profile.value.canBuy
+        ? 'View all tickets available'
+        : 'Tickets unavailable',
 )
 const galleryImage = computed(() => profile.value.images[galleryIndex.value])
 const shareUrl = computed(
@@ -135,6 +138,10 @@ function eventLink(event) {
   }
 }
 function openTickets() {
+  if (profile.value.canRegister) {
+    router.push({ name: 'checkout', query: { event: profile.value.id, registration: '1' } })
+    return
+  }
   if (profile.value.canBuy)
     router.push({
       name: 'event-tickets',
@@ -389,7 +396,9 @@ watch(ticketPickerOpen, (open) => {
 })
 onMounted(() => {
   try {
-    const stored = preview.value ? JSON.parse(localStorage.getItem('rushhour-profile-follows') || '[]') : []
+    const stored = preview.value
+      ? JSON.parse(localStorage.getItem('rushhour-profile-follows') || '[]')
+      : []
     following.value = Array.isArray(stored) ? stored : []
   } catch {
     following.value = []
@@ -437,11 +446,27 @@ onBeforeUnmount(() => {
           <div class="ep-system-hero-copy">
             <span class="ep-eyebrow">{{ profile.category }}</span>
             <h1 id="ep-event-title">{{ profile.title }}</h1>
+            <p v-if="profile.lifecycleState === 'cancelled'" role="status">
+              This event has been cancelled. Bookings are closed. Refund updates will be sent to
+              buyers.
+            </p>
             <p v-if="profile.summary">{{ profile.summary }}</p>
-            <div v-if="profile.tags.length" class="ep-system-hero-tags"><span v-for="tag in profile.tags" :key="tag">{{ tag }}</span></div>
+            <div v-if="profile.tags.length" class="ep-system-hero-tags">
+              <span v-for="tag in profile.tags" :key="tag">{{ tag }}</span>
+            </div>
             <div class="ep-system-hero-meta">
-              <p><CalendarDaysIcon aria-hidden="true" /><span>{{ displayDate }}<template v-if="displayTime"> &middot; {{ displayTime }}</template></span></p>
-              <p v-if="profile.venue"><component :is="profile.isOnline ? GlobeAltIcon : MapPinIcon" aria-hidden="true" /><span>{{ profile.venue }}</span></p>
+              <p>
+                <CalendarDaysIcon aria-hidden="true" /><span
+                  >{{ displayDate
+                  }}<template v-if="displayTime"> &middot; {{ displayTime }}</template></span
+                >
+              </p>
+              <p v-if="profile.venue">
+                <component
+                  :is="profile.isOnline ? GlobeAltIcon : MapPinIcon"
+                  aria-hidden="true"
+                /><span>{{ profile.venue }}</span>
+              </p>
             </div>
           </div>
         </section>
@@ -728,7 +753,7 @@ onBeforeUnmount(() => {
             <button
               type="button"
               class="ep-primary rh24-cta rh26-main-buy"
-              :disabled="!profile.canBuy"
+              :disabled="!profile.canBuy && !profile.canRegister"
               @click="openTickets"
             >
               {{ purchaseLabel }} <span v-if="profile.canBuy" aria-hidden="true">→</span>
@@ -788,8 +813,21 @@ onBeforeUnmount(() => {
         <div>
           <small>Starting from</small><strong>{{ money(profile.price) }}</strong>
         </div>
-        <button type="button" class="ep-primary" :disabled="!profile.canBuy" @click="openTickets">
-          {{ profile.canBuy ? 'View tickets' : profile.salesEnded ? 'Sales ended' : 'Unavailable' }}
+        <button
+          type="button"
+          class="ep-primary"
+          :disabled="!profile.canBuy && !profile.canRegister"
+          @click="openTickets"
+        >
+          {{
+            profile.canRegister
+              ? 'Register'
+              : profile.canBuy
+                ? 'View tickets'
+                : profile.salesEnded
+                  ? 'Sales ended'
+                  : 'Unavailable'
+          }}
         </button>
       </div>
       <dialog

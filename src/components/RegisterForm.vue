@@ -1,11 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import {
-  safeAuthDestination,
-  rememberAuthDestination,
-  takeAuthDestination,
-} from '@/utils/authDestination'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const name = ref('')
@@ -18,13 +13,6 @@ const success = ref(false)
 
 const authStore = useAuthStore()
 const router = useRouter()
-const route = useRoute()
-const authLink = (path) => ({
-  path,
-  query: safeAuthDestination(route.query.redirect)
-    ? { redirect: safeAuthDestination(route.query.redirect) }
-    : {},
-})
 
 const register = async () => {
   // Reset states
@@ -58,13 +46,6 @@ const register = async () => {
       password: password.value,
     })
 
-    const destination = safeAuthDestination(route.query.redirect) || takeAuthDestination()
-    if (destination && authStore.isAuthenticated) {
-      rememberAuthDestination(null)
-      await router.replace(destination)
-      return
-    }
-
     // Set success state
     success.value = true
 
@@ -76,7 +57,7 @@ const register = async () => {
 
     // Redirect to login after a short delay
     setTimeout(() => {
-      router.push(authLink('/login'))
+      router.push('/login')
     }, 2000)
   } catch (err) {
     error.value = err.message || 'We couldn’t create your account. Please try again.'
@@ -86,7 +67,7 @@ const register = async () => {
 }
 
 const goToLogin = () => {
-  router.push(authLink('/login'))
+  router.push('/login')
 }
 </script>
 

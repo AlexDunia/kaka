@@ -225,17 +225,20 @@ try {
     async () => {
       const form = {
         title: 'Real event',
+        version: 5,
         secondaryImages: [],
         tickets: [],
         attendeeFields: [],
         extraDetails: [],
       }
-      handler = () => ({ data: { id: 3, status: 'draft' } })
+      handler = () => ({
+        data: { id: 3, status: 'draft', version: 6, form: { ...form, version: 6 } },
+      })
       await createEventDraft(form)
       assert.equal(calls.at(-1).url, '/create-event')
       await updateEventDraft(3, form)
       assert.equal(calls.at(-1).method, 'patch')
-      await publishEvent(3)
+      await publishEvent(3, 6)
       assert.equal(calls.at(-1).url, '/create-event/3/publish')
     },
   )

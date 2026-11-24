@@ -1,19 +1,20 @@
 import axios from 'axios'
 
-export const API_BASE_URL = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '')
+export const API_BASE_URL = '/api'
 export const apiUrl = (path) => `${API_BASE_URL}/${path.replace(/^\//, '')}`
 const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
   withXSRFToken: true,
-  headers: { Accept: 'application/json' },
 })
 let csrfCookieRequest = null
 export const ensureCsrfCookie = () => {
   if (!csrfCookieRequest) {
-    csrfCookieRequest = api.get('/sanctum/csrf-cookie').finally(() => {
-      csrfCookieRequest = null
-    })
+    csrfCookieRequest = axios
+      .get('/sanctum/csrf-cookie', { withCredentials: true, withXSRFToken: true })
+      .finally(() => {
+        csrfCookieRequest = null
+      })
   }
   return csrfCookieRequest
 }
@@ -40,18 +41,4 @@ export const getApiErrorMessage = (
   }
   return messages[status] || validation || error.response?.data?.message || fallback
 }
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    error.userMessage = getApiErrorMessage(error)
-    if ([401, 419].includes(error.response?.status)) {
-      window.dispatchEvent(new CustomEvent('auth:unauthorized'))
-      if (error.response.status === 419 && error.config?.url !== '/sanctum/csrf-cookie') {
-        // Refresh protection for the next explicit attempt. Never replay a mutation.
-        void ensureCsrfCookie().catch(() => {})
-      }
-    }
-    return Promise.reject(error)
-  },
-)
 export default api

@@ -2,7 +2,6 @@
 import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { takeAuthDestination } from '@/utils/authDestination'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -23,14 +22,15 @@ onMounted(async () => {
   }
 
   try {
-    await authStore.setUser(null, 'google')
-    if (!authStore.isAuthenticated) throw new Error('Session not established')
+    const callbackUser = JSON.parse(decodeURIComponent(userData))
+    authStore.setUser(callbackUser, 'google')
+    const authenticatedUser = await authStore.fetchUser()
 
-    const destination = takeAuthDestination()
-    if (destination) {
-      await router.replace(destination)
+    if (authenticatedUser?.role === 'admin') {
+      await router.replace('/admin')
       return
     }
+
     await router.replace('/dashboard')
   } catch (callbackError) {
     console.error('Google session verification failed', callbackError)

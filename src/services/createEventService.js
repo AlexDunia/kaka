@@ -1,4 +1,8 @@
-import { APP_DEFAULT_TIME_ZONE, toLocalDateTimeString } from '@/utils/eventDateTime'
+import { APP_DEFAULT_TIME_ZONE, editorDateFields } from '@/utils/eventDateTime'
+import { getActivePinia } from 'pinia'
+import { useEventStore } from '@/stores/events'
+import { useDashboardStore } from '@/stores/dashboard'
+import { isPersistedTicketId } from '@/utils/eventEditor'
 import api, { ensureCsrfCookie } from '@/api/axios'
 
 export const DEFAULT_CREATE_EVENT_TIPS = [
@@ -40,21 +44,19 @@ const stripUnsafeHtml = (value) =>
     .replace(/[<>]/g, '')
     .trim()
 
-const sanitizeTicket = (ticket) => ({
-  id: ticket.id,
+const sanitizeTicket = (ticket, timeZone) => ({
+  ...(isPersistedTicketId(ticket.id) ? { id: ticket.id } : {}),
   name: stripUnsafeHtml(ticket.name),
   unitType: ticket.unitType,
   color: ticket.color,
-  price: Number(ticket.price) || 0,
-  units: Number(ticket.units) || 0,
-  peoplePerUnit: Number(ticket.peoplePerUnit) || 1,
-  maxPerPerson: Number(ticket.maxPerPerson) || 1,
-  visible: Boolean(ticket.visible),
+  price: String(ticket.price ?? '0'),
+  units: ticket.units === '' || ticket.units == null ? 0 : Number(ticket.units),
+  peoplePerUnit: ticket.unitType === 'individual' ? 1 : Number(ticket.peoplePerUnit),
+  maxPerPerson:
+    ticket.maxPerPerson === '' || ticket.maxPerPerson == null ? null : Number(ticket.maxPerPerson),
+  visible: ticket.visible !== false,
   perks: stripUnsafeHtml(ticket.perks),
-  salesStart: ticket.salesStart || null,
-  salesEnd: ticket.salesEnd || null,
-  salesStartLocal: toLocalDateTimeString(ticket.salesStart),
-  salesEndLocal: toLocalDateTimeString(ticket.salesEnd),
+  ...editorDateFields(ticket, ['salesStart', 'salesEnd'], timeZone),
 })
 
 const sanitizeRecurrence = (recurrence = {}) => ({
@@ -69,8 +71,7 @@ const sanitizeRecurrence = (recurrence = {}) => ({
       : null,
   },
   seriesEndType: recurrence.seriesEndType || null,
-  seriesEndDate:
-    recurrence.seriesEndType === 'on_date' ? recurrence.seriesEndDate || null : null,
+  seriesEndDate: recurrence.seriesEndType === 'on_date' ? recurrence.seriesEndDate || null : null,
   occurrenceCount:
     recurrence.seriesEndType === 'after_occurrences'
       ? Number(recurrence.occurrenceCount) || null
@@ -78,15 +79,17 @@ const sanitizeRecurrence = (recurrence = {}) => ({
 })
 export const buildCreateEventPayload = (form) => ({
   title: stripUnsafeHtml(form.title),
-  startsAt: form.startsAt || null,
-  endsAt: form.endsAt || null,
-  startsAtLocal: toLocalDateTimeString(form.startsAt),
-  endsAtLocal: toLocalDateTimeString(form.endsAt),
-  timeZone: form.venueTimezone || APP_DEFAULT_TIME_ZONE,
+  ...editorDateFields(
+    form,
+    ['startsAt', 'endsAt'],
+    form.venueTimezone || form.timeZone || APP_DEFAULT_TIME_ZONE,
+  ),
+  timeZone: form.venueTimezone || form.timeZone || APP_DEFAULT_TIME_ZONE,
   eventType: form.eventType,
   recurrence: form.eventType === 'recurring' ? sanitizeRecurrence(form.recurrence) : null,
   format: form.format,
   venue: stripUnsafeHtml(form.venue),
+  city: stripUnsafeHtml(form.city),
   meetingLink: stripUnsafeHtml(form.meetingLink),
   category: stripUnsafeHtml(form.category),
   description: stripUnsafeHtml(form.description),
@@ -94,49 +97,67 @@ export const buildCreateEventPayload = (form) => ({
   organiserWebsite: stripUnsafeHtml(form.organiserWebsite),
   tags: stripUnsafeHtml(form.tags),
   coverImage: form.coverImage || null,
-  secondaryImages: [...form.secondaryImages],
+  secondaryImages: [...(form.secondaryImages || [])],
   ticketMode: form.ticketMode,
-  freeCapacity: Number(form.freeCapacity) || null,
-  tickets: form.tickets.map(sanitizeTicket),
-  attendeeFields: form.attendeeFields.map((field) => ({
+  freeCapacity:
+    form.freeCapacity === '' || form.freeCapacity == null ? null : Number(form.freeCapacity),
+  tickets: (form.tickets || []).map((ticket) =>
+    sanitizeTicket(ticket, form.venueTimezone || form.timeZone || APP_DEFAULT_TIME_ZONE),
+  ),
+  attendeeFields: (form.attendeeFields || []).map((field) => ({
     id: field.id,
     label: field.label,
     enabled: Boolean(field.enabled),
     required: Boolean(field.required),
   })),
-  extraDetails: form.extraDetails.map((detail) => ({
+  extraDetails: (form.extraDetails || []).map((detail) => ({
     type: detail.type,
     label: detail.label,
     value: stripUnsafeHtml(detail.value),
   })),
 })
 
-export const saveCreateEventDraft = (form) => {
-  const payload = buildCreateEventPayload(form)
-  window.localStorage?.setItem('kaka-create-event-draft', JSON.stringify(payload))
-  return payload
+const mutationResult = (response) => {
+  const record = response.data?.data
+  if (!record?.id || !Number.isInteger(record.version) || !record.form) {
+    throw new Error('Your event response was incomplete. Reload the editor before saving again.')
+  }
+  if (getActivePinia()) {
+    useEventStore().invalidateEvent(record.id)
+    useDashboardStore().invalidateEvent(record.id)
+  }
+  return response.data
 }
 
 export const createEventDraft = async (form) => {
   await ensureCsrfCookie()
-  const response = await api.post('/create-event', buildCreateEventPayload(form))
-  return response.data
+  return mutationResult(await api.post('/create-event', buildCreateEventPayload(form)))
 }
 
-export const updateEventDraft = async (eventId, form) => {
+// Only the complete wizard requests replacement. Workspace/profile edits use merges.
+export const updateEventDraft = (eventId, form) =>
+  patchEvent(
+    eventId,
+    {
+      ...buildCreateEventPayload(form),
+      ticketCollectionMode: 'replace',
+    },
+    form.version,
+  )
+
+export const patchEvent = async (eventId, changes, version) => {
   await ensureCsrfCookie()
-  const response = await api.patch(`/create-event/${eventId}`, buildCreateEventPayload(form))
-  return response.data
+  return mutationResult(
+    await api.patch(`/create-event/${encodeURIComponent(eventId)}`, { ...changes, version }),
+  )
 }
 
-export const publishEvent = async (eventId) => {
+export const publishEvent = async (eventId, version) => {
   await ensureCsrfCookie()
-  const response = await api.post(`/create-event/${eventId}/publish`)
-  return response.data
+  return mutationResult(
+    await api.post(`/create-event/${encodeURIComponent(eventId)}/publish`, { version }),
+  )
 }
 
-export const getEventForEditing = async (eventId) => {
-  await ensureCsrfCookie()
-  const response = await api.get(`/create-event/${eventId}`)
-  return response.data
-}
+export const getEventForEditing = async (eventId) =>
+  (await api.get(`/create-event/${encodeURIComponent(eventId)}`)).data

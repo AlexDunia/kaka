@@ -1,6 +1,13 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import {
+  inviteDoorStaff,
+  operationsError,
+  setAdmissionPolicy,
+  getEventStaff,
+  revokeEventStaff,
+} from '@/services/eventOperationsService'
 import QrcodeVue from 'qrcode.vue'
 import { DASHBOARD_PREVIEW as preview } from '@/services/dashboardPreview'
 import { useWorkspaceAttendees, visitDate } from './attendeesModel'
@@ -38,17 +45,19 @@ function save(key, value) {
 }
 const notify = (text) => emit('notify', text)
 const active = ref(read('door-active', false))
-const entrances = ref(
-  read('entrances', [
-    { id: 1, name: 'Main entrance', contacts: [] },
-    { id: 2, name: 'VIP entrance', contacts: [] },
-  ]).map((door, i) => ({
-    ...door,
-    id: door.id || i + 1,
-    contacts: door.contacts || [],
-    aliases: door.aliases || [],
-  })),
-)
+const entrances = preview
+  ? ref(
+      read('entrances', [
+        { id: 1, name: 'Main entrance', contacts: [] },
+        { id: 2, name: 'VIP entrance', contacts: [] },
+      ]).map((door, i) => ({
+        ...door,
+        id: door.id || i + 1,
+        contacts: door.contacts || [],
+        aliases: door.aliases || [],
+      })),
+    )
+  : model.entrances
 const tab = computed(() => (route.query.tab === 'entrances' ? 'entrances' : 'checkin'))
 const managing = computed(() => Boolean(route.query.entrance))
 const managed = computed(() =>
@@ -59,6 +68,16 @@ const selectedGuest = computed(() => guests.value.find((g) => g.id === route.que
 const guestPage = computed(() => Boolean(route.query.doorGuest || route.query.history))
 const detailPage = computed(() => (route.query.history ? 'checkin' : 'purchase'))
 const currentEntrance = ref(entrances.value[0]?.id)
+if (!preview)
+  watch(
+    entrances,
+    (rows) => {
+      active.value = rows.some((door) => door.active)
+      if (!rows.some((door) => door.id === currentEntrance.value))
+        currentEntrance.value = rows.find((door) => door.active)?.id
+    },
+    { deep: true, immediate: true },
+  )
 watch(
   () => [route.query.entrance, route.query.returnEntrance],
   () => {
@@ -81,7 +100,10 @@ const entriesAt = (door) =>
     .filter((v) => v.kind === 'in' && belongsTo(v, door))
     .slice()
     .reverse()
-const entranceCount = (door) => new Set(entriesAt(door).map((v) => v.id)).size
+const entranceCount = (door) =>
+  preview
+    ? new Set(entriesAt(door).map((v) => v.id)).size
+    : entriesAt(door).reduce((total, row) => total + row.count, 0)
 const checkedIn = computed(() => guests.value.filter((g) => model.everArrived(g.id)).length)
 const insideNow = computed(() => guests.value.filter((g) => model.inside(g.id)).length)
 const latest = computed(() => [...movements.value].reverse().find((v) => v.kind === 'in'))
@@ -149,12 +171,15 @@ function go(query = {}) {
   emit('navigate', { view: 'checkin', ...query })
 }
 function href(query = {}) {
-  return `${import.meta.env.BASE_URL}dashboard/events/${encodeURIComponent(props.eventId)}?${new URLSearchParams({ view: 'checkin', ...query })}`
+  return `${import.meta.env.BASE_URL}${route.name === 'event-door' ? 'door/' : 'dashboard/events/'}${encodeURIComponent(props.eventId)}?${new URLSearchParams({ view: 'checkin', ...query })}`
 }
 function guestQuery(guest) {
   return {
     doorGuest: guest.id,
     guest: guest.id,
+    ...(preview
+      ? {}
+      : { attendeePage: model.attendeePage.value.current_page, ticket: guest.ticketPublicId }),
     order: model.orderFor(guest.id)?.id,
     ...(managed.value ? { returnEntrance: String(managed.value.id) } : {}),
   }
@@ -162,7 +187,20 @@ function guestQuery(guest) {
 function viewGuest(guest) {
   go(guestQuery(guest))
 }
-function activate() {
+async function activate() {
+  if (!preview) {
+    try {
+      await model.persistEntrance(entrances.value[0]?.id, {
+        name: entrances.value[0]?.name || 'Main entrance',
+        active: true,
+      })
+      active.value = true
+      notify('Your entrance is ready.')
+    } catch (err) {
+      notify(operationsError(err, 'The entrance could not be activated. Please try again.'))
+    }
+    return
+  }
   if (save('door-active', true)) active.value = true
 }
 function changeTab(name) {
@@ -182,7 +220,19 @@ function tabKeys(e) {
   changeTab(next)
   nextTick(() => tabButtons.value[next]?.focus())
 }
-function record(guest, kind, entranceId = currentEntrance.value) {
+async function record(guest, kind, entranceId = currentEntrance.value) {
+  if (!preview) {
+    if (!guest?.ticket_public_id) {
+      openScan(entranceId)
+      return false
+    }
+    const result = await model.recordMovement(scanCode.value, kind, entranceId, scanCount.value)
+    if (disposed) return result.ok
+    scanError.value = result.message
+    if (result.ticket_public_id) scanGuest.value = { ...scanGuest.value, ...result }
+    notify(result.message)
+    return result.ok
+  }
   if (!active.value) {
     notify('Activate door check-in before recording an arrival.')
     return false
@@ -197,7 +247,51 @@ function record(guest, kind, entranceId = currentEntrance.value) {
   return result.ok
 }
 
-const entranceForm = reactive({ name: '', contacts: [] }),
+const entranceSaving = ref(false)
+const staff = ref(null),
+  staffBusy = ref(false)
+async function loadStaff(page = 1) {
+  if (preview || !model.canManage.value) return
+  staffBusy.value = true
+  try {
+    staff.value = await getEventStaff(props.eventId, page)
+  } catch (err) {
+    notify(operationsError(err))
+  } finally {
+    staffBusy.value = false
+  }
+}
+async function revokeStaff(id, invitation = false) {
+  if (staffBusy.value) return
+  staffBusy.value = true
+  try {
+    await revokeEventStaff(props.eventId, id, invitation)
+    await loadStaff(staff.value?.meta.current_page || 1)
+    notify('Event access revoked.')
+  } catch (err) {
+    notify(operationsError(err, 'Access could not be revoked.'))
+  } finally {
+    staffBusy.value = false
+  }
+}
+async function changeReentry(event) {
+  const value = event.target.checked
+  event.target.checked = Boolean(model.context.value?.event.allow_reentry)
+  try {
+    await setAdmissionPolicy(props.eventId, value)
+    await model.loadContext()
+    notify('Re-entry policy saved.')
+  } catch (err) {
+    notify(operationsError(err, 'The re-entry policy was not saved.'))
+  }
+}
+const entranceForm = reactive({
+    name: '',
+    contacts: [],
+    active: true,
+    opens_at: '',
+    closes_at: '',
+  }),
   formError = ref(''),
   formFeedback = ref('')
 const entranceHeading = ref(null)
@@ -208,6 +302,9 @@ watch(
     formFeedback.value = ''
     Object.assign(entranceForm, {
       name: managed.value?.name || '',
+      active: managed.value?.active ?? true,
+      opens_at: (managed.value?.opens_at || '').replace(' ', 'T').slice(0, 16),
+      closes_at: (managed.value?.closes_at || '').replace(' ', 'T').slice(0, 16),
       contacts: (managed.value?.contacts || []).map((c) => ({ ...c })),
     })
     if (managing.value) {
@@ -217,7 +314,45 @@ watch(
   },
   { immediate: true },
 )
-function saveEntrance() {
+async function saveEntrance() {
+  if (!preview) {
+    if (entranceSaving.value) return
+    entranceSaving.value = true
+    formError.value = ''
+    try {
+      const door = await model.persistEntrance(managed.value?.id, {
+        name: entranceForm.name.trim(),
+        active: entranceForm.active,
+        opens_at: entranceForm.opens_at ? entranceForm.opens_at + 'Z' : null,
+        closes_at: entranceForm.closes_at ? entranceForm.closes_at + 'Z' : null,
+      })
+      const invitationCount = entranceForm.contacts.length
+      let failed = false
+      const failedContacts = []
+      for (const contact of entranceForm.contacts) {
+        try {
+          await inviteDoorStaff(props.eventId, contact.email.trim(), door.id)
+        } catch {
+          failed = true
+          failedContacts.push(contact)
+        }
+      }
+      entranceForm.contacts = failedContacts
+      void loadStaff()
+      formFeedback.value = failed
+        ? 'Entrance saved. Some staff invitations could not be queued; review them before trying again.'
+        : invitationCount
+          ? 'Entrance saved. Staff invitations have been queued.'
+          : 'Entrance details saved.'
+      go({ entrance: String(door.id) })
+      notify(formFeedback.value)
+    } catch (err) {
+      formError.value = operationsError(err, 'Entrance details were not saved. Please try again.')
+    } finally {
+      entranceSaving.value = false
+    }
+    return
+  }
   const name = entranceForm.name.trim(),
     contacts = entranceForm.contacts.map((c) => ({
       name: c.name.trim(),
@@ -269,7 +404,25 @@ function saveEntrance() {
   formError.value = ''
 }
 const deleteDialog = ref(null)
-function removeEntrance() {
+async function removeEntrance() {
+  if (!preview) {
+    const door = managed.value
+    if (!door) return
+    try {
+      await model.persistEntrance(door.id, {
+        name: door.name,
+        active: false,
+        opens_at: door.opens_at || null,
+        closes_at: door.closes_at || null,
+      })
+      deleteDialog.value?.close()
+      go({ tab: 'entrances' })
+      notify('Entrance deactivated. Its history has been kept.')
+    } catch (err) {
+      formError.value = operationsError(err, 'The entrance could not be deactivated.')
+    }
+    return
+  }
   const door = managed.value
   if (!door || entrances.value.length < 2 || movements.value.some((v) => belongsTo(v, door))) {
     formError.value =
@@ -288,10 +441,16 @@ function removeEntrance() {
 }
 const scanDialog = ref(null),
   scanCode = ref(''),
+  scanDirection = ref('in'),
   scanGuest = ref(null),
   scanError = ref(''),
   scanInput = ref(null),
-  camera = ref(null)
+  camera = ref(null),
+  scanCount = ref(1),
+  lookupBusy = ref(false)
+let lookupVersion = 0,
+  disposed = false,
+  searchTimer
 let origin = null
 function openScan(doorId) {
   if (doorId) currentEntrance.value = doorId
@@ -302,7 +461,41 @@ function openScan(doorId) {
   scanDialog.value.showModal()
   nextTick(() => scanInput.value?.focus())
 }
-function findTicket(value = scanCode.value) {
+async function findTicket(value = scanCode.value) {
+  if (!preview) {
+    const version = ++lookupVersion,
+      code = String(value).trim(),
+      entrance = currentEntrance.value
+    scanGuest.value = null
+    scanError.value = ''
+    lookupBusy.value = true
+    try {
+      const result = await model.lookup(code, entrance, scanDirection.value)
+      if (
+        !disposed &&
+        version === lookupVersion &&
+        code === scanCode.value.trim() &&
+        entrance === currentEntrance.value
+      ) {
+        scanGuest.value = {
+          ...result,
+          id: result.ticket_public_id,
+          name: result.ticket_name,
+          type: result.ticket_name,
+        }
+        scanCount.value = 1
+      }
+    } catch (err) {
+      if (!disposed && version === lookupVersion)
+        scanError.value = operationsError(
+          err,
+          'This credential could not be found for this event. Check the code and entrance.',
+        )
+    } finally {
+      if (version === lookupVersion) lookupBusy.value = false
+    }
+    return
+  }
   scanGuest.value =
     guests.value.find((g) => g.id.toUpperCase() === String(value).trim().toUpperCase()) || null
   scanError.value = scanGuest.value
@@ -313,10 +506,11 @@ function openCamera() {
   scanDialog.value.close()
   camera.value.open('scan')
 }
-function cameraFound(id) {
+async function cameraFound(id) {
   scanCode.value = id
-  findTicket(id)
+  await nextTick()
   scanDialog.value.showModal()
+  await findTicket(id)
 }
 function scanDetails() {
   const guest = scanGuest.value
@@ -330,7 +524,52 @@ async function printEntrance(door) {
   await nextTick()
   window.print()
 }
+if (!preview) {
+  watch([() => model.canManage.value, tab], () => {
+    if (tab.value === 'entrances') void loadStaff()
+  })
+  watch(managed, (next, previous) => {
+    if (next && !previous)
+      Object.assign(entranceForm, {
+        name: next.name,
+        active: next.active,
+        opens_at: (next.opens_at || '').replace(' ', 'T').slice(0, 16),
+        closes_at: (next.closes_at || '').replace(' ', 'T').slice(0, 16),
+      })
+  })
+  watch(model.movements, async () => {
+    if (!scanGuest.value || !scanDialog.value?.open || model.busy.value) return
+    const code = scanCode.value,
+      entrance = currentEntrance.value,
+      version = lookupVersion
+    try {
+      const current = await model.lookup(code, entrance, scanDirection.value)
+      if (!disposed && version === lookupVersion && scanGuest.value)
+        scanGuest.value = { ...scanGuest.value, ...current }
+    } catch {
+      /* The admission action will still require server confirmation. */
+    }
+  })
+  watch(model.context, (value) => {
+    if (!value) scanGuest.value = null
+  })
+  watch(search, () => {
+    clearTimeout(searchTimer)
+    searchTimer = setTimeout(
+      () => model.loadAttendees({ page: 1, q: search.value.trim() || undefined }),
+      300,
+    )
+  })
+  watch([scanCode, currentEntrance, scanDirection], () => {
+    lookupVersion++
+    lookupBusy.value = false
+    scanGuest.value = null
+  })
+}
 onBeforeUnmount(() => {
+  disposed = true
+  lookupVersion++
+  clearTimeout(searchTimer)
   scanDialog.value?.close()
   deleteDialog.value?.close()
 })
@@ -338,6 +577,13 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="workspace-door-checkin" @click.stop @submit.stop @keydown.stop>
+    <p v-if="!preview && model.error.value" class="rh-note" role="alert">
+      {{ model.error.value }}
+      <button class="rh-row-button" @click="model.retry">Try again</button>
+    </p>
+    <p v-if="!preview && model.loading.value" class="rh-note" role="status">
+      Getting your door records ready...
+    </p>
     <template v-if="guestPage">
       <div
         v-if="selectedGuest && !route.query.history"
@@ -349,7 +595,12 @@ onBeforeUnmount(() => {
         >
         <label
           >Entrance<select v-model="currentEntrance">
-            <option v-for="door in entrances" :key="door.id" :value="door.id">
+            <option
+              v-for="door in entrances"
+              :key="door.id"
+              :value="door.id"
+              :disabled="!preview && !door.active"
+            >
               {{ door.name }}
             </option>
           </select></label
@@ -391,6 +642,7 @@ onBeforeUnmount(() => {
           <button
             class="rh-button rh-button-dark rh-dc-activate-btn"
             type="button"
+            :disabled="!preview && !model.canManage.value"
             @click="activate"
           >
             Activate door check-in
@@ -463,6 +715,17 @@ onBeforeUnmount(() => {
               </button>
             </div>
           </div>
+          <p v-if="!preview" class="rh-note">
+            Guest counts show the current page. Admission totals for a scanned ticket come from the
+            server.
+          </p>
+          <label v-if="!preview && model.canManage.value" class="rh-field"
+            ><span>Allow re-entry after an exit</span
+            ><input
+              type="checkbox"
+              :checked="model.context.value?.event.allow_reentry"
+              @change="changeReentry($event)"
+          /></label>
           <div class="rh-dc-numbers" aria-label="Check-in totals">
             <div>
               <span>{{ free ? 'Registrations' : 'Tickets' }}</span
@@ -495,10 +758,13 @@ onBeforeUnmount(() => {
                 ><input
                   v-model="search"
                   type="search"
-                  placeholder="Search name, email or ticket code" /></label
+                  maxlength="100"
+                  :placeholder="
+                    preview ? 'Search name, email or ticket code' : 'Start of guest name or email'
+                  " /></label
               ><label class="rh-field rh-compact-select"
                 ><span class="rh-sr">Filter by status</span
-                ><select v-model="status">
+                ><select v-model="status" :disabled="!preview">
                   <option value="all">All guests</option>
                   <option value="inside">Inside now</option>
                   <option value="left">Has left</option>
@@ -506,7 +772,7 @@ onBeforeUnmount(() => {
                 </select></label
               ><label class="rh-field rh-compact-select"
                 ><span class="rh-sr">Filter by entrance</span
-                ><select v-model="entranceFilter">
+                ><select v-model="entranceFilter" :disabled="!preview">
                   <option value="all">
                     {{ entrances.length === 1 ? entrances[0].name : 'All entrances' }}
                   </option>
@@ -569,18 +835,55 @@ onBeforeUnmount(() => {
                       {{
                         preview
                           ? 'No guests match your search or filters.'
-                          : 'Live guest records aren’t connected to door check-in yet.'
+                          : 'No guest records are shown on this page.'
                       }}
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
+            <nav
+              v-if="!preview && model.context.value?.role !== 'door'"
+              class="rh-form-actions"
+              aria-label="Door guest pages"
+            >
+              <button
+                class="rh-button rh-button-outline"
+                :disabled="model.attendeePage.value.current_page <= 1"
+                @click="
+                  model.loadAttendees({
+                    page: model.attendeePage.value.current_page - 1,
+                    q: search || undefined,
+                  })
+                "
+              >
+                Previous</button
+              ><span
+                >Page {{ model.attendeePage.value.current_page }} of
+                {{ model.attendeePage.value.last_page }}</span
+              ><button
+                class="rh-button rh-button-outline"
+                :disabled="
+                  model.attendeePage.value.current_page >= model.attendeePage.value.last_page
+                "
+                @click="
+                  model.loadAttendees({
+                    page: model.attendeePage.value.current_page + 1,
+                    q: search || undefined,
+                  })
+                "
+              >
+                Next
+              </button>
+            </nav>
           </section>
           <details class="rh-dc-movements">
             <summary>Entries and exits <span>View history</span></summary>
             <section class="rh-module rh-v22-movements">
               <div class="rh-module-title"><h2>Entries and exits</h2></div>
+              <p v-if="!preview" class="rh-note">
+                Day and time filters apply to this history page.
+              </p>
               <div class="rh-v22-movement-filters">
                 <label class="rh-field"><span>Day</span><input v-model="day" type="date" /></label
                 ><label class="rh-field"
@@ -605,6 +908,26 @@ onBeforeUnmount(() => {
                   No entries or exits match these filters.
                 </p>
               </div>
+              <nav v-if="!preview" class="rh-form-actions" aria-label="Movement pages">
+                <button
+                  class="rh-button rh-button-outline"
+                  :disabled="model.historyPage.value.current_page <= 1"
+                  @click="model.loadHistory({ page: model.historyPage.value.current_page - 1 })"
+                >
+                  Previous</button
+                ><span
+                  >Page {{ model.historyPage.value.current_page }} of
+                  {{ model.historyPage.value.last_page }}</span
+                ><button
+                  class="rh-button rh-button-outline"
+                  :disabled="
+                    model.historyPage.value.current_page >= model.historyPage.value.last_page
+                  "
+                  @click="model.loadHistory({ page: model.historyPage.value.current_page + 1 })"
+                >
+                  Next
+                </button>
+              </nav>
             </section>
           </details>
         </div>
@@ -623,11 +946,70 @@ onBeforeUnmount(() => {
               <button
                 class="rh-button rh-button-dark"
                 type="button"
+                :disabled="!preview && !model.canManage.value"
                 @click="go({ entrance: 'new' })"
               >
                 Add entrance
               </button>
             </div>
+            <section v-if="!preview && model.canManage.value" class="rh-module">
+              <h3>Staff access</h3>
+              <p v-if="staffBusy" role="status">Getting staff access ready...</p>
+              <template v-if="staff"
+                ><div v-for="member in staff.data" :key="member.id" class="rh-form-actions">
+                  <span
+                    >Staff account {{ member.user_id }} - {{ member.role }} -
+                    {{ member.active ? 'Active' : 'Revoked' }}</span
+                  ><button
+                    v-if="member.active"
+                    class="rh-row-button"
+                    :disabled="staffBusy"
+                    @click="revokeStaff(member.id)"
+                  >
+                    Revoke access
+                  </button>
+                </div>
+                <nav class="rh-form-actions" aria-label="Staff pages">
+                  <button
+                    class="rh-row-button"
+                    :disabled="staffBusy || staff.meta.current_page <= 1"
+                    @click="loadStaff(staff.meta.current_page - 1)"
+                  >
+                    Previous</button
+                  ><span>Page {{ staff.meta.current_page }} of {{ staff.meta.last_page }}</span
+                  ><button
+                    class="rh-row-button"
+                    :disabled="staffBusy || staff.meta.current_page >= staff.meta.last_page"
+                    @click="loadStaff(staff.meta.current_page + 1)"
+                  >
+                    Next
+                  </button>
+                </nav>
+                <div
+                  v-for="invitation in staff.invitations"
+                  :key="`invite-${invitation.id}`"
+                  class="rh-form-actions"
+                >
+                  <span
+                    >{{ invitation.email }} -
+                    {{
+                      invitation.accepted_at
+                        ? 'Accepted'
+                        : invitation.revoked_at
+                          ? 'Revoked'
+                          : 'Invitation pending'
+                    }}</span
+                  ><button
+                    v-if="!invitation.accepted_at && !invitation.revoked_at"
+                    class="rh-row-button"
+                    :disabled="staffBusy"
+                    @click="revokeStaff(invitation.id, true)"
+                  >
+                    Revoke invitation
+                  </button>
+                </div></template
+              >
+            </section>
             <div class="rh-dc-door-list">
               <article v-for="door in entrances" :key="door.id" class="rh-dc-entrance-card">
                 <div class="rh-dc-entrance-leading">
@@ -648,17 +1030,26 @@ onBeforeUnmount(() => {
                     <h3>{{ door.name }}</h3>
                     <span
                       >{{ entranceCount(door) }}
-                      {{ entranceCount(door) === 1 ? 'guest' : 'guests' }} checked in</span
+                      {{
+                        preview
+                          ? entranceCount(door) === 1
+                            ? 'guest'
+                            : 'guests'
+                          : 'admissions on this history page'
+                      }}
+                      {{ preview ? 'checked in' : '' }}</span
                     >
                   </div>
                 </div>
                 <div class="rh-dc-door-contact">
                   <span>Check-in staff</span
                   ><strong>{{
-                    door.contacts.length
-                      ? door.contacts[0].name +
-                        (door.contacts.length > 1 ? ` +${door.contacts.length - 1} more` : '')
-                      : 'No staff added'
+                    !preview
+                      ? 'Manage staff invitations below'
+                      : door.contacts.length
+                        ? door.contacts[0].name +
+                          (door.contacts.length > 1 ? ` +${door.contacts.length - 1} more` : '')
+                        : 'No staff added'
                   }}</strong
                   ><small v-if="door.contacts.length">{{ door.contacts.length }} assigned</small>
                 </div>
@@ -721,12 +1112,33 @@ onBeforeUnmount(() => {
                   ><span>Entrance name</span
                   ><input
                     v-model="entranceForm.name"
-                    maxlength="80"
+                    maxlength="100"
+                    :disabled="!preview && !model.canManage.value"
                     required
                     placeholder="e.g. Main entrance"
                 /></label>
+                <template v-if="!preview"
+                  ><label class="rh-field"
+                    ><span>Entrance active</span
+                    ><input
+                      v-model="entranceForm.active"
+                      type="checkbox"
+                      :disabled="!model.canManage.value" /></label
+                  ><label class="rh-field"
+                    ><span>Opens at (UTC, optional)</span
+                    ><input v-model="entranceForm.opens_at" type="datetime-local" /></label
+                  ><label class="rh-field"
+                    ><span>Closes at (UTC, optional)</span
+                    ><input v-model="entranceForm.closes_at" type="datetime-local" /></label
+                ></template>
                 <h2>Who will be at this entrance?</h2>
-                <p>Add the people working at this entrance.</p>
+                <p>
+                  {{
+                    preview
+                      ? 'Add the people working at this entrance.'
+                      : 'Invite staff by email. Names and phone numbers are not saved by the invitation service.'
+                  }}
+                </p>
                 <fieldset
                   v-for="(staff, i) in entranceForm.contacts"
                   :key="i"
@@ -745,12 +1157,12 @@ onBeforeUnmount(() => {
                       v-model="staff.name"
                       autocomplete="name"
                       maxlength="80"
-                      required /></label
+                      :required="preview" /></label
                   ><label
                     >Email address<input
                       v-model="staff.email"
                       type="email"
-                      maxlength="160"
+                      maxlength="255"
                       required /></label
                   ><label
                     >Phone number (optional)<input v-model="staff.phone" type="tel" maxlength="30"
@@ -799,7 +1211,8 @@ onBeforeUnmount(() => {
                 Print QR code
               </button>
               <p v-if="managed" class="rh-note">
-                Preview code only. Guest self check-in requires a live connection.
+                This code opens the entrance workspace. Staff must have event access to record
+                admission.
               </p>
             </aside>
           </div>
@@ -844,12 +1257,12 @@ onBeforeUnmount(() => {
             </div>
           </section>
           <button
-            v-if="managed && entrances.length > 1"
+            v-if="managed && (preview ? entrances.length > 1 : model.canManage.value)"
             class="rh-dc-manage-remove"
             type="button"
             @click="deleteDialog.showModal()"
           >
-            Remove entrance
+            {{ preview ? 'Remove entrance' : 'Deactivate entrance' }}
           </button></template
         >
         <div v-else class="rh-module rh-module rh-dc-manage-module">
@@ -882,6 +1295,13 @@ onBeforeUnmount(() => {
         Use camera
       </button>
       <form @submit.prevent="findTicket()">
+        <label v-if="!preview" class="rh-field"
+          ><span>Admission direction</span
+          ><select v-model="scanDirection">
+            <option value="in">Entry</option>
+            <option value="out">Exit (including revoked tickets)</option>
+          </select></label
+        >
         <label class="rh-field"
           ><span>Ticket code</span
           ><input
@@ -889,17 +1309,29 @@ onBeforeUnmount(() => {
             v-model="scanCode"
             autocomplete="off"
             required
-            placeholder="e.g. RH-4101" /></label
+            :placeholder="
+              preview ? 'e.g. RH-4101' : 'Paste the admission code from the ticket'
+            " /></label
         ><label class="rh-field"
           ><span>Entrance</span
           ><select v-model="currentEntrance">
-            <option v-for="door in entrances" :key="door.id" :value="door.id">
+            <option
+              v-for="door in entrances"
+              :key="door.id"
+              :value="door.id"
+              :disabled="!preview && !door.active"
+            >
               {{ door.name }}
             </option>
           </select></label
         >
         <div class="rh-v22-dialog-buttons">
-          <button class="rh-button rh-button-dark" type="submit">Find ticket</button
+          <button
+            class="rh-button rh-button-dark"
+            :disabled="lookupBusy || (!preview && model.busy.value)"
+            type="submit"
+          >
+            Find ticket</button
           ><button class="rh-button rh-button-outline" type="button" @click="scanDialog.close()">
             Cancel
           </button>
@@ -914,18 +1346,46 @@ onBeforeUnmount(() => {
         </div>
         <div class="rh-dc-ticket-sub">
           <span>{{ scanGuest.type }} · {{ scanGuest.id }}</span
-          ><strong>{{ model.guestState(scanGuest.id) }}</strong>
+          ><strong>{{
+            preview
+              ? model.guestState(scanGuest.id)
+              : `${scanGuest.inside_count} of ${scanGuest.admit_count} inside`
+          }}</strong>
         </div>
-        <p v-if="model.inside(scanGuest.id)" class="rh-dc-already">This guest is already inside.</p>
+        <p v-if="preview && model.inside(scanGuest.id)" class="rh-dc-already">
+          This guest is already inside.
+        </p>
+        <label v-if="!preview" class="rh-field"
+          ><span>Number of admissions</span
+          ><input v-model.number="scanCount" type="number" min="1" :max="scanGuest.admit_count"
+        /></label>
+        <p v-if="!preview">
+          {{ scanGuest.remaining_first_entries }} first entries remaining. Entries and exits are
+          checked by the server.
+        </p>
         <div class="rh-dc-ticket-actions">
           <button
-            v-if="!model.inside(scanGuest.id)"
+            v-if="preview ? !model.inside(scanGuest.id) : scanDirection === 'in'"
             class="rh-button rh-button-dark"
             type="button"
+            :disabled="!preview && model.busy.value"
             @click="record(scanGuest, 'in')"
           >
             Check in guest</button
-          ><button class="rh-button rh-button-outline" type="button" @click="scanDetails">
+          ><button
+            v-if="!preview"
+            class="rh-button rh-button-outline"
+            :disabled="model.busy.value"
+            type="button"
+            @click="record(scanGuest, 'out')"
+          >
+            Record exit</button
+          ><button
+            v-if="preview"
+            class="rh-button rh-button-outline"
+            type="button"
+            @click="scanDetails"
+          >
             View guest details
           </button>
         </div>
@@ -935,13 +1395,13 @@ onBeforeUnmount(() => {
       </button>
     </dialog>
     <dialog ref="deleteDialog" class="workspace-dialog" aria-labelledby="door-remove-title">
-      <h2 id="door-remove-title">Remove {{ managed?.name }}?</h2>
+      <h2 id="door-remove-title">{{ preview ? 'Remove' : 'Deactivate' }} {{ managed?.name }}?</h2>
       <p>Entrances with recorded activity are kept in your event history.</p>
       <div class="rh-form-actions">
         <button class="rh-button rh-button-outline" type="button" @click="deleteDialog.close()">
           Cancel</button
         ><button class="rh-button rh-button-dark" type="button" @click="removeEntrance">
-          Remove entrance
+          {{ preview ? 'Remove entrance' : 'Deactivate entrance' }}
         </button>
       </div>
     </dialog>

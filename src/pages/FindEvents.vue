@@ -4,30 +4,72 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import DiscoveryHero from '@/components/public/DiscoveryHero.vue'
 import DiscoveryCities from '@/components/public/DiscoveryCities.vue'
 import { categoryArt } from '@/components/public/categoryArt'
-import { categoryArtIndex, categoryLabel, getPublicCategories, getPublicEvents } from '@/services/publicCatalog'
-import { normalizeEventProfile, profileDate, safePublicUrl } from '@/utils/eventProfile'
+import {
+  categoryArtIndex,
+  categoryLabel,
+  getPublicCategories,
+  getPublicEvents,
+} from '@/services/publicCatalog'
+import {
+  normalizeEventProfile,
+  profileDate,
+  safePublicUrl,
+} from '@/utils/eventProfile'
 import { useSlug } from '@/composables/useSlug'
 
-const route = useRoute(), router = useRouter()
+const route = useRoute(),
+  router = useRouter()
 const { getEventUrl } = useSlug()
-const categories = ref([]), events = ref([]), loading = ref(true), error = ref(''), categoryError = ref(false)
-const total = ref(0), pages = ref(1)
-let request, categoryRequest
-const page = computed(() => Math.max(1, Number(route.query.page) || 1))
-const selected = computed(() => String(route.query.category || route.meta.discoveryCategory || ''))
+const categories = ref([]),
+  events = ref([]),
+  loading = ref(true),
+  error = ref(''),
+  categoryError = ref(false)
+const total = ref(0),
+  pages = ref(1)
+let request, categoryRequest, categoriesReady
+const page = computed(() =>
+  Number.isSafeInteger(Number(route.query.page)) && Number(route.query.page) > 0
+    ? Number(route.query.page)
+    : 1,
+)
+const selected = computed(() =>
+  String(route.query.category || route.meta.discoveryCategory || ''),
+)
 const art = (name) => categoryArt[categoryArtIndex(name)]
-const cards = computed(() => events.value.map((source) => {
-  const profile = normalizeEventProfile(source)
-  const category = typeof source.category === 'object' ? source.category?.name : source.category
-  const price = profile.price ?? (source.price != null ? Number(source.price) : null)
-  return { ...profile, id: source.id, url: getEventUrl(source), cover: profile.cover || safePublicUrl(source.image_url || source.image), category: category || '', city: source.address?.city || source.city || '', priceText: price == null ? 'View ticket options' : price === 0 ? 'Free' : `From ${new Intl.NumberFormat('en-NG', { style: 'currency', currency: source.currency || 'NGN', maximumFractionDigits: 0 }).format(price)}` }
-}))
+const cards = computed(() =>
+  events.value.map((source) => {
+    const profile = normalizeEventProfile(source)
+    const category =
+      typeof source.category === 'object'
+        ? source.category?.name
+        : source.category
+    const price = profile.price
+    return {
+      ...profile,
+      id: source.id,
+      url: getEventUrl(source),
+      cover: profile.cover || safePublicUrl(source.image_url || source.image),
+      category: category || '',
+      city: source.address?.city || source.city || '',
+      priceText:
+        price == null
+          ? 'View ticket options'
+          : price === 0
+            ? 'Free'
+            : `From ${new Intl.NumberFormat('en-NG', { style: 'currency', currency: source.currency || 'NGN', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(price)}`,
+    }
+  }),
+)
 async function loadCategories() {
   categoryRequest?.abort()
   categoryRequest = new AbortController()
   categoryError.value = false
-  try { categories.value = await getPublicCategories(categoryRequest.signal) }
-  catch (failure) { if (failure.code !== 'ERR_CANCELED') categoryError.value = true }
+  try {
+    categories.value = await getPublicCategories(categoryRequest.signal)
+  } catch (failure) {
+    if (failure.code !== 'ERR_CANCELED') categoryError.value = true
+  }
 }
 async function loadEvents() {
   request?.abort()
@@ -36,14 +78,38 @@ async function loadEvents() {
   loading.value = true
   error.value = ''
   try {
-    const result = await getPublicEvents({ q: String(route.query.q || ''), category: selected.value, city: String(route.query.city || ''), page: page.value }, controller.signal)
+    if (selected.value && !/^\d+$/.test(selected.value)) await categoriesReady
+    if (controller.signal.aborted) return
+    const matchingCategory = categories.value.find(
+      (category) =>
+        category.value === selected.value ||
+        category.name.toLowerCase() === selected.value.toLowerCase() ||
+        category.name
+          .toLowerCase()
+          .startsWith(`${selected.value.toLowerCase()} `),
+    )
+    const result = await getPublicEvents(
+      {
+        q: String(route.query.q || ''),
+        category: matchingCategory?.value || selected.value,
+        city: String(route.query.city || ''),
+        page: page.value,
+      },
+      controller.signal,
+    )
     if (controller.signal.aborted) return
     events.value = result.events
     total.value = result.total
     pages.value = result.pages
   } catch (failure) {
-    if (!controller.signal.aborted) { events.value = []; error.value = 'We couldn’t load events. Please try again.' }
-  } finally { if (!controller.signal.aborted) loading.value = false }
+    if (!controller.signal.aborted) {
+      events.value = []
+      error.value =
+        failure.userMessage || 'We could not load events. Please try again.'
+    }
+  } finally {
+    if (!controller.signal.aborted) loading.value = false
+  }
 }
 function filter(key, value) {
   const query = { ...route.query }
@@ -52,10 +118,25 @@ function filter(key, value) {
   else delete query[key]
   router.push({ name: 'find-events', query, hash: '#discover' })
 }
-function changePage(value) { router.push({ name: 'find-events', query: { ...route.query, ...(selected.value ? { category: selected.value } : {}), page: value }, hash: '#discover' }) }
-watch(() => [route.query, route.meta.discoveryCategory], loadEvents, { immediate: true })
-loadCategories()
-onBeforeUnmount(() => { request?.abort(); categoryRequest?.abort() })
+function changePage(value) {
+  router.push({
+    name: 'find-events',
+    query: {
+      ...route.query,
+      ...(selected.value ? { category: selected.value } : {}),
+      page: value,
+    },
+    hash: '#discover',
+  })
+}
+categoriesReady = loadCategories()
+watch(() => [route.query, route.meta.discoveryCategory], loadEvents, {
+  immediate: true,
+})
+onBeforeUnmount(() => {
+  request?.abort()
+  categoryRequest?.abort()
+})
 </script>
 
 <template>

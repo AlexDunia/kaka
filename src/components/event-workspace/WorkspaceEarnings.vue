@@ -9,19 +9,22 @@ import {
 } from '@/utils/dashboardFormat'
 import { DASHBOARD_PREVIEW } from '@/services/dashboardPreview'
 import { getEventShareLinks } from '@/services/dashboardShareService'
-import { useWorkspaceAttendees } from './attendeesModel'
+import { usePreviewWorkspaceAttendees } from './previewAttendeesModel'
+import WorkspaceFinancialRecords from './WorkspaceFinancialRecords.vue'
 import { buildEarnings, defaultEarningsCodes, tierKey } from './earningsModel'
 import WorkspaceEarningsDetails from './WorkspaceEarningsDetails.vue'
 import WorkspaceEarningsPayouts from './WorkspaceEarningsPayouts.vue'
 const props = defineProps({ overview: { type: Object, required: true }, eventId: [String, Number] })
 const route = useRoute()
-const emit = defineEmits(['navigate'])
+const emit = defineEmits(['navigate', 'refresh'])
 const tab = ref('sales')
 const eventKey = computed(() => props.eventId || props.overview.event?.id || 'earnings')
 const attendees = computed(() =>
-  useWorkspaceAttendees(eventKey.value, props.overview.event?.ticket_mode),
+  DASHBOARD_PREVIEW
+    ? usePreviewWorkspaceAttendees(eventKey.value, props.overview.event?.ticket_mode)
+    : null,
 )
-const free = computed(() => attendees.value.mode.value === 'free')
+const free = computed(() => DASHBOARD_PREVIEW && attendees.value?.mode.value === 'free')
 const codes = ref([]),
   links = ref([]),
   linksError = ref('')
@@ -56,8 +59,8 @@ const model = computed(() =>
     preview: DASHBOARD_PREVIEW,
     codes: codes.value,
     links: links.value,
-    guests: attendees.value.guests.value,
-    orders: attendees.value.orders.value,
+    guests: attendees.value?.guests.value || [],
+    orders: attendees.value?.orders.value || [],
   }),
 )
 const screen = computed(() =>
@@ -158,7 +161,12 @@ function moveTab(e, index) {
         role="tabpanel"
         aria-labelledby="earnings-tab-sales"
       >
-        <div class="rhe-summary rhe-sales-summary">
+        <WorkspaceFinancialRecords
+          v-if="!DASHBOARD_PREVIEW"
+          :event-id="eventKey"
+          @changed="emit('refresh')"
+        />
+        <div v-if="DASHBOARD_PREVIEW" class="rhe-summary rhe-sales-summary">
           <article class="rhe-card rhe-main">
             <span>How much you’ve made so far</span><strong>{{ money(revenue.total_minor) }}</strong
             ><small
@@ -190,7 +198,7 @@ function moveTab(e, index) {
                   >{{
                     tier.price_minor == null
                       ? ''
-                      : money(tier.price_minor) + ' per ticket at original price · '
+                      : money(tier.price_minor) + ' current price per ticket · '
                   }}{{ number(tier.sold_units) }} sold</small
                 ><button class="rhea-inline-link" @click="openTier(tier)">View details</button>
               </div>
@@ -321,8 +329,8 @@ function moveTab(e, index) {
             </article>
           </div>
           <p class="rhea-note">
-            Example sales breakdown. A ticket can use both a discount code and a social link, so
-            these amounts should not be added together.
+            A ticket can use both a discount code and a social link, so these amounts should not be
+            added together.
           </p>
           <p v-if="DASHBOARD_PREVIEW" class="rhea-sample-note">
             Sales by code and social link are sample figures until payments and checkout tracking
@@ -339,18 +347,18 @@ function moveTab(e, index) {
           </button>
         </section>
       </div>
-      <KeepAlive
-        ><WorkspaceEarningsPayouts
-          v-if="!screen && tab === 'payouts'"
-          :overview="overview"
-          :money="money"
-      /></KeepAlive>
+      <WorkspaceEarningsPayouts
+        v-if="!screen && tab === 'payouts'"
+        :overview="overview"
+        :money="money"
+      />
       <WorkspaceEarningsDetails
         v-if="screen || ['discounts', 'social'].includes(tab)"
         :model="model"
         :overview="overview"
         :money="money"
         :tab="tab"
+        @refresh="emit('refresh')"
         @navigate="emit('navigate', $event)"
       />
       <p v-if="linksError" role="status" class="rhea-sample-note">

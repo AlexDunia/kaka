@@ -1,0 +1,40 @@
+{
+  "phase": "2 frontend only",
+  "changed_or_added": [
+    "src/pages/CreateEvent.vue",
+    "src/pages/EventDetails.vue",
+    "src/pages/EventTickets.vue",
+    "src/pages/FindEvents.vue",
+    "src/services/createEventService.js",
+    "src/services/eventService.js",
+    "src/services/publicCatalog.js",
+    "src/stores/events.js",
+    "src/stores/dashboard.js",
+    "src/utils/eventDateTime.js",
+    "src/utils/eventEditor.js",
+    "src/utils/eventProfile.js",
+    "src/components/DateTimePicker.vue",
+    "src/components/DateTimePickerInput.vue",
+    "src/components/EventCard.vue",
+    "src/components/EventTicketSelection.vue",
+    "src/components/EventEditorConflict.vue",
+    "src/components/event-workspace/WorkspaceViews.vue",
+    "scripts/check-phase02.mjs",
+    "scripts/check-phase02-e2e.mjs",
+    "scripts/check-event-profile.mjs",
+    "scripts/check-public-site.mjs",
+    "scripts/check-phase1b.mjs"
+  ],
+  "manifest_added": "docs/phase-02-frontend-files.json",
+  "backend_source_files_modified": [],
+  "migrations_added": [],
+  "backend_contracts_added_or_changed": [],
+  "integration_contracts_consumed": [
+    "versioned canonical event PATCH and publish",
+    "complete form returned after mutations",
+    "explicit ticket replacement only in full wizard; partial edits merge",
+    "server-filtered q/city/category/pagination"
+  ],
+  "test_database": "Disposable SQLite database used for real Sanctum create/edit/publish/public-read tests; removed after verification",
+  "concurrent_checkout_and_order_changes": "Outside this implementation; left untouched"
+}

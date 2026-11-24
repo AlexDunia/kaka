@@ -1,5 +1,14 @@
 <script setup>
-import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import {
+  computed,
+  inject,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  reactive,
+  ref,
+  watch,
+} from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   AcademicCapIcon,
@@ -32,6 +41,9 @@ import {
   UserIcon,
   XMarkIcon,
 } from '@heroicons/vue/24/outline'
+import EventEditorConflict from '@/components/EventEditorConflict.vue'
+import { hydrateEditorForm } from '@/utils/eventEditor'
+import { getPublicCategories } from '@/services/publicCatalog'
 import DateTimePickerInput from '@/components/DateTimePickerInput.vue'
 import CreateEventStepSkeleton from '@/components/CreateEventStepSkeleton.vue'
 import EventCard from '@/components/EventCard.vue'
@@ -46,6 +58,8 @@ import {
 } from '@/services/createEventService'
 import {
   APP_DEFAULT_TIME_ZONE,
+  instantToLocalDate,
+  isValidTimeZone,
   getMinimumStartDateTime,
   getVenueToday,
   isAfter,
@@ -69,7 +83,7 @@ const repeatRhythmOptions = [
   { value: 'weekly', label: 'Every week' },
   { value: 'monthly', label: 'Every month' },
 ]
-const categoryOptions = [
+const categoryPresentation = [
   { name: 'Conference & Summit', icon: CalendarDaysIcon },
   { name: 'Music & Concert', icon: MusicalNoteIcon },
   { name: 'Food & Dining', icon: TicketIcon },
@@ -84,28 +98,109 @@ const categoryOptions = [
   { name: 'Education & Learning', icon: AcademicCapIcon },
 ]
 
+const categoryOptions = ref([])
+const categoryLoadError = ref('')
+async function loadCategories() {
+  categoryLoadError.value = ''
+  try {
+    categoryOptions.value = (await getPublicCategories()).map((category) => ({
+      ...category,
+      icon:
+        categoryPresentation.find((item) => item.name === category.name)
+          ?.icon || TicketIcon,
+    }))
+  } catch {
+    categoryLoadError.value = 'We could not load categories. Please try again.'
+  }
+}
+
 const venues = [
-  ['Eko Hotel & Suites', 'Plot 1415 Adetokunbo Ademola St, Victoria Island, Lagos', 'Africa/Lagos'],
-  ['The Civic Centre', 'Ozumba Mbadiwe Ave, Victoria Island, Lagos', 'Africa/Lagos'],
-  ['Landmark Event Centre', 'Water Corporation Dr, Oniru, Lagos', 'Africa/Lagos'],
-  ['Terra Kulture', '1376 Tiamiyu Savage St, Victoria Island, Lagos', 'Africa/Lagos'],
-  ['Transcorp Hilton Abuja', '1 Aguiyi-Ironsi St, Maitama, Abuja', 'Africa/Lagos'],
+  [
+    'Eko Hotel & Suites',
+    'Plot 1415 Adetokunbo Ademola St, Victoria Island, Lagos',
+    'Africa/Lagos',
+  ],
+  [
+    'The Civic Centre',
+    'Ozumba Mbadiwe Ave, Victoria Island, Lagos',
+    'Africa/Lagos',
+  ],
+  [
+    'Landmark Event Centre',
+    'Water Corporation Dr, Oniru, Lagos',
+    'Africa/Lagos',
+  ],
+  [
+    'Terra Kulture',
+    '1376 Tiamiyu Savage St, Victoria Island, Lagos',
+    'Africa/Lagos',
+  ],
+  [
+    'Transcorp Hilton Abuja',
+    '1 Aguiyi-Ironsi St, Maitama, Abuja',
+    'Africa/Lagos',
+  ],
 ]
 
 const detailOptions = [
-  { type: 'parking', label: 'Parking', icon: MapPinIcon, placeholder: 'Free parking on-site from 5pm.' },
-  { type: 'dress', label: 'Dress code', icon: SparklesIcon, placeholder: 'Smart casual, formal, or themed attire.' },
-  { type: 'bring', label: 'What to bring', icon: DocumentTextIcon, placeholder: 'Valid ID, ticket, business cards, or supplies.' },
-  { type: 'agenda', label: 'Agenda', icon: ClockIcon, placeholder: '9:00 AM registration, 10:00 AM keynote...' },
-  { type: 'speakers', label: 'Speakers', icon: UserIcon, placeholder: 'Speaker names, roles, and session topics.' },
-  { type: 'food', label: 'Food & drinks', icon: InformationCircleIcon, placeholder: 'Cocktails, light bites, vegetarian or halal options.' },
-  { type: 'transport', label: 'Getting there', icon: MapPinIcon, placeholder: 'Ride-share, public transport, or parking notes.' },
-  { type: 'faq', label: 'FAQs', icon: QuestionMarkCircleIcon, placeholder: 'Answer common attendee questions.' },
+  {
+    type: 'parking',
+    label: 'Parking',
+    icon: MapPinIcon,
+    placeholder: 'Free parking on-site from 5pm.',
+  },
+  {
+    type: 'dress',
+    label: 'Dress code',
+    icon: SparklesIcon,
+    placeholder: 'Smart casual, formal, or themed attire.',
+  },
+  {
+    type: 'bring',
+    label: 'What to bring',
+    icon: DocumentTextIcon,
+    placeholder: 'Valid ID, ticket, business cards, or supplies.',
+  },
+  {
+    type: 'agenda',
+    label: 'Agenda',
+    icon: ClockIcon,
+    placeholder: '9:00 AM registration, 10:00 AM keynote...',
+  },
+  {
+    type: 'speakers',
+    label: 'Speakers',
+    icon: UserIcon,
+    placeholder: 'Speaker names, roles, and session topics.',
+  },
+  {
+    type: 'food',
+    label: 'Food & drinks',
+    icon: InformationCircleIcon,
+    placeholder: 'Cocktails, light bites, vegetarian or halal options.',
+  },
+  {
+    type: 'transport',
+    label: 'Getting there',
+    icon: MapPinIcon,
+    placeholder: 'Ride-share, public transport, or parking notes.',
+  },
+  {
+    type: 'faq',
+    label: 'FAQs',
+    icon: QuestionMarkCircleIcon,
+    placeholder: 'Answer common attendee questions.',
+  },
 ]
 
 const ticketTemplates = [
   { name: 'Early Bird', unitType: 'individual', color: '#1a7a4a', price: 5000 },
-  { name: 'General Admission', unitType: 'individual', color: '#1a5fa6', price: 10000 },
+  {
+    name: 'General Admission',
+    unitType: 'individual',
+    color: '#1a5fa6',
+    price: 10000,
+  },
   { name: 'VIP', unitType: 'individual', color: '#ec4899', price: 30000 },
   { name: 'Gold Table', unitType: 'table', color: '#ec4899', price: 250000 },
   { name: 'Silver Table', unitType: 'table', color: '#7a8fa6', price: 150000 },
@@ -113,14 +208,62 @@ const ticketTemplates = [
 ]
 
 const attendeeFieldDefaults = [
-  { id: 'name', label: 'Full name', help: 'First and last name', enabled: true, required: true },
-  { id: 'email', label: 'Email address', help: 'For ticket delivery and updates', enabled: true, required: true },
-  { id: 'phone', label: 'Phone number', help: 'For WhatsApp updates and emergency contact', enabled: true, required: false },
-  { id: 'company', label: 'Organisation / Company', help: 'Where they work or study', enabled: false, required: false },
-  { id: 'job', label: 'Job title', help: 'Their role or position', enabled: false, required: false },
-  { id: 'dietary', label: 'Dietary requirements', help: 'Useful for catered events', enabled: false, required: false },
-  { id: 'shirt', label: 'T-shirt size', help: 'If giving out merchandise', enabled: false, required: false },
-  { id: 'source', label: 'How did you hear about us?', help: 'Useful for marketing insight', enabled: false, required: false },
+  {
+    id: 'name',
+    label: 'Full name',
+    help: 'First and last name',
+    enabled: true,
+    required: true,
+  },
+  {
+    id: 'email',
+    label: 'Email address',
+    help: 'For ticket delivery and updates',
+    enabled: true,
+    required: true,
+  },
+  {
+    id: 'phone',
+    label: 'Phone number',
+    help: 'For WhatsApp updates and emergency contact',
+    enabled: true,
+    required: false,
+  },
+  {
+    id: 'company',
+    label: 'Organisation / Company',
+    help: 'Where they work or study',
+    enabled: false,
+    required: false,
+  },
+  {
+    id: 'job',
+    label: 'Job title',
+    help: 'Their role or position',
+    enabled: false,
+    required: false,
+  },
+  {
+    id: 'dietary',
+    label: 'Dietary requirements',
+    help: 'Useful for catered events',
+    enabled: false,
+    required: false,
+  },
+  {
+    id: 'shirt',
+    label: 'T-shirt size',
+    help: 'If giving out merchandise',
+    enabled: false,
+    required: false,
+  },
+  {
+    id: 'source',
+    label: 'How did you hear about us?',
+    help: 'Useful for marketing insight',
+    enabled: false,
+    required: false,
+  },
 ]
 
 const coverTemplates = [
@@ -152,7 +295,9 @@ const form = reactive({
   },
   format: 'in-person',
   venue: '',
-  venueTimezone: '',
+  city: '',
+  version: null,
+  venueTimezone: APP_DEFAULT_TIME_ZONE,
   meetingLink: '',
   category: '',
   coverImage: '',
@@ -179,25 +324,151 @@ const editingEventId = computed(() => {
 const editorLoading = ref(false)
 const editorLoadError = ref('')
 const editorStatus = ref(null)
-const originalStartsAtLocal = ref(null)
-const startTimeNeedsLeadValidation = computed(() => !isEditMode.value || !originalStartsAtLocal.value || toLocalDateTimeString(form.startsAt) !== originalStartsAtLocal.value)
-function fromLocalDateTimeString(value) {
-  if (!value) return null
-  const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/)
-  if (!match) { const parsed = new Date(value); return Number.isNaN(parsed.getTime()) ? null : parsed }
-  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]), Number(match[6] || '00'), 0)
-}
+const hydrating = ref(false)
+const conflict = ref(false),
+  conflictRecord = ref(null),
+  conflictLoading = ref(false),
+  conflictError = ref('')
 function hydrateEventForm(payload = {}) {
-  form.title=payload.title||'';form.startsAt=fromLocalDateTimeString(payload.startsAtLocal);form.endsAt=fromLocalDateTimeString(payload.endsAtLocal);form.eventType=payload.eventType||'one_time';form.recurrence={...form.recurrence,...(payload.recurrence||{})};form.format=payload.format||'in-person';form.venue=payload.venue||'';form.venueTimezone=payload.timeZone||APP_DEFAULT_TIME_ZONE;form.meetingLink=payload.meetingLink||'';form.category=payload.category||'';form.coverImage=payload.coverImage||'';form.secondaryImages=Array.isArray(payload.secondaryImages)?[...payload.secondaryImages]:[];form.description=payload.description||'';form.organiser=payload.organiser||'';form.organiserWebsite=payload.organiserWebsite||'';form.tags=payload.tags||'';form.ticketMode=payload.ticketMode||'free';form.freeCapacity=payload.freeCapacity??'';form.tickets=(payload.tickets||[]).map(ticket=>({id:Number(ticket.id)||++ticketId.value,name:ticket.name||'',unitType:ticket.unitType||'individual',color:ticket.color||'#ec4899',price:Number(ticket.price)||0,units:Number(ticket.units)||0,peoplePerUnit:Number(ticket.peoplePerUnit)||1,maxPerPerson:Number(ticket.maxPerPerson)||1,visible:ticket.visible!==false,perks:ticket.perks||'',salesStart:fromLocalDateTimeString(ticket.salesStartLocal),salesEnd:fromLocalDateTimeString(ticket.salesEndLocal)}));form.attendeeFields=Array.isArray(payload.attendeeFields)?payload.attendeeFields.map(field=>({...field})):attendeeFieldDefaults.map(field=>({...field}));form.extraDetails=Array.isArray(payload.extraDetails)?payload.extraDetails.map(detail=>({...detail,icon:detailOptions.find(item=>item.type===detail.type)?.icon||InformationCircleIcon})):[];originalStartsAtLocal.value=payload.startsAtLocal||toLocalDateTimeString(form.startsAt)
+  hydrating.value = true
+  const next = hydrateEditorForm(payload)
+  Object.assign(form, next, {
+    title: next.title || '',
+    city: next.city || '',
+    venue: next.venue || '',
+    description: next.description || '',
+    organiser: next.organiser || '',
+    organiserWebsite: next.organiserWebsite || '',
+    tags: next.tags || '',
+    meetingLink: next.meetingLink || '',
+    coverImage: next.coverImage || '',
+    freeCapacity: next.freeCapacity ?? '',
+    recurrence: {
+      frequency: null,
+      weeklyDays: [],
+      monthlyMode: 'day_of_month',
+      dayOfMonth: null,
+      nthWeekday: { ordinal: null, weekday: null },
+      seriesEndType: 'on_date',
+      seriesEndDate: '',
+      occurrenceCount: null,
+      ...(next.recurrence || {}),
+    },
+    attendeeFields: next.attendeeFields?.length
+      ? next.attendeeFields.map((field) => ({ ...field }))
+      : attendeeFieldDefaults.map((field) => ({ ...field })),
+    extraDetails: (next.extraDetails || []).map((detail) => ({
+      ...detail,
+      icon:
+        detailOptions.find((item) => item.type === detail.type)?.icon ||
+        InformationCircleIcon,
+    })),
+  })
+  nextTick(() => {
+    hydrating.value = false
+  })
 }
-async function loadEventForEditing() { if (!editingEventId.value) { editorLoadError.value='This event could not be opened for editing.';return };editorLoading.value=true;editorLoadError.value='';try { const record=(await getEventForEditing(editingEventId.value))?.data;if (!record?.form) throw new Error('The backend did not return event form data.');hydrateEventForm(record.form);draftId.value=record.id;editorStatus.value=record.status;maxStepReached.value=steps.length } catch(error) { editorLoadError.value=error?.response?.status===403?'You do not have permission to edit this event.':error?.response?.status===404?'This event no longer exists.':error?.response?.data?.message||error?.message||'We could not load this event for editing.' } finally { editorLoading.value=false } }
-function validateAllEditableSteps(){for(const step of [1,2,3]){if(!validateStep(step)){currentStep.value=step;maxStepReached.value=steps.length;return false}}return true}
-async function saveEventChanges(){if(!isEditMode.value||!editingEventId.value||isSaving.value||isPublishing.value)return;if(!validateAllEditableSteps())return;isSaving.value=true;saveError.value=[];publishErrors.value=[];try{const response=await updateEventDraft(editingEventId.value,form);editorStatus.value=response?.data?.status||editorStatus.value;lastSavedAt.value=new Date();markDraftSaved();showToast('Changes saved')}catch(error){saveError.value=normalizeRequestErrors(error);applyBackendErrors(saveError.value,error?.response?.status===422)}finally{isSaving.value=false}}
+function acceptSavedEvent(record) {
+  hydrateEventForm({ ...record.form, version: record.version })
+  draftId.value = record.id
+  editorStatus.value = record.status
+}
+async function loadEventForEditing() {
+  const id = editingEventId.value || draftId.value
+  if (!id) {
+    editorLoadError.value = 'Choose an event to open the editor.'
+    return
+  }
+  editorLoading.value = true
+  editorLoadError.value = ''
+  try {
+    const record = (await getEventForEditing(id)).data
+    acceptSavedEvent(record)
+    maxStepReached.value = steps.length
+  } catch (error) {
+    editorLoadError.value =
+      error.userMessage || 'We could not load this event. Please try again.'
+  } finally {
+    editorLoading.value = false
+  }
+}
+async function loadConflictRecord() {
+  conflictLoading.value = true
+  conflictError.value = ''
+  try {
+    conflictRecord.value = (
+      await getEventForEditing(draftId.value || editingEventId.value)
+    ).data
+  } catch {
+    conflictError.value =
+      'We could not load the saved event. Your edits are still here.'
+  } finally {
+    conflictLoading.value = false
+  }
+}
+async function handleWriteError(error) {
+  if ([409, 428].includes(error.response?.status)) {
+    conflict.value = true
+    await loadConflictRecord()
+  }
+}
+async function reloadConflictedEvent() {
+  await loadConflictRecord()
+  if (!conflictRecord.value || conflictError.value) return
+  acceptSavedEvent(conflictRecord.value)
+  conflict.value = false
+  saveError.value = []
+  publishErrors.value = []
+  Object.keys(errors).forEach(clearError)
+}
+function validateAllEditableSteps() {
+  for (const step of [1, 2, 3])
+    if (!validateStep(step)) {
+      currentStep.value = step
+      maxStepReached.value = steps.length
+      return false
+    }
+  return true
+}
+async function saveEventChanges() {
+  if (
+    !isEditMode.value ||
+    !editingEventId.value ||
+    isSaving.value ||
+    isPublishing.value ||
+    editorLoading.value ||
+    editorLoadError.value ||
+    conflict.value
+  )
+    return
+  if (editorStatus.value === 'active' && !validateAllEditableSteps()) return
+  isSaving.value = true
+  saveError.value = []
+  publishErrors.value = []
+  try {
+    await persistDraft()
+    showToast('Your changes are saved.')
+  } catch (error) {
+    saveError.value = normalizeRequestErrors(error)
+    applyBackendErrors(saveError.value, error.response?.status === 422)
+    await handleWriteError(error)
+  } finally {
+    isSaving.value = false
+  }
+}
 const clock = ref(new Date())
-const eventTimeZone = computed(() => form.venueTimezone || APP_DEFAULT_TIME_ZONE)
-const venueToday = computed(() => getVenueToday(eventTimeZone.value, clock.value))
+const eventTimeZone = computed(() =>
+  isValidTimeZone(form.venueTimezone)
+    ? form.venueTimezone
+    : APP_DEFAULT_TIME_ZONE,
+)
+const venueToday = computed(() =>
+  getVenueToday(eventTimeZone.value, clock.value),
+)
 const minimumStartDateTime = computed(() =>
-  getMinimumStartDateTime(eventTimeZone.value, clock.value),
+  isEditMode.value
+    ? null
+    : getMinimumStartDateTime(eventTimeZone.value, clock.value),
 )
 const minimumEndDateTime = computed(() => {
   if (!form.startsAt) return minimumStartDateTime.value
@@ -205,7 +476,9 @@ const minimumEndDateTime = computed(() => {
 })
 const themePreferenceKey = 'kaka-theme-preference'
 const fallbackTheme = ref('dark')
-const theme = computed(() => themeController?.theme?.value || fallbackTheme.value)
+const theme = computed(
+  () => themeController?.theme?.value || fallbackTheme.value,
+)
 const brandLogoUrl = computed(() => getRushHourLogo(theme.value))
 let themeInstantToken = 0
 const currentStep = ref(1)
@@ -213,7 +486,9 @@ const maxStepReached = ref(1)
 const isStepLoading = ref(false)
 const loadingStep = ref(1)
 let stepLoadingToken = 0
-const previewOn = ref(window.localStorage?.getItem('kaka-create-preview') !== 'false')
+const previewOn = ref(
+  window.localStorage?.getItem('kaka-create-preview') !== 'false',
+)
 const draftSaved = ref(false)
 const activeUploadTab = ref('files')
 const showTemplates = ref(false)
@@ -244,16 +519,23 @@ const activeTips = computed(() =>
   ),
 )
 
-const currentTip = computed(() => activeTips.value[tipIndex.value]?.body || activeTips.value[0]?.body)
+const currentTip = computed(
+  () => activeTips.value[tipIndex.value]?.body || activeTips.value[0]?.body,
+)
 
 const publishedEvent = computed(() => publishedResponse.value?.data || {})
 const publishedMessage = computed(
-  () => publishedResponse.value?.message || 'Share it and start collecting attendees. Your dashboard can track everything live.',
+  () =>
+    publishedResponse.value?.message ||
+    'Share it and start collecting attendees. Your dashboard can track everything live.',
 )
 const publishedUrl = computed(
   () =>
     publishedEvent.value.public_url ||
-    `kaka.events/e/${(form.title || 'your-event').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`,
+    `kaka.events/e/${(form.title || 'your-event')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')}`,
 )
 const lastSavedLabel = computed(() =>
   lastSavedAt.value
@@ -265,17 +547,29 @@ const venueResults = computed(() => {
   const query = form.venue.toLowerCase().trim()
   if (!query) return []
   return venues
-    .filter(([name, address]) => `${name} ${address}`.toLowerCase().includes(query))
+    .filter(([name, address]) =>
+      `${name} ${address}`.toLowerCase().includes(query),
+    )
     .slice(0, 5)
 })
 
-const selectedDetailTypes = computed(() => new Set(form.extraDetails.map((detail) => detail.type)))
+const selectedDetailTypes = computed(
+  () => new Set(form.extraDetails.map((detail) => detail.type)),
+)
 
-const visibleTickets = computed(() => form.tickets.filter((ticket) => ticket.visible))
+const visibleTickets = computed(() =>
+  form.tickets.filter((ticket) => ticket.visible),
+)
+
+const hasCommitments = (ticket) =>
+  Number(ticket.inventory?.sold_units || 0) +
+    Number(ticket.inventory?.reserved_units || 0) >
+  0
 
 const totalCapacity = computed(() =>
   form.tickets.reduce((sum, ticket) => {
-    if (ticket.unitType === 'table') return sum + ticket.units * ticket.peoplePerUnit
+    if (ticket.unitType === 'table')
+      return sum + ticket.units * ticket.peoplePerUnit
     return sum + ticket.units
   }, 0),
 )
@@ -284,25 +578,37 @@ const previewEvent = computed(() => ({
   id: 'preview',
   title: form.title || 'Your event name appears here',
   main_image: form.coverImage,
-  date: form.startsAt?.toISOString?.() || form.startsAt,
+  date: toLocalDateTimeString(form.startsAt),
+  event_timezone: eventTimeZone.value,
   location:
     form.format === 'online'
       ? 'Online event'
-      : form.venue || (form.format === 'hybrid' ? 'In-person & online' : 'Location TBC'),
+      : form.venue ||
+        (form.format === 'hybrid' ? 'In-person & online' : 'Location TBC'),
   category: { name: form.category || 'Event' },
+  ticket_mode: form.ticketMode,
   price:
     form.ticketMode === 'free'
       ? 0
-      : Math.min(...visibleTickets.value.map((ticket) => Number(ticket.price) || 0), 0),
-  rating: '4.5',
+      : visibleTickets.value.length
+        ? Math.min(
+            ...visibleTickets.value.map((ticket) => Number(ticket.price) || 0),
+          )
+        : null,
 }))
 
 const emailDate = computed(() => formatDateTime(form.startsAt))
 const isMultiDayEvent = computed(() => {
-  if (form.eventType !== 'one_time' || !form.startsAt || !form.endsAt) return false
+  if (form.eventType !== 'one_time' || !form.startsAt || !form.endsAt)
+    return false
   const start = new Date(form.startsAt)
   const end = new Date(form.endsAt)
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) return false
+  if (
+    Number.isNaN(start.getTime()) ||
+    Number.isNaN(end.getTime()) ||
+    end <= start
+  )
+    return false
   return (
     start.getFullYear() !== end.getFullYear() ||
     start.getMonth() !== end.getMonth() ||
@@ -312,7 +618,8 @@ const isMultiDayEvent = computed(() => {
 const multiDayDurationLabel = computed(() => {
   if (!isMultiDayEvent.value) return ''
   const totalMinutes = Math.floor(
-    (new Date(form.endsAt).getTime() - new Date(form.startsAt).getTime()) / 60_000,
+    (new Date(form.endsAt).getTime() - new Date(form.startsAt).getTime()) /
+      60_000,
   )
   const days = Math.floor(totalMinutes / (24 * 60))
   const hours = Math.floor((totalMinutes % (24 * 60)) / 60)
@@ -323,8 +630,12 @@ const multiDayDurationLabel = computed(() => {
   if (minutes) parts.push(`${minutes} minute${minutes === 1 ? '' : 's'}`)
   return parts.join(', ')
 })
-const firstOccurrenceDate = computed(() => (form.startsAt ? new Date(form.startsAt) : null))
-const firstOccurrenceWeekday = computed(() => firstOccurrenceDate.value?.getDay() ?? null)
+const firstOccurrenceDate = computed(() =>
+  form.startsAt ? new Date(form.startsAt) : null,
+)
+const firstOccurrenceWeekday = computed(
+  () => firstOccurrenceDate.value?.getDay() ?? null,
+)
 const monthlyPattern = computed(() => deriveMonthlyPattern(form.startsAt))
 const seriesEndMinDate = computed(() => {
   if (!firstOccurrenceDate.value) return toDateInputValue(venueToday.value)
@@ -346,11 +657,20 @@ const seriesEndValid = computed(() => {
   const endDate = dateOnlyToDate(form.recurrence.seriesEndDate)
   const startDate = new Date(firstOccurrenceDate.value)
   startDate.setHours(0, 0, 0, 0)
-  return Boolean(endDate && endDate > startDate)
+  return Boolean(endDate && endDate >= startDate)
 })
 const recurrenceReady = computed(() => {
-  if (!form.recurrence.frequency || !seriesEndValid.value || recurrenceOverlaps.value) return false
-  if (form.recurrence.frequency === 'weekly' && !form.recurrence.weeklyDays.length) return false
+  if (
+    !form.recurrence.frequency ||
+    !seriesEndValid.value ||
+    recurrenceOverlaps.value
+  )
+    return false
+  if (
+    form.recurrence.frequency === 'weekly' &&
+    !form.recurrence.weeklyDays.length
+  )
+    return false
   return true
 })
 const recurrenceInlineError = computed(() => {
@@ -375,20 +695,24 @@ const recurrenceInlineError = computed(() => {
   return ''
 })
 const nextOccurrences = computed(() =>
-  recurrenceReady.value ? generateOccurrences(form.startsAt, form.recurrence, 5) : [],
+  recurrenceReady.value
+    ? generateOccurrences(form.startsAt, form.recurrence, 5)
+    : [],
 )
 const recurrencePatternText = computed(() => {
   const recurrence = form.recurrence
   if (recurrence.frequency === 'daily') return 'Every day'
   if (recurrence.frequency === 'weekly') {
-    const names = WEEKDAYS.filter((day) => recurrence.weeklyDays.includes(day.value)).map(
-      (day) => day.label,
-    )
+    const names = WEEKDAYS.filter((day) =>
+      recurrence.weeklyDays.includes(day.value),
+    ).map((day) => day.label)
     return names.length ? `Every week on ${joinWithAnd(names)}` : 'Every week'
   }
   if (recurrence.frequency === 'monthly') {
     if (recurrence.monthlyMode === 'nth_weekday') {
-      const weekday = WEEKDAYS.find((day) => day.value === recurrence.nthWeekday.weekday)?.label
+      const weekday = WEEKDAYS.find(
+        (day) => day.value === recurrence.nthWeekday.weekday,
+      )?.label
       return `Every month on the ${ordinalWord(recurrence.nthWeekday.ordinal)} ${weekday || ''}`.trim()
     }
     return `Every month on the ${ordinalNumber(recurrence.dayOfMonth)}`
@@ -398,7 +722,9 @@ const recurrencePatternText = computed(() => {
 const seriesEndText = computed(() => {
   if (form.recurrence.seriesEndType === 'after_occurrences') {
     const count = Number(form.recurrence.occurrenceCount)
-    return count > 0 ? `After ${count} occurrence${count === 1 ? '' : 's'}` : 'Occurrence count not set'
+    return count > 0
+      ? `After ${count} occurrence${count === 1 ? '' : 's'}`
+      : 'Occurrence count not set'
   }
   return form.recurrence.seriesEndDate
     ? `Until ${formatReviewDate(form.recurrence.seriesEndDate)}`
@@ -414,7 +740,8 @@ function tomorrowAt(hour) {
 
 function formatDateTime(value) {
   if (!value) return 'Date and time'
-  return new Date(value).toLocaleString('en-NG', {
+  return new Date(`${toLocalDateTimeString(value)}Z`).toLocaleString('en-NG', {
+    timeZone: 'UTC',
     weekday: 'short',
     month: 'short',
     day: 'numeric',
@@ -423,7 +750,6 @@ function formatDateTime(value) {
   })
 }
 
-
 function formatReviewDate(value) {
   if (!value) return 'Date not set'
   const parts = new Intl.DateTimeFormat('en-NG', {
@@ -431,7 +757,9 @@ function formatReviewDate(value) {
     month: 'short',
     year: 'numeric',
   }).formatToParts(new Date(value))
-  const byType = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+  const byType = Object.fromEntries(
+    parts.map((part) => [part.type, part.value]),
+  )
   return `${byType.day} ${byType.month} ${byType.year}`
 }
 
@@ -450,7 +778,9 @@ function ordinalNumber(value) {
 }
 
 function ordinalWord(value) {
-  return ['', 'first', 'second', 'third', 'fourth', 'fifth'][Number(value)] || ''
+  return (
+    ['', 'first', 'second', 'third', 'fourth', 'fifth'][Number(value)] || ''
+  )
 }
 
 function formatOccurrenceDate(value) {
@@ -489,10 +819,8 @@ function formatTimeLabel(value) {
 }
 
 function toTimeInputValue(value) {
-  const date = value ? new Date(value) : new Date()
-  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+  return toLocalDateTimeString(value || new Date()).slice(11, 16)
 }
-
 
 function showToast(message) {
   toast.value = message
@@ -513,6 +841,17 @@ function markDraftSaved() {
 const backendErrorMap = {
   title: { field: 'title', step: 1 },
   startsAt: { field: 'startsAt', step: 1 },
+  startsAtLocal: { field: 'startsAt', step: 1 },
+  endsAt: { field: 'endsAt', step: 1 },
+  endsAtLocal: { field: 'endsAt', step: 1 },
+  timeZone: { field: 'timeZone', step: 1 },
+  city: { field: 'city', step: 1 },
+  description: { field: 'description', step: 2 },
+  organiser: { field: 'organiser', step: 2 },
+  organiserWebsite: { field: 'organiserWebsite', step: 2 },
+  secondaryImages: { field: 'coverImage', step: 2 },
+  freeCapacity: { field: 'freeCapacity', step: 3 },
+  ticketMode: { field: 'tickets', step: 3 },
   category: { field: 'category', step: 1 },
   coverImage: { field: 'coverImage', step: 2 },
   venue: { field: 'venue', step: 1 },
@@ -525,7 +864,8 @@ const backendErrorMap = {
 
 function normalizeRequestErrors(error) {
   const responseErrors = error?.response?.data?.errors
-  if (typeof responseErrors === 'string') return [{ key: 'request', message: responseErrors }]
+  if (typeof responseErrors === 'string')
+    return [{ key: 'request', message: responseErrors }]
   if (responseErrors && typeof responseErrors === 'object') {
     return Object.entries(responseErrors).flatMap(([key, value]) => {
       const messages = Array.isArray(value) ? value : [value]
@@ -533,13 +873,25 @@ function normalizeRequestErrors(error) {
     })
   }
 
-  return [{
-    key: 'request',
-    message: error?.userMessage || error?.response?.data?.message || error?.message || 'We could not save your event. Please try again.',
-  }]
+  return [
+    {
+      key: 'request',
+      message:
+        error?.userMessage ||
+        error?.response?.data?.message ||
+        error?.message ||
+        'We could not save your event. Please try again.',
+    },
+  ]
 }
 
 function backendErrorTarget(key) {
+  const match = key.match(/^tickets\.(\d+)\.(.+)$/)
+  if (match) {
+    const ticket = form.tickets[Number(match[1])]
+    const field = match[2].replace(/Local$/, '')
+    if (ticket) return { field: `ticket-${ticket.id}-${field}`, step: 3 }
+  }
   const rootKey = key.split('.')[0]
   if (backendErrorMap[key] || backendErrorMap[rootKey]) {
     return backendErrorMap[key] || backendErrorMap[rootKey]
@@ -561,16 +913,20 @@ function applyBackendErrors(requestErrors, navigate = false) {
   })
 
   if (!navigate) return
-  const firstTarget = requestErrors.map(({ key }) => backendErrorTarget(key)).find(Boolean)
+  const firstTarget = requestErrors
+    .map(({ key }) => backendErrorTarget(key))
+    .find(Boolean)
   if (!firstTarget) return
 
   maxStepReached.value = Math.max(maxStepReached.value, firstTarget.step)
   currentStep.value = firstTarget.step
   requestAnimationFrame(() => {
-    document.querySelector(`[data-error-key=${firstTarget.field}]`)?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'center',
-    })
+    document
+      .querySelector(`[data-error-key="${firstTarget.field}"]`)
+      ?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      })
   })
 }
 
@@ -579,10 +935,7 @@ async function persistDraft() {
     ? await updateEventDraft(draftId.value, form)
     : await createEventDraft(form)
 
-  if (!draftId.value) {
-    draftId.value = response?.data?.id ?? null
-    if (!draftId.value) throw new Error('The backend did not return a draft ID.')
-  }
+  acceptSavedEvent(response.data)
 
   lastSavedAt.value = new Date()
   markDraftSaved()
@@ -590,8 +943,18 @@ async function persistDraft() {
 }
 
 async function saveDraft() {
-  if (isEditMode.value) { await saveEventChanges(); return }
-  if (isSaving.value || isPublishing.value) return
+  if (isEditMode.value && editorStatus.value === 'active') {
+    await saveEventChanges()
+    return
+  }
+  if (
+    isSaving.value ||
+    isPublishing.value ||
+    conflict.value ||
+    editorLoading.value ||
+    editorLoadError.value
+  )
+    return
 
   isSaving.value = true
   saveError.value = []
@@ -600,7 +963,8 @@ async function saveDraft() {
     await persistDraft()
   } catch (error) {
     saveError.value = normalizeRequestErrors(error)
-    applyBackendErrors(saveError.value)
+    applyBackendErrors(saveError.value, error.response?.status === 422)
+    await handleWriteError(error)
   } finally {
     isSaving.value = false
   }
@@ -608,7 +972,10 @@ async function saveDraft() {
 
 function togglePreview() {
   previewOn.value = !previewOn.value
-  window.localStorage?.setItem('kaka-create-preview', previewOn.value ? 'true' : 'false')
+  window.localStorage?.setItem(
+    'kaka-create-preview',
+    previewOn.value ? 'true' : 'false',
+  )
 }
 
 function applyTheme(value) {
@@ -626,7 +993,9 @@ function applyTheme(value) {
     if (themeInstantToken === token) root.classList.remove('theme-instant')
   }
   if (window.requestAnimationFrame) {
-    window.requestAnimationFrame(() => window.requestAnimationFrame(releaseInstantTheme))
+    window.requestAnimationFrame(() =>
+      window.requestAnimationFrame(releaseInstantTheme),
+    )
   } else {
     releaseInstantTheme()
   }
@@ -641,7 +1010,8 @@ function initializeTheme() {
     return
   }
   const prefersLight =
-    window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches
+    window.matchMedia &&
+    window.matchMedia('(prefers-color-scheme: light)').matches
   applyTheme(prefersLight ? 'light' : 'dark')
 }
 
@@ -694,12 +1064,18 @@ function isStepComplete(step) {
   if (step === 1) {
     if (!form.title.trim()) return false
     if (!form.startsAt || !form.endsAt) return false
-    if (startTimeNeedsLeadValidation.value && form.startsAt && !isStartDateTimeValid(form.startsAt, eventTimeZone.value, clock.value)) return false
-    if (form.endsAt && form.startsAt && new Date(form.endsAt) <= new Date(form.startsAt)) {
+    if (
+      form.endsAt &&
+      form.startsAt &&
+      new Date(form.endsAt) <= new Date(form.startsAt)
+    ) {
       return false
     }
     if (form.format !== 'online' && !form.venue.trim()) return false
-    if ((form.format === 'online' || form.format === 'hybrid') && !form.meetingLink.trim()) {
+    if (
+      (form.format === 'online' || form.format === 'hybrid') &&
+      !form.meetingLink.trim()
+    ) {
       return false
     }
     if (!form.category) return false
@@ -712,7 +1088,9 @@ function isStepComplete(step) {
   if (step === 3 && form.ticketMode === 'paid') {
     return (
       form.tickets.length > 0 &&
-      form.tickets.every((ticket) => ticket.name.trim() && Number(ticket.price) >= 0)
+      form.tickets.every(
+        (ticket) => ticket.name.trim() && Number(ticket.price) > 0,
+      )
     )
   }
 
@@ -731,28 +1109,51 @@ function validateStep(step) {
   Object.keys(errors).forEach(clearError)
 
   if (step === 1) {
+    if (!isValidTimeZone(form.venueTimezone))
+      setError(
+        'timeZone',
+        'Choose a valid IANA timezone, such as Africa/Lagos.',
+      )
+    if (form.title.length > 100)
+      setError('title', 'Keep the event name within 100 characters.')
+    if (form.meetingLink && !/^https?:\/\//i.test(form.meetingLink))
+      setError('meetingLink', 'Use an HTTP or HTTPS meeting link.')
     if (!form.title.trim()) setError('title', 'Please enter an event name.')
-    if (!form.startsAt) setError('startsAt', 'Please choose a start date and time.')
+    if (!form.startsAt)
+      setError('startsAt', 'Please choose a start date and time.')
     if (!form.endsAt) setError('endsAt', 'Please choose an end date and time.')
-    if (startTimeNeedsLeadValidation.value && form.startsAt && !isStartDateTimeValid(form.startsAt, eventTimeZone.value, clock.value)) {
-      setError('startsAt', 'Choose a start time at least 30 minutes from now.')
-    }
-    if (form.endsAt && form.startsAt && new Date(form.endsAt) <= new Date(form.startsAt)) {
+    if (
+      form.endsAt &&
+      form.startsAt &&
+      new Date(form.endsAt) <= new Date(form.startsAt)
+    ) {
       setError('endsAt', 'End time must be after the start time.')
     }
     if (form.format !== 'online' && !form.venue.trim()) {
       setError('venue', 'Please enter the venue or address.')
     }
-    if ((form.format === 'online' || form.format === 'hybrid') && !form.meetingLink.trim()) {
-      setError('meetingLink', 'Please add the meeting link for online attendees.')
+    if (
+      (form.format === 'online' || form.format === 'hybrid') &&
+      !form.meetingLink.trim()
+    ) {
+      setError(
+        'meetingLink',
+        'Please add the meeting link for online attendees.',
+      )
     }
     if (!form.category) setError('category', 'Please choose a category.')
     if (form.eventType === 'recurring') {
       if (!form.recurrence.frequency) {
         setError('repeatSchedule', 'Choose how often this event repeats.')
-      } else if (form.recurrence.frequency === 'weekly' && !form.recurrence.weeklyDays.length) {
+      } else if (
+        form.recurrence.frequency === 'weekly' &&
+        !form.recurrence.weeklyDays.length
+      ) {
         setError('repeatSchedule', 'Choose at least one weekday.')
-      } else if (form.recurrence.seriesEndType === 'on_date' && !form.recurrence.seriesEndDate) {
+      } else if (
+        form.recurrence.seriesEndType === 'on_date' &&
+        !form.recurrence.seriesEndDate
+      ) {
         setError('repeatSchedule', 'Choose a date for the series to end.')
       } else if (!seriesEndValid.value) {
         setError(
@@ -762,36 +1163,142 @@ function validateStep(step) {
             : 'Series end date must be after the first occurrence date.',
         )
       } else if (recurrenceOverlaps.value) {
-        setError('repeatSchedule', 'This duration overlaps the next occurrence. Shorten the event or change the repeat pattern.')
+        setError(
+          'repeatSchedule',
+          'This duration overlaps the next occurrence. Shorten the event or change the repeat pattern.',
+        )
       }
     }
   }
 
+  if (step === 2) {
+    if (
+      form.description.length > 20000 ||
+      new TextEncoder().encode(form.description).length > 65535
+    )
+      setError('description', 'Shorten the event description before saving.')
+    if (form.organiser.length > 100)
+      setError('organiser', 'Keep the organiser name within 100 characters.')
+    if (
+      form.organiserWebsite &&
+      (!/^https?:\/\//i.test(form.organiserWebsite) ||
+        form.organiserWebsite.length > 500)
+    )
+      setError(
+        'organiserWebsite',
+        'Use an HTTP or HTTPS website link within 500 characters.',
+      )
+  }
   if (step === 2 && !form.coverImage) {
-    setError('coverImage', 'Please add a cover image so attendees can recognise your event.')
+    setError(
+      'coverImage',
+      'Please add a cover image so attendees can recognise your event.',
+    )
   }
 
   if (step === 3 && form.ticketMode === 'paid') {
-    if (!form.tickets.length) setError('tickets', 'Add at least one paid ticket category.')
+    if (!form.tickets.length)
+      setError('tickets', 'Add at least one paid ticket category.')
     form.tickets.forEach((ticket) => {
-      if (!ticket.name.trim()) setError(`ticket-${ticket.id}-name`, 'Ticket name is required.')
-      if (ticket.price < 0) setError(`ticket-${ticket.id}-price`, 'Ticket price cannot be negative.')
-      if (ticket.salesStart && ticket.salesEnd && !isAfter(ticket.salesEnd, ticket.salesStart)) {
-        setError(`ticket-${ticket.id}-salesEnd`, 'Sales close must be after sales open.')
+      if (!ticket.name.trim())
+        setError(`ticket-${ticket.id}-name`, 'Ticket name is required.')
+      if (
+        !/^\d+(?:\.\d{1,2})?$/.test(String(ticket.price)) ||
+        Number(ticket.price) <= 0 ||
+        Number(ticket.price) > 999999.99
+      )
+        setError(
+          `ticket-${ticket.id}-price`,
+          'Enter a paid ticket price above zero, up to 999999.99, with at most two decimal places.',
+        )
+      if (ticket.name.length > 50)
+        setError(
+          `ticket-${ticket.id}-name`,
+          'Keep the ticket name within 50 characters.',
+        )
+      if (
+        !Number.isInteger(Number(ticket.units)) ||
+        Number(ticket.units) < 0 ||
+        Number(ticket.units) > 1000000
+      )
+        setError(
+          `ticket-${ticket.id}-units`,
+          'Enter a capacity from 0 to 1,000,000. Zero means no stock.',
+        )
+      if (
+        Number(ticket.units) <
+        Number(ticket.inventory?.sold_units || 0) +
+          Number(ticket.inventory?.reserved_units || 0)
+      )
+        setError(
+          `ticket-${ticket.id}-units`,
+          'Keep enough units for sold tickets and current reservations.',
+        )
+      if (
+        ticket.unitType === 'table' &&
+        (!Number.isInteger(Number(ticket.peoplePerUnit)) ||
+          Number(ticket.peoplePerUnit) < 1 ||
+          Number(ticket.peoplePerUnit) > 10000)
+      )
+        setError(
+          `ticket-${ticket.id}-peoplePerUnit`,
+          'Enter 1 to 10,000 people per table.',
+        )
+      if (
+        ticket.maxPerPerson != null &&
+        ticket.maxPerPerson !== '' &&
+        (!Number.isInteger(Number(ticket.maxPerPerson)) ||
+          Number(ticket.maxPerPerson) < 1 ||
+          Number(ticket.maxPerPerson) > 1000000)
+      )
+        setError(
+          `ticket-${ticket.id}-maxPerPerson`,
+          'Enter a purchase limit from 1 to 1,000,000.',
+        )
+      if (
+        ticket.salesStart &&
+        ticket.salesEnd &&
+        !isAfter(ticket.salesEnd, ticket.salesStart)
+      ) {
+        setError(
+          `ticket-${ticket.id}-salesEnd`,
+          'Sales close must be after sales open.',
+        )
       }
-      if (ticket.salesEnd && form.startsAt && isAfter(ticket.salesEnd, form.startsAt)) {
-        setError(`ticket-${ticket.id}-salesEnd`, 'Ticket sales must end by the event start time.')
+      if (
+        ticket.salesEnd &&
+        form.endsAt &&
+        isAfter(ticket.salesEnd, form.endsAt)
+      ) {
+        setError(
+          `ticket-${ticket.id}-salesEnd`,
+          'Ticket sales must end by the event end time.',
+        )
       }
     })
   }
 
+  if (
+    step === 3 &&
+    form.ticketMode === 'free' &&
+    form.freeCapacity !== '' &&
+    (!Number.isInteger(Number(form.freeCapacity)) ||
+      Number(form.freeCapacity) < 0 ||
+      Number(form.freeCapacity) > 1000000)
+  )
+    setError('freeCapacity', 'Enter a capacity from 0 to 1,000,000.')
+  if (step === 3 && totalCapacity.value > 2147483647)
+    setError('tickets', 'Reduce the total admission capacity before saving.')
+
   const firstError = Object.keys(errors)[0]
   if (firstError) {
     requestAnimationFrame(() => {
-      document.querySelector(`[data-error-key="${firstError}"]`)?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center',
-      })
+      document
+        .querySelector(`[data-error-key="${firstError}"]`)
+        ?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        })
     })
     return false
   }
@@ -836,7 +1343,9 @@ function ensureFirstOccurrenceWeekday() {
 function toggleWeeklyDay(day) {
   if (day === firstOccurrenceWeekday.value) return
   if (form.recurrence.weeklyDays.includes(day)) {
-    form.recurrence.weeklyDays = form.recurrence.weeklyDays.filter((value) => value !== day)
+    form.recurrence.weeklyDays = form.recurrence.weeklyDays.filter(
+      (value) => value !== day,
+    )
   } else {
     form.recurrence.weeklyDays.push(day)
     form.recurrence.weeklyDays.sort((left, right) => left - right)
@@ -861,28 +1370,51 @@ function setSeriesEndType(type) {
   clearError('repeatSchedule')
 }
 
-function handleFiles(files) {
+async function handleFiles(files) {
   dragActive.value = false
-  Array.from(files)
-    .filter((file) => file.type.startsWith('image/'))
-    .slice(0, 6 - form.secondaryImages.length - (form.coverImage ? 1 : 0))
-    .forEach((file) => {
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        const src = event.target?.result
-        if (!src) return
-        if (!form.coverImage) form.coverImage = src
-        else form.secondaryImages.push(src)
-        clearError('coverImage')
+  for (const file of Array.from(files)) {
+    if (
+      !['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(
+        file.type,
+      ) ||
+      file.size > 5 * 1024 * 1024
+    ) {
+      showToast('Choose a JPEG, PNG, GIF or WebP image up to 5 MB.')
+      continue
+    }
+    if (form.secondaryImages.length + (form.coverImage ? 1 : 0) >= 6) break
+    try {
+      const bitmap = await createImageBitmap(file)
+      const pixels = bitmap.width * bitmap.height
+      bitmap.close()
+      if (pixels > 40000000) {
+        showToast('Choose an image with no more than 40 million pixels.')
+        continue
       }
-      reader.readAsDataURL(file)
-    })
+      const src = await new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result)
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+      if (!form.coverImage) form.coverImage = src
+      else form.secondaryImages.push(src)
+      clearError('coverImage')
+    } catch {
+      showToast('We could not read this image. Please choose another file.')
+    }
+  }
 }
 
 function addUrlImage() {
   const url = urlImageValue.value.trim()
-  if (!url || !/\.(jpe?g|png|webp|gif)(\?.*)?$/i.test(url)) {
-    showToast('Use a direct image URL ending in jpg, png, webp, or gif.')
+  if (!url || !/^https?:\/\//i.test(url) || url.length > 2000) {
+    showToast('Use an HTTP or HTTPS image URL within 2,000 characters.')
+    return
+  }
+  if (form.secondaryImages.includes(url) || form.coverImage === url) return
+  if (form.secondaryImages.length >= 20) {
+    showToast('You can add up to 20 gallery images.')
     return
   }
   if (!form.coverImage) form.coverImage = url
@@ -918,7 +1450,12 @@ function applyCoverTemplate(gradient) {
 
 function addDetail(option) {
   if (selectedDetailTypes.value.has(option.type)) return
-  form.extraDetails.push({ type: option.type, label: option.label, icon: option.icon, value: '' })
+  form.extraDetails.push({
+    type: option.type,
+    label: option.label,
+    icon: option.icon,
+    value: '',
+  })
 }
 
 function removeDetail(type) {
@@ -930,9 +1467,15 @@ function selectTicketMode(mode) {
   clearError('tickets')
 }
 
-function addTicket(template = { name: '', unitType: 'individual', color: '#3d3935', price: 0 }) {
+function addTicket(
+  template = { name: '', unitType: 'individual', color: '#3d3935', price: 0 },
+) {
+  if (form.tickets.length >= 100) {
+    showToast('You can add up to 100 ticket products.')
+    return
+  }
   form.tickets.push({
-    id: ++ticketId.value,
+    id: `new-${++ticketId.value}`,
     name: template.name,
     unitType: template.unitType,
     color: template.color,
@@ -953,12 +1496,24 @@ function removeTicket(id) {
 }
 
 function ticketSeatCount(ticket) {
-  return ticket.unitType === 'table' ? ticket.units * ticket.peoplePerUnit : ticket.units
+  return ticket.unitType === 'table'
+    ? ticket.units * ticket.peoplePerUnit
+    : ticket.units
 }
 
 async function publishEvent() {
-  if (isEditMode.value) { await saveEventChanges(); return }
-  if (isSaving.value || isPublishing.value) return
+  if (isEditMode.value && editorStatus.value === 'active') {
+    await saveEventChanges()
+    return
+  }
+  if (
+    isSaving.value ||
+    isPublishing.value ||
+    conflict.value ||
+    editorLoading.value ||
+    editorLoadError.value
+  )
+    return
   if (!validateStep(1)) {
     currentStep.value = 1
     return
@@ -978,13 +1533,15 @@ async function publishEvent() {
 
   try {
     await persistDraft()
-    const response = await publishEventRequest(draftId.value)
+    const response = await publishEventRequest(draftId.value, form.version)
+    acceptSavedEvent(response.data)
     publishedResponse.value = response
     published.value = true
     window.scrollTo({ top: 0, behavior: 'smooth' })
   } catch (error) {
     publishErrors.value = normalizeRequestErrors(error)
     applyBackendErrors(publishErrors.value, error?.response?.status === 422)
+    await handleWriteError(error)
   } finally {
     isPublishing.value = false
   }
@@ -992,10 +1549,13 @@ async function publishEvent() {
 
 onMounted(async () => {
   initializeTheme()
+  void loadCategories()
   clockTimer = setInterval(() => {
     clock.value = new Date()
   }, 60_000)
-  tipTimer = setInterval(() => { tipIndex.value = (tipIndex.value + 1) % activeTips.value.length }, 7000)
+  tipTimer = setInterval(() => {
+    tipIndex.value = (tipIndex.value + 1) % activeTips.value.length
+  }, 7000)
   if (isEditMode.value) await loadEventForEditing()
 })
 
@@ -1006,11 +1566,14 @@ onBeforeUnmount(() => {
   clearTimeout(draftTimer)
 })
 
-
 watch(
   () => form.startsAt,
   (value) => {
-    if (value && isStartDateTimeValid(value, eventTimeZone.value, clock.value)) {
+    if (hydrating.value) return
+    if (
+      value &&
+      isStartDateTimeValid(value, eventTimeZone.value, clock.value)
+    ) {
       clearError('startsAt')
     }
     if (value && form.endsAt && !isAfter(form.endsAt, value)) {
@@ -1018,7 +1581,10 @@ watch(
       setError('endsAt', 'End time must be after the start time.')
     }
     syncMonthlyPattern()
-    if (form.eventType === 'recurring' && form.recurrence.frequency === 'weekly') {
+    if (
+      form.eventType === 'recurring' &&
+      form.recurrence.frequency === 'weekly'
+    ) {
       ensureFirstOccurrenceWeekday()
     }
     if (
@@ -1027,7 +1593,10 @@ watch(
       !seriesEndValid.value
     ) {
       form.recurrence.seriesEndDate = ''
-      setError('repeatSchedule', 'Choose a new series end date after the first occurrence.')
+      setError(
+        'repeatSchedule',
+        'Choose a new series end date after the first occurrence.',
+      )
     }
   },
 )
@@ -1035,23 +1604,50 @@ watch(
 watch(
   () => form.endsAt,
   (value) => {
-    if (value && form.startsAt && isAfter(value, form.startsAt)) clearError('endsAt')
+    if (hydrating.value) return
+    if (value && form.startsAt && isAfter(value, form.startsAt))
+      clearError('endsAt')
   },
 )
 watch(
   () => form.recurrence,
   () => {
-    if (errors.repeatSchedule && recurrenceReady.value) clearError('repeatSchedule')
+    if (errors.repeatSchedule && recurrenceReady.value)
+      clearError('repeatSchedule')
   },
   { deep: true },
 )
-watch(eventTimeZone, (timeZone, previousTimeZone) => {
-  if (timeZone === previousTimeZone || !form.startsAt) return
-  if (!isStartDateTimeValid(form.startsAt, timeZone, clock.value)) {
-    form.startsAt = null
-    setError('startsAt', 'Choose a start time at least 30 minutes from now.')
-  }
-})
+watch(
+  () => form.venueTimezone,
+  (timeZone, previousTimeZone) => {
+    if (hydrating.value || timeZone === previousTimeZone) return
+    try {
+      new Intl.DateTimeFormat('en', { timeZone }).format()
+      for (const [source, keys] of [
+        [form, ['startsAt', 'endsAt']],
+        ...form.tickets.map((ticket) => [ticket, ['salesStart', 'salesEnd']]),
+      ]) {
+        for (const key of keys) {
+          const saved = source._savedTimes?.[key]
+          if (
+            saved?.instant &&
+            saved.local === toLocalDateTimeString(source[key])
+          ) {
+            source[key] = instantToLocalDate(saved.instant, timeZone)
+            saved.local = toLocalDateTimeString(source[key])
+            saved.timeZone = timeZone
+          }
+        }
+      }
+      clearError('timeZone')
+    } catch {
+      setError(
+        'timeZone',
+        'Choose a valid IANA timezone, such as Africa/Lagos.',
+      )
+    }
+  },
+)
 </script>
 
 <template>
@@ -1107,15 +1703,20 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
         <button
           type="button"
           class="ghost-btn"
-          :disabled="isSaving || isPublishing"
+          :disabled="isSaving || isPublishing || conflict || editorLoading || Boolean(editorLoadError)"
           @click="saveDraft"
         >
-          {{ isSaving ? 'Saving...' : 'Save draft' }}
+          {{ isSaving ? 'Saving...' : editorStatus === 'active' ? 'Save changes' : 'Save draft' }}
         </button>
       </div>
     </header>
 
     <main v-if="!published" class="ce-wrap">
+      <EventEditorConflict v-if="conflict" :record="conflictRecord" :loading="conflictLoading" :error="conflictError" @retry="loadConflictRecord" @reload="reloadConflictedEvent" />
+      <div v-if="editorLoading || editorLoadError" class="api-error-summary" role="status">
+        {{ editorLoading ? 'Getting your event ready...' : editorLoadError }}
+        <button v-if="editorLoadError" type="button" @click="loadEventForEditing">Try again</button>
+      </div>
       <div v-if="saveError.length || publishErrors.length" class="api-error-summary" role="alert">
         <strong>{{ publishErrors.length ? 'We could not publish this event.' : 'We could not save this draft.' }}</strong>
         <ul>
@@ -1137,7 +1738,7 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
         </button>
       </div>
 
-      <div class="ce-columns" :class="{ 'preview-off': !previewOn }">
+      <div v-if="!editorLoading && !editorLoadError" :inert="isSaving || isPublishing" class="ce-columns" :class="{ 'preview-off': !previewOn }">
         <section v-if="!isStepLoading" class="ce-form">
           <div v-if="currentStep === 1" class="screen">
         <CreateEventStepSkeleton v-if="isStepLoading" :step="loadingStep" :preview-on="previewOn" />
@@ -1194,7 +1795,7 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
                     :label="form.eventType === 'recurring' ? 'First occurrence starts' : 'Starts'"
                     placeholder="Select start date and time"
                     modal-title="Select start date and time"
-                    :min-date="venueToday"
+                    :min-date="isEditMode ? null : venueToday"
                     :min-date-time="minimumStartDateTime"
                     invalid-time-message="Choose a start time at least 30 minutes from now."
                     :error="errors.startsAt"
@@ -1208,7 +1809,7 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
                     :label="form.eventType === 'recurring' ? 'First occurrence ends' : 'Ends'"
                     placeholder="Select end date and time"
                     modal-title="Select end date and time"
-                    :min-date="form.startsAt || venueToday"
+                    :min-date="form.startsAt || (isEditMode ? null : venueToday)"
                     :min-date-time="minimumEndDateTime"
                     invalid-time-message="End time must be after the start time."
                     :error="errors.endsAt"
@@ -1371,6 +1972,7 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
                     aria-live="polite"
                   >
                     <span class="recurrence-label">Schedule preview</span>
+                    <p>Dates show the repeat pattern. Tickets use one event-wide stock and sales window.</p>
                     <strong>{{ recurrencePatternText }}</strong>
                     <p>{{ formatTimeRange() }}</p>
                     <p>
@@ -1417,11 +2019,12 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
                   <input
                     id="venue"
                     v-model="form.venue"
+                    maxlength="255"
                     class="field-input"
                     :class="{ error: errors.venue }"
                     placeholder="Type a venue name or address"
                     @focus="showVenueResults = true"
-                    @input="form.venueTimezone = ''; clearError('venue')"
+                    @input="clearError('venue')"
                   />
                 </div>
                 <div v-if="showVenueResults && venueResults.length" class="venue-results">
@@ -1438,11 +2041,16 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
                 <p v-if="errors.venue" class="error-text">{{ errors.venue }}</p>
               </div>
 
+              <div class="two-col">
+                <div class="field" data-error-key="city"><label for="event-city">City <span>Optional</span></label><input id="event-city" v-model="form.city" maxlength="255" class="field-input" /><p v-if="errors.city" class="error-text">{{ errors.city }}</p></div>
+                <div class="field" data-error-key="timeZone"><label for="event-timezone">Event timezone</label><input id="event-timezone" v-model.lazy="form.venueTimezone" maxlength="60" class="field-input" placeholder="Africa/Lagos" /><p v-if="errors.timeZone" class="error-text">{{ errors.timeZone }}</p></div>
+              </div>
               <div v-if="form.format !== 'in-person'" class="field" data-error-key="meetingLink">
                 <label for="meeting-link">Meeting link</label>
                 <input
                   id="meeting-link"
                   v-model="form.meetingLink"
+                  maxlength="1000"
                   type="url"
                   class="field-input"
                   :class="{ error: errors.meetingLink }"
@@ -1450,10 +2058,11 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
                   @input="clearError('meetingLink')"
                 />
                 <p v-if="errors.meetingLink" class="error-text">{{ errors.meetingLink }}</p>
-                <p v-else class="help">Only shown to confirmed attendees in their email.</p>
+                <p v-else class="help">Joining details are shared by the organiser.</p>
               </div>
 
               <div class="divider"><span>Category</span></div>
+              <p v-if="categoryLoadError" role="alert">{{ categoryLoadError }} <button type="button" @click="loadCategories">Try again</button></p>
               <div class="field" data-error-key="category">
                 <label id="category-label">What type of event?</label>
                 <button
@@ -1546,7 +2155,7 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
                   <strong>Drop cover and gallery images here</strong>
                   <span>Browse files or drag them in. The first image becomes the cover photo.</span>
                   <span>JPG, PNG, or WebP Â· best 1600x900px Â· up to 6 images</span>
-                  <input ref="fileInput" type="file" hidden multiple accept="image/*" @change="handleFiles($event.target.files)" />
+                  <input ref="fileInput" type="file" hidden multiple accept="image/jpeg,image/png,image/gif,image/webp" @change="handleFiles($event.target.files)" />
                 </div>
 
                 <div v-else class="url-panel">
@@ -1608,11 +2217,13 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
               </div>
 
               <div class="divider"><span>Description</span></div>
-              <div class="field">
+              <div class="field" data-error-key="description">
+                <p v-if="errors.description" class="error-text">{{ errors.description }}</p>
                 <label for="description">Tell people what to expect <span>Optional</span></label>
                 <textarea
                   id="description"
                   v-model="form.description"
+                  maxlength="20000"
                   class="field-input"
                   rows="4"
                   placeholder="What will people experience? What's the agenda? Who should come?"
@@ -1621,13 +2232,15 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
 
               <div class="divider"><span>Organiser</span></div>
               <div class="two-col">
-                <div class="field">
+                <div class="field" data-error-key="organiser">
+                  <p v-if="errors.organiser" class="error-text">{{ errors.organiser }}</p>
                   <label for="organiser">Name or org <span>Optional</span></label>
-                  <input id="organiser" v-model="form.organiser" class="field-input" placeholder="e.g. TechHub Lagos" />
+                  <input id="organiser" v-model="form.organiser" maxlength="100" class="field-input" placeholder="e.g. TechHub Lagos" />
                 </div>
-                <div class="field">
+                <div class="field" data-error-key="organiserWebsite">
+                  <p v-if="errors.organiserWebsite" class="error-text">{{ errors.organiserWebsite }}</p>
                   <label for="website">Website <span>Optional</span></label>
-                  <input id="website" v-model="form.organiserWebsite" type="url" class="field-input" placeholder="https://..." />
+                  <input id="website" v-model="form.organiserWebsite" maxlength="500" type="url" class="field-input" placeholder="https://..." />
                 </div>
               </div>
 
@@ -1715,12 +2328,13 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
                   <CheckIcon aria-hidden="true" />
                   <div>
                     <strong>Free event</strong>
-                    <p>Set a max number of spots to create urgency, or leave blank for unlimited.</p>
+                    <p>Set the admission capacity. Zero or a blank value means no stock. Registration is not connected yet.</p>
                   </div>
                 </div>
                 <div class="field">
                   <label for="free-capacity">Max spots <span>Optional</span></label>
-                  <input id="free-capacity" v-model="form.freeCapacity" type="number" min="1" class="field-input" placeholder="e.g. 200" />
+                  <p v-if="errors.freeCapacity" class="error-text">{{ errors.freeCapacity }}</p>
+                  <input data-error-key="freeCapacity" id="free-capacity" v-model="form.freeCapacity" type="number" min="0" max="1000000" step="1" class="field-input" placeholder="e.g. 200" />
                 </div>
               </div>
 
@@ -1757,9 +2371,11 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
 
                 <div class="ticket-list">
                   <article v-for="ticket in form.tickets" :key="ticket.id" class="ticket-card">
+                    <p v-for="([key, message]) in Object.entries(errors).filter(([key]) => key.startsWith(`ticket-${ticket.id}-`) && !key.endsWith('-name') && !key.endsWith('-salesEnd'))" :key="key" :data-error-key="key" class="error-text">{{ message }}</p>
                     <div class="ticket-card-head">
                       <span class="color-dot" :style="{ background: ticket.color }"></span>
                       <strong>{{ ticket.name || 'Unnamed ticket' }}</strong>
+                      <span v-if="ticket.inventory">Configured: {{ ticket.inventory.configured_capacity_units }} &middot; Sold: {{ ticket.inventory.sold_units }} &middot; Reserved: {{ ticket.inventory.reserved_units }} &middot; Available: {{ ticket.inventory.available_units }} &middot; Admissions: {{ ticket.inventory.admission_capacity }}</span>
                       <button type="button" class="icon-btn danger" @click="removeTicket(ticket.id)">
                         <TrashIcon aria-hidden="true" />
                       </button>
@@ -1769,6 +2385,7 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
                         <label>Ticket name</label>
                         <input
                           v-model="ticket.name"
+                          maxlength="50"
                           class="field-input"
                           :class="{ error: errors[`ticket-${ticket.id}-name`] }"
                           placeholder="e.g. General Admission"
@@ -1780,7 +2397,7 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
                       </div>
                       <div class="field">
                         <label>Seat type</label>
-                        <select v-model="ticket.unitType" class="field-input">
+                        <select v-model="ticket.unitType" class="field-input" :disabled="hasCommitments(ticket)" @change="ticket.unitType === 'individual' && (ticket.peoplePerUnit = 1)">
                           <option value="individual">Individual seat</option>
                           <option value="table">Group / Table</option>
                         </select>
@@ -1789,21 +2406,22 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
                     <div class="two-col">
                       <div class="field">
                         <label>{{ ticket.unitType === 'table' ? 'Number of tables' : 'How many spots?' }}</label>
-                        <input v-model.number="ticket.units" type="number" min="0" class="field-input" placeholder="Leave blank for unlimited" />
+                        <input v-model.number="ticket.units" type="number" min="0" class="field-input" max="1000000" step="1" placeholder="0 means no stock" />
                       </div>
                       <div v-if="ticket.unitType === 'table'" class="field">
                         <label>People per table</label>
-                        <input v-model.number="ticket.peoplePerUnit" type="number" min="1" class="field-input" />
+                        <input v-model.number="ticket.peoplePerUnit" type="number" min="1" max="10000" step="1" :disabled="hasCommitments(ticket)" class="field-input" />
                       </div>
                     </div>
                     <div class="two-col">
                       <div class="field">
                         <label>Price (â‚¦)</label>
-                        <input v-model.number="ticket.price" type="number" min="0" class="field-input" placeholder="0 = free" />
+                        <input v-model="ticket.price" type="number" min="0" max="999999.99" step="0.01" class="field-input" placeholder="Enter a paid ticket price" />
+                        <p v-if="Number(ticket.price) <= 0" class="help">Paid tickets need a price above zero before publication. You can save a draft with a zero price.</p>
                       </div>
                       <div class="field">
                         <label>Each person can buy <span>Optional</span></label>
-                        <input v-model.number="ticket.maxPerPerson" type="number" min="1" class="field-input" placeholder="e.g. 2 means one person can only buy 2 tickets" />
+                        <input v-model.number="ticket.maxPerPerson" type="number" min="1" max="1000000" step="1" class="field-input" placeholder="e.g. 2 means one person can only buy 2 tickets" />
                       </div>
                     </div>
                     <div v-if="ticket.unitType === 'table' && ticket.units" class="calc-card">
@@ -1816,7 +2434,7 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
                         <DateTimePickerInput
                           v-model="ticket.salesStart"
                           placeholder="Select sales open"
-                          :min-date="venueToday"
+                          :min-date="isEditMode ? null : venueToday"
                           :max-date="form.startsAt"
                           :max-date-time="form.startsAt"
                         />
@@ -1826,7 +2444,7 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
                         <DateTimePickerInput
                           v-model="ticket.salesEnd"
                           placeholder="Select sales close"
-                          :min-date="venueToday"
+                          :min-date="isEditMode ? null : venueToday"
                           :max-date="form.startsAt"
                           :max-date-time="form.startsAt"
                           :error="errors[`ticket-${ticket.id}-salesEnd`]"
@@ -1919,10 +2537,10 @@ watch(eventTimeZone, (timeZone, previousTimeZone) => {
               type="button"
               class="primary-btn publish"
               :class="{ disabled: !canContinue || isSaving || isPublishing }"
-              :disabled="!canContinue || isSaving || isPublishing"
+              :disabled="!canContinue || isSaving || isPublishing || conflict"
               @click="publishEvent"
             >
-              {{ isPublishing ? 'Publishing...' : 'Publish Event' }} <ArrowRightIcon aria-hidden="true" />
+              {{ isPublishing ? 'Publishing...' : editorStatus === 'active' ? 'Save changes' : 'Publish event' }} <ArrowRightIcon aria-hidden="true" />
             </button>
           </div>
         </section>

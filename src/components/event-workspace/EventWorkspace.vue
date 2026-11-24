@@ -11,7 +11,8 @@ import WorkspaceEventPreview from './WorkspaceEventPreview.vue'
 import WorkspaceEvents from './WorkspaceEvents.vue'
 import { overviewStage } from './overviewModel'
 import { useWorkspacePrivacy } from '@/composables/useWorkspacePrivacy'
-import { useWorkspaceAttendees } from './attendeesModel'
+import { DASHBOARD_PREVIEW } from '@/services/dashboardPreview'
+import { usePreviewWorkspaceAttendees } from './previewAttendeesModel'
 const props = defineProps({
   view: String,
   event: Object,
@@ -35,7 +36,9 @@ const auth = useAuthStore()
 const route = useRoute()
 const attendeeMode = computed(() =>
   props.event && props.overview
-    ? useWorkspaceAttendees(props.event.id, props.overview.event?.ticket_mode).mode.value
+    ? DASHBOARD_PREVIEW
+      ? usePreviewWorkspaceAttendees(props.event.id, props.overview.event?.ticket_mode).mode.value
+      : props.overview.event?.ticket_mode || 'paid'
     : props.event?.ticket_mode || 'paid',
 )
 watch(
@@ -332,6 +335,7 @@ const phase = computed(
             :event-id="event.id"
             :overview="overview"
             @navigate="$emit('navigate', $event)"
+            @refresh="$emit('refresh')"
           />
           <WorkspaceViews
             :key="event.id"

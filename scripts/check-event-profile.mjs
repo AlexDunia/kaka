@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { Buffer } from 'node:buffer'
 import { readFile } from 'node:fs/promises'
 import { test } from 'node:test'
 import { createRenderer, h, nextTick } from 'vue'
@@ -6,10 +7,27 @@ import { compileScript, parse } from '@vue/compiler-sfc'
 import { normalizeEventProfile, profileDate, safePublicUrl } from '../src/utils/eventProfile.js'
 import { commitEventSelection } from '../src/utils/eventSelection.js'
 
+test('server booking closure disables paid selection without hiding cancellation details', () => {
+  const profile = normalizeEventProfile({
+    id: 71,
+    title: 'Cancelled event',
+    ticket_mode: 'paid',
+    lifecycle_state: 'cancelled',
+    booking_supported: false,
+    tickets: [{ id: 3, name: 'General', price: 1000, capacity: 10 }],
+  })
+  assert.equal(profile.canBuy, false)
+  assert.equal(profile.lifecycleState, 'cancelled')
+  assert.equal(commitEventSelection({}, profile, [{ quantity: 1 }]), false)
+})
+
 const catalogSource = (
   await readFile(new URL('../src/services/staticEventCatalog.js', import.meta.url), 'utf8')
 )
-  .replace("import { DASHBOARD_PREVIEW } from './dashboardPreview'", 'const DASHBOARD_PREVIEW = true')
+  .replace(
+    "import { DASHBOARD_PREVIEW } from './dashboardPreview'",
+    'const DASHBOARD_PREVIEW = true',
+  )
   .replace(/import concert from ['"][^'"]+['"];?/, "const concert = '/event-cover.jpg'")
   .replace(
     "'@/utils/eventProfile'",
@@ -18,6 +36,8 @@ const catalogSource = (
 const { staticEvents, quoteStaticTickets } = await import(
   `data:text/javascript;base64,${Buffer.from(catalogSource).toString('base64')}`
 )
+
+const now = new Date('2026-11-23T12:00:00Z')
 
 test('the first two static events include every profile section and use canonical checkout prices', () => {
   assert.equal(staticEvents.length, 2)
@@ -45,7 +65,6 @@ test('the first two static events include every profile section and use canonica
   )
 })
 
-const now = new Date('2026-11-23T12:00:00Z')
 test('maps organiser content from Create Event without fabricating guests, photos or tickets', () => {
   const source = {
     id: 10,
@@ -127,7 +146,12 @@ test('keeps numeric ticket IDs, filters hidden tiers, and respects sale windows 
     ).canBuy,
     false,
   )
-  assert.equal(normalizeEventProfile({ tickets: [{ id: 1, price: 0, units: 4 }] }, now).price, 0)
+  assert.equal(
+    normalizeEventProfile({ ticket_mode: 'paid', tickets: [{ id: 1, price: 0, units: 4 }] }, now)
+      .price,
+    null,
+  )
+  assert.equal(normalizeEventProfile({ ticket_mode: 'free', tickets: [] }, now).price, 0)
 })
 
 test('formats the event timezone and rejects executable media URLs', () => {

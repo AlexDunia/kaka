@@ -1,7 +1,15 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { useDashboardStore } from '@/stores/dashboard'
-import api, { ensureCsrfCookie, getApiErrorMessage } from '@/api/axios'
+import api, { ensureCsrfCookie } from '@/api/axios'
+
+const getApiErrorMessage = (error, fallback) => {
+  const errors = error.response?.data?.errors
+  if (errors && typeof errors === 'object') {
+    const message = Object.values(errors).flat().find(Boolean)
+    if (message) return message
+  }
+  return error.response?.data?.message || fallback
+}
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
@@ -10,12 +18,11 @@ export const useAuthStore = defineStore('auth', () => {
   const authProvider = ref(null)
   const initialized = ref(false)
   let initializePromise = null
-  let sessionVersion = 0
 
   const isAuthenticated = computed(() => Boolean(user.value))
   const getUser = computed(() => user.value)
   const getError = computed(() => error.value)
-  const isAdmin = computed(() => false)
+  const isAdmin = computed(() => user.value?.role === 'admin')
 
   const persistUser = (userData) => {
     if (userData) localStorage.setItem('user', JSON.stringify(userData))
@@ -26,15 +33,12 @@ export const useAuthStore = defineStore('auth', () => {
     else localStorage.removeItem('authProvider')
   }
   const clearLocalSession = () => {
-    sessionVersion++
-    useDashboardStore().reset()
     user.value = null
     authProvider.value = null
     persistUser(null)
     persistProvider(null)
   }
   const applyUser = (userData) => {
-    if (user.value?.id !== userData?.id) useDashboardStore().reset()
     user.value = userData
     persistUser(userData)
     return userData
@@ -42,16 +46,13 @@ export const useAuthStore = defineStore('auth', () => {
 
   const fetchUser = async () => {
     error.value = null
-    const version = sessionVersion
     try {
       const response = await api.get('/user')
-      if (version !== sessionVersion) return null
       const userData = response.data?.user ?? response.data
-      if (!userData || !Number.isInteger(userData.id) || !userData.email)
+      if (!userData || typeof userData !== 'object')
         throw new Error('The server did not return an authenticated user.')
       return applyUser(userData)
     } catch (requestError) {
-      if (version !== sessionVersion) return null
       error.value = getApiErrorMessage(requestError, 'We could not load your account details.')
       clearLocalSession()
       throw requestError
@@ -80,14 +81,12 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const login = async (email, password) => {
-    clearLocalSession()
     isLoading.value = true
     error.value = null
     try {
       await ensureCsrfCookie()
       await api.post('/login', { email, password })
       const userData = await fetchUser()
-      if (!userData) throw new Error('Please log in to continue.')
       authProvider.value = 'local'
       persistProvider('local')
       initialized.value = true
@@ -105,7 +104,6 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const register = async (userData) => {
-    clearLocalSession()
     isLoading.value = true
     error.value = null
     try {
@@ -117,7 +115,6 @@ export const useAuthStore = defineStore('auth', () => {
         password_confirmation: userData.password,
       })
       const authenticatedUser = await fetchUser()
-      if (!authenticatedUser) throw new Error('Please log in to continue.')
       authProvider.value = 'local'
       persistProvider('local')
       initialized.value = true
@@ -186,21 +183,28 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  const updateUser = async () => {
-    throw new Error('Account editing is not available yet.')
+  const updateUser = async (userData) => {
+    if (!user.value) throw new Error('Not authenticated')
+    isLoading.value = true
+    error.value = null
+    try {
+      await ensureCsrfCookie()
+      const response = await api.put('/user', userData)
+      return applyUser(response.data?.user ?? response.data)
+    } catch (requestError) {
+      error.value = getApiErrorMessage(requestError, 'We could not save your account changes.')
+      throw requestError
+    } finally {
+      isLoading.value = false
+    }
   }
 
-  const setUser = async (_userData, provider = 'google') => {
-    await initialize({ force: true })
+  const setUser = (userData, provider = 'google') => {
+    applyUser(userData)
     authProvider.value = provider
     persistProvider(provider)
+    initialized.value = false
   }
-
-  if (typeof window !== 'undefined')
-    window.addEventListener('auth:unauthorized', () => {
-      clearLocalSession()
-      initialized.value = false
-    })
 
   return {
     user,

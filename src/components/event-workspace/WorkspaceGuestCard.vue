@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import WorkspaceCopyButton from './WorkspaceCopyButton.vue'
 import { visitDate } from './attendeesModel'
+import { DASHBOARD_PREVIEW } from '@/services/dashboardPreview'
 const props = defineProps({
   guest: Object,
   order: Object,
@@ -19,10 +20,10 @@ const fields = computed(() => [
   ['Full name', props.guest.name],
   ['Email address', props.guest.email],
   ['Ticket type', props.guest.type],
-  ['Ticket code', props.guest.id],
-  ...(props.guest.id === props.order.ticketIds[0]
+  ['Ticket code', props.guest.ticketPublicId || props.guest.id],
+  ...(DASHBOARD_PREVIEW && props.guest.id === props.order?.ticketIds?.[0]
     ? []
-    : [[props.free ? 'Registered by' : 'Bought by', props.order.buyer]]),
+    : [[props.free ? 'Registered by' : 'Bought by', props.order?.buyer || 'Not available']]),
 ])
 const alert = computed(() => props.model.alerts.value[props.guest.id])
 const stamp = (visit) =>
@@ -82,7 +83,8 @@ const stamp = (visit) =>
           </div>
           <div class="rh-v25-arrival-facts">
             <div>
-              <span>Last entered</span><strong>{{ stamp(lastEntry) || 'Not yet' }}</strong>
+              <span>{{ DASHBOARD_PREVIEW ? 'Last entered' : 'Latest loaded ticket entry' }}</span
+              ><strong>{{ stamp(lastEntry) || 'Not yet' }}</strong>
             </div>
             <div>
               <span>Last left</span><strong>{{ stamp(lastExit) || 'No exit recorded yet' }}</strong>
@@ -90,7 +92,7 @@ const stamp = (visit) =>
           </div>
           <div class="rh-v25-actions rh-v25-arrival-actions">
             <button
-              v-if="!model.everArrived(guest.id)"
+              v-if="DASHBOARD_PREVIEW && !model.everArrived(guest.id)"
               type="button"
               class="rh-v25-action rh-v25-alert-btn"
               @click="$emit('alert', guest)"

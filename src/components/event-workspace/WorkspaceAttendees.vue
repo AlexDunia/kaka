@@ -58,7 +58,7 @@ watch(
 const weeklyOnly = computed(() => route.query.period === 'week')
 const sourceOrders = computed(() =>
   orders.value.filter((order) => {
-    const source = purchaseSources[order.id] || {}
+    const source = preview ? purchaseSources[order.id] || {} : {}
     return (
       attendeeSource.value === 'all' ||
       (attendeeSource.value === 'discount' &&
@@ -71,26 +71,28 @@ const sourceOrders = computed(() =>
   }),
 )
 const filteredOrders = computed(() =>
-  sourceOrders.value.filter((order) => {
-    const tickets = model.ticketsFor(order),
-      query = search.value.trim().toLowerCase()
-    const arrived = tickets.filter((t) => model.everArrived(t.id)).length
-    return (
-      (!query ||
-        [
-          order.id,
-          order.buyer,
-          order.email,
-          ...tickets.flatMap((t) => [t.name, t.email, t.id, t.type]),
-        ].some((value) => String(value).toLowerCase().includes(query))) &&
-      (tier.value === 'all' || tickets.some((t) => t.type === tier.value)) &&
-      (!weeklyOnly.value || tickets.some((t) => t.period === 'week')) &&
-      (arrival.value === 'all' ||
-        (arrival.value === 'checked' && arrived > 0) ||
-        (arrival.value === 'pending' && arrived === 0) ||
-        (arrival.value === 'complete' && arrived === tickets.length))
-    )
-  }),
+  !preview
+    ? sourceOrders.value
+    : sourceOrders.value.filter((order) => {
+        const tickets = model.ticketsFor(order),
+          query = search.value.trim().toLowerCase()
+        const arrived = tickets.filter((t) => model.everArrived(t.id)).length
+        return (
+          (!query ||
+            [
+              order.id,
+              order.buyer,
+              order.email,
+              ...tickets.flatMap((t) => [t.name, t.email, t.id, t.type]),
+            ].some((value) => String(value).toLowerCase().includes(query))) &&
+          (tier.value === 'all' || tickets.some((t) => t.type === tier.value)) &&
+          (!weeklyOnly.value || tickets.some((t) => t.period === 'week')) &&
+          (arrival.value === 'all' ||
+            (arrival.value === 'checked' && arrived > 0) ||
+            (arrival.value === 'pending' && arrived === 0) ||
+            (arrival.value === 'complete' && arrived === tickets.length))
+        )
+      }),
 )
 const shownTickets = computed(() => [
   ...new Map(
@@ -136,16 +138,29 @@ const receiptFacts = computed(() =>
         [free.value ? 'Registration number' : 'Order number', selectedOrder.value.id],
         [free.value ? 'Registered on' : 'Bought on', selectedOrder.value.purchased],
         [
-          free.value ? 'Guests included' : 'Tickets in this purchase',
+          preview
+            ? free.value
+              ? 'Guests included'
+              : 'Tickets in this purchase'
+            : 'Loaded guest records',
           String(purchaseGuests.value.length),
         ],
         ...(free.value && props.context === 'door'
           ? []
-          : [['Amount paid', free.value ? 'Free' : money(model.orderTotal(selectedOrder.value))]]),
+          : [
+              [
+                preview ? 'Amount paid' : 'Purchase items total',
+                free.value ? 'Free' : money(model.orderTotal(selectedOrder.value)),
+              ],
+            ]),
       ]
     : [],
 )
-const money = (value) => formatMoneyMinor(value, props.overview.revenue?.currency || 'NGN')
+const money = (value) =>
+  formatMoneyMinor(
+    value,
+    selectedOrder.value?.currency || props.overview.revenue?.currency || 'NGN',
+  )
 const initials = (name) =>
   String(name)
     .split(/\s+/)
@@ -172,12 +187,16 @@ function navigationQuery(view, query = {}) {
   }
 }
 function destination(view, query = {}) {
-  return `${import.meta.env.BASE_URL}dashboard/events/${encodeURIComponent(props.eventId)}?${new URLSearchParams(navigationQuery(view, query))}`
+  return `${import.meta.env.BASE_URL}${route.name === 'event-door' ? 'door/' : 'dashboard/events/'}${encodeURIComponent(props.eventId)}?${new URLSearchParams(navigationQuery(view, query))}`
 }
 function navigate(view, query = {}) {
   emit('navigate', navigationQuery(view, query))
 }
 function selectSource(source) {
+  if (!preview && source !== 'all') {
+    notify('Source filtering is not available for guest records yet.')
+    return
+  }
   if (free.value && source === 'discount') return
   attendeeSource.value = source
   attendeeCode.value = ''
@@ -217,6 +236,8 @@ function sourceKeys(event) {
   tabs[next]?.focus()
 }
 function typeSummary(order) {
+  if (!preview)
+    return order.lines.map((line) => `${line.quantity} x ${line.ticket_name}`).join(', ')
   const types = new Map()
   for (const ticket of model.ticketsFor(order))
     types.set(ticket.type, (types.get(ticket.type) || 0) + 1)
@@ -250,7 +271,12 @@ function openPurchase(order) {
   navigate('purchase', { order: order.id })
 }
 function openHistory(guest) {
-  navigate('checkin', { history: guest.id })
+  navigate('checkin', {
+    history: guest.id,
+    ...(preview
+      ? {}
+      : { ticket: guest.ticketPublicId, attendeePage: model.attendeePage.value.current_page }),
+  })
 }
 function historyBack() {
   const owner = model.orderFor(historyGuest.value?.id)
@@ -267,23 +293,28 @@ const editDialog = ref(null),
   alertDialog = ref(null),
   editing = ref(null),
   alertGuest = ref(null)
-const edit = reactive({ name: '', email: '' }),
+const edit = reactive({ name: '', email: '', answers: {} }),
   alert = reactive({ self: '', teammate: '' }),
   editError = ref(''),
   alertError = ref('')
 function openEdit(guest) {
   editing.value = guest
-  Object.assign(edit, { name: guest.name, email: guest.email })
+  Object.assign(edit, {
+    name: preview ? guest.name : guest.originalName || '',
+    email: guest.email,
+    answers: { ...guest.answers },
+  })
   editError.value = ''
   editDialog.value.showModal()
   nextTick(() => editDialog.value?.querySelector?.('[name="name"]')?.focus())
 }
-function saveGuest() {
-  const result = model.updateGuest(editing.value.id, edit)
+async function saveGuest() {
+  const result = await model.updateGuest(editing.value.id, edit)
   if (!result.ok) {
     editError.value = result.message
     return
   }
+  if (!editDialog.value) return
   editDialog.value.close()
   notify(result.message)
 }
@@ -310,7 +341,16 @@ function saveArrivalAlert() {
     `Arrival alert preferences saved in this browser for ${alert.teammate ? 'you and your teammate' : 'you'}. No emails were sent.`,
   )
 }
-function resend(guest) {
+async function resend(guest) {
+  if (!preview) {
+    try {
+      const result = await model.resend(guest.ticketPublicId)
+      notify(result.message)
+    } catch {
+      notify('The ticket link was not queued. Please try again.')
+    }
+    return
+  }
   notify(
     `We couldn’t resend the ticket to ${guest.email} because email isn’t connected yet. No email was sent.`,
   )
@@ -327,7 +367,22 @@ function closeFromBackdrop(event) {
   )
     dialog.close()
 }
-function exportGuests() {
+async function exportGuests() {
+  if (!preview) {
+    try {
+      const blob = await model.exportGuests(search.value.trim())
+      const url = URL.createObjectURL(blob),
+        link = document.createElement('a')
+      link.href = url
+      link.download = `event-${props.eventId}-attendees.csv`
+      link.click()
+      URL.revokeObjectURL(url)
+      notify('Guest list exported.')
+    } catch {
+      notify('The guest list could not be exported. Please try again.')
+    }
+    return
+  }
   const rows = [
     ['Name', 'Email', 'Ticket type', 'Ticket code', free.value ? 'Registered' : 'Purchased'],
     ...guests.value.map((t) => [t.name, t.email, t.type, t.id, t.purchased]),
@@ -356,6 +411,10 @@ function finishPrint() {
 }
 const photo = computed(() => photos.value[selectedOrder.value?.id] || '')
 async function uploadPhoto(event) {
+  if (!preview) {
+    notify('Buyer photo uploads are not available.')
+    return
+  }
   const file = event.target.files?.[0]
   event.target.value = ''
   if (!file) return
@@ -487,6 +546,33 @@ watch(
     }
   },
 )
+let searchTimer
+if (!preview) {
+  watch(search, () => {
+    clearTimeout(searchTimer)
+    searchTimer = setTimeout(() => {
+      void model.loadAttendees({ page: 1, q: search.value.trim() || undefined })
+      void model.loadPurchases({ page: 1, q: search.value.trim() || undefined })
+    }, 300)
+  })
+  watch(
+    () => route.query.order,
+    (id) => {
+      if (id) void model.loadPurchases({ page: 1, q: String(id) })
+    },
+    { immediate: true },
+  )
+  if (route.query.attendeePage)
+    void model.loadAttendees({ page: Number(route.query.attendeePage) || 1 })
+  watch(
+    () => route.query.history,
+    (id) => {
+      const ticket = route.query.ticket || guests.value.find((g) => g.id === id)?.ticketPublicId
+      if (ticket) void model.loadHistory({ page: 1, ticket_public_id: String(ticket) })
+    },
+    { immediate: true },
+  )
+}
 onMounted(() => {
   window.addEventListener('scroll', syncSticky, { passive: true })
   window.addEventListener('resize', syncSticky)
@@ -496,6 +582,7 @@ onMounted(() => {
   syncSticky()
 })
 onBeforeUnmount(() => {
+  clearTimeout(searchTimer)
   window.removeEventListener('scroll', syncSticky)
   window.removeEventListener('resize', syncSticky)
   window.removeEventListener('afterprint', finishPrint)
@@ -540,13 +627,20 @@ onBeforeUnmount(() => {
           {{ label }}
         </button>
       </div>
+      <p v-if="!preview && model.error.value" role="alert" class="rh-note">
+        {{ model.error.value }}
+        <button type="button" class="rh-row-button" @click="model.retry">Try again</button>
+      </p>
+      <p v-if="!preview && model.loading.value" role="status" class="rh-note">
+        Getting your event records ready...
+      </p>
       <div class="rh-page-heading">
         <div>
           <span class="rh-eyebrow" aria-hidden="true">Main / Attendees</span>
           <h1 id="rh-attendees-title">{{ title }}</h1>
         </div>
         <div class="rh-attendee-heading-actions">
-          <label class="rh-event-type-preview"
+          <label v-if="preview" class="rh-event-type-preview"
             ><span>Event type preview</span
             ><select
               id="rh-attendee-event-type"
@@ -567,7 +661,7 @@ onBeforeUnmount(() => {
           </button>
         </div>
       </div>
-      <p v-if="weeklyOnly" class="rh-note" role="status">
+      <p v-if="preview && weeklyOnly" class="rh-note" role="status">
         Showing purchases from this week.
         <button class="rh-row-button" @click="clearFilters">Show all purchases</button>
       </p>
@@ -580,7 +674,7 @@ onBeforeUnmount(() => {
         </article>
         <article class="rh-summary-card">
           <span id="rh-attendee-tickets-label">{{
-            free ? 'Guests registered' : 'Tickets bought'
+            preview ? (free ? 'Guests registered' : 'Tickets bought') : 'Guest records on this page'
           }}</span
           ><strong id="rh-v19-tickets-total">{{ shownTickets.length }}</strong
           ><small>For the selected list</small>
@@ -626,14 +720,17 @@ onBeforeUnmount(() => {
                       ><span class="rh-sr">Search guests and registrations</span
                       ><input
                         id="rh-attendee-search"
+                        maxlength="100"
                         ref="searchInput"
                         v-model="search"
                         type="search"
                         autocomplete="off"
                         :placeholder="
-                          free
-                            ? 'Search name, email or registration'
-                            : 'Search name, email or ticket code'
+                          !preview
+                            ? 'Start of guest name, email or order reference'
+                            : free
+                              ? 'Search name, email or registration'
+                              : 'Search name, email or ticket code'
                         " /></label
                     ><button
                       v-show="hasFilters"
@@ -654,6 +751,7 @@ onBeforeUnmount(() => {
                     ><span class="rh-sr">Ticket type</span
                     ><select
                       id="rh-attendee-tier"
+                      :disabled="!preview"
                       v-model="tier"
                       aria-label="Filter by ticket type"
                     >
@@ -670,6 +768,7 @@ onBeforeUnmount(() => {
                     ><span class="rh-sr">Arrival</span
                     ><select
                       id="rh-attendee-arrival"
+                      :disabled="!preview"
                       v-model="arrival"
                       aria-label="Filter by arrival status"
                     >
@@ -721,13 +820,13 @@ onBeforeUnmount(() => {
                 </td>
                 <td :data-label="free ? 'Guests' : 'Tickets bought'">
                   <strong
-                    >{{ order.ticketIds.length }}
+                    >{{ preview ? order.ticketIds.length : order.quantity }}
                     {{
                       free
-                        ? order.ticketIds.length === 1
+                        ? (preview ? order.ticketIds.length : order.quantity) === 1
                           ? 'guest'
                           : 'guests'
-                        : order.ticketIds.length === 1
+                        : (preview ? order.ticketIds.length : order.quantity) === 1
                           ? 'ticket'
                           : 'tickets'
                     }}</strong
@@ -736,7 +835,9 @@ onBeforeUnmount(() => {
                 <td data-label="Arrival">
                   <span class="rh-v19-progress" :class="progress(order)"
                     ><span class="rh-v19-progress-dot" aria-hidden="true" />{{
-                      arrivalWords(model.ticketsFor(order), model.everArrived)
+                      preview
+                        ? arrivalWords(model.ticketsFor(order), model.everArrived)
+                        : `${model.ticketsFor(order).filter((guest) => model.everArrived(guest.id)).length} of ${model.ticketsFor(order).length} loaded guest records arrived`
                     }}</span
                   >
                 </td>
@@ -758,8 +859,8 @@ onBeforeUnmount(() => {
                     ticket, or reset your filters.
                     <button type="button" @click="clearFilters">Reset filters</button></template
                   ><template v-else
-                    >Your guest list isn’t connected yet. Your sales totals are available in
-                    Overview.</template
+                    >No purchases are shown on this page. Try another email or order
+                    reference.</template
                   >
                 </td>
               </tr>
@@ -767,12 +868,114 @@ onBeforeUnmount(() => {
           </table>
         </div>
         <div class="rh-module-foot rh-v19-foot">
-          <span id="rh-attendee-count" role="status"
+          <span v-if="preview" id="rh-attendee-count" role="status"
             >Showing {{ filteredOrders.length }} of {{ sourceOrders.length }}
             {{ sourceOrders.length === 1 ? recordWord : recordWord + 's' }}</span
           >
+          <nav v-if="!preview" class="rh-form-actions" aria-label="Purchase pages">
+            <button
+              class="rh-button rh-button-outline"
+              :disabled="model.purchasePage.value.current_page <= 1 || model.loading.value"
+              @click="
+                model.loadPurchases({
+                  page: model.purchasePage.value.current_page - 1,
+                  q: search || undefined,
+                })
+              "
+            >
+              Previous
+            </button>
+            <span
+              >Page {{ model.purchasePage.value.current_page }} of
+              {{ model.purchasePage.value.last_page }} ({{
+                model.purchasePage.value.total
+              }}
+              purchase items)</span
+            >
+            <button
+              class="rh-button rh-button-outline"
+              :disabled="
+                model.purchasePage.value.current_page >= model.purchasePage.value.last_page ||
+                model.loading.value
+              "
+              @click="
+                model.loadPurchases({
+                  page: model.purchasePage.value.current_page + 1,
+                  q: search || undefined,
+                })
+              "
+            >
+              Next
+            </button>
+          </nav>
         </div>
       </div>
+      <section v-if="!preview" class="rh-module">
+        <h2>Guest records</h2>
+        <p class="rh-note">
+          Search by the start of a guest name or email. Guest and purchase pages are loaded
+          separately.
+        </p>
+        <div class="rh-table-scroll">
+          <table class="rh-data-table">
+            <thead>
+              <tr>
+                <th>Guest</th>
+                <th>Ticket</th>
+                <th>Arrival</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="guest in guests" :key="guest.id">
+                <td>
+                  {{ guest.name }}<small>{{ guest.email }}</small>
+                </td>
+                <td>
+                  {{ guest.type }}<small>{{ guest.ticketPublicId }}</small>
+                </td>
+                <td>{{ model.guestState(guest.id) }}</td>
+                <td>
+                  <button class="rh-row-button" @click="openEdit(guest)">Update guest</button
+                  ><button class="rh-row-button" @click="openHistory(guest)">Entry history</button
+                  ><button class="rh-row-button" @click="resend(guest)">Resend ticket</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <nav class="rh-form-actions" aria-label="Guest pages">
+          <button
+            class="rh-button rh-button-outline"
+            :disabled="model.attendeePage.value.current_page <= 1"
+            @click="
+              model.loadAttendees({
+                page: model.attendeePage.value.current_page - 1,
+                q: search || undefined,
+              })
+            "
+          >
+            Previous</button
+          ><span
+            >Page {{ model.attendeePage.value.current_page }} of
+            {{ model.attendeePage.value.last_page }} ({{
+              model.attendeePage.value.total
+            }}
+            guests)</span
+          ><button
+            class="rh-button rh-button-outline"
+            :disabled="model.attendeePage.value.current_page >= model.attendeePage.value.last_page"
+            @click="
+              model.loadAttendees({
+                page: model.attendeePage.value.current_page + 1,
+                q: search || undefined,
+              })
+            "
+          >
+            Next
+          </button>
+        </nav>
+      </section>
     </section>
 
     <section
@@ -798,14 +1001,18 @@ onBeforeUnmount(() => {
                 : `We couldn’t find this ${recordWord}`
             }}
           </h1>
-          <p v-if="selectedOrder" id="rh-v25-heading-description">
+          <p v-if="selectedOrder && preview" id="rh-v25-heading-description">
             {{
               free
                 ? `${selectedOrder.buyer} registered ${purchaseGuests.length} ${purchaseGuests.length === 1 ? 'guest' : 'guests'}${purchaseGuests.length > 1 ? ', including themselves' : ''}.`
                 : 'The receipt below shows what was bought. You’ll also find the details and arrival status for each guest.'
             }}
           </p>
-          <p v-else>Go back to Attendees and choose a {{ recordWord }}.</p>
+          <p v-else-if="!selectedOrder">Go back to Attendees and choose a {{ recordWord }}.</p>
+          <p v-else class="rh-note">
+            This receipt shows the purchase items on the current page. Guest records are paginated
+            separately; the buyer is not automatically assigned to a seat.
+          </p>
         </div>
         <div v-if="selectedOrder" class="rh28-photo-wrap">
           <div
@@ -828,7 +1035,7 @@ onBeforeUnmount(() => {
               {{ initials(selectedOrder.buyer) }}
             </div>
           </div>
-          <label class="rh28-photo-upload" for="rh28-photo-input"
+          <label v-if="preview" class="rh28-photo-upload" for="rh28-photo-input"
             ><svg
               aria-hidden="true"
               fill="none"
@@ -902,7 +1109,9 @@ onBeforeUnmount(() => {
                 />
               </div>
             </div>
-            <span class="rh-v22-paid">{{ free ? 'Free' : 'Paid' }}</span>
+            <span class="rh-v22-paid">{{
+              preview ? (free ? 'Free' : 'Paid') : selectedOrder.payment.replaceAll('_', ' ')
+            }}</span>
           </div>
           <div class="rh-v22-receipt-facts">
             <div
@@ -1024,12 +1233,24 @@ onBeforeUnmount(() => {
             {{ context === 'door' ? 'guest details' : 'tickets' }}</a
           >
           <h1 id="rh-v26-history-title">
-            {{ historyGuest ? historyGuest.name + '’s visits' : 'We couldn’t find this guest' }}
+            {{
+              historyGuest
+                ? historyGuest.name + '’s visits'
+                : !preview && route.query.ticket
+                  ? 'Ticket movement history'
+                  : 'We couldn’t find this guest'
+            }}
           </h1>
-          <p>See when this guest came in and left.</p>
+          <p>
+            {{
+              preview
+                ? 'See when this guest came in and left.'
+                : 'Ticket movement history includes counted entries and exits. A table credential can cover several guests.'
+            }}
+          </p>
         </div>
-        <template v-if="historyGuest"
-          ><div class="rh-v26-history-status">
+        <template v-if="historyGuest || (!preview && route.query.ticket)"
+          ><div v-if="historyGuest" class="rh-v26-history-status">
             <span
               class="rh-v23-signal"
               :class="{ 'is-pulsing': model.inside(historyGuest.id) }"
@@ -1038,10 +1259,61 @@ onBeforeUnmount(() => {
             ><span>{{ model.guestState(historyGuest.id) }}</span>
           </div>
           <section class="rh-module rh-v26-visit-card" aria-labelledby="rh-v26-visits-heading">
-            <h2 id="rh-v26-visits-heading">Visits</h2>
+            <h2 id="rh-v26-visits-heading">
+              {{ preview ? 'Visits' : 'Ticket entries and exits' }}
+            </h2>
+            <template v-if="!preview"
+              ><div
+                v-for="movement in model.movements.value"
+                :key="movement.request_key || movement.at + movement.kind"
+                class="rh-v26-visit"
+              >
+                <strong
+                  >{{ movement.kind === 'in' ? 'Entered' : 'Left' }}:
+                  {{ movement.count }} admission(s)</strong
+                ><span>{{ movement.entrance }}</span
+                ><time
+                  >{{ visitDate(movement.at, event.timezone) }}
+                  {{ visitDate(movement.at, event.timezone, true) }}</time
+                >
+              </div>
+              <p v-if="!model.movements.value.length" class="rh-note">
+                No movements are recorded on this history page.
+              </p>
+              <nav class="rh-form-actions" aria-label="Ticket history pages">
+                <button
+                  class="rh-row-button"
+                  :disabled="model.historyPage.value.current_page <= 1"
+                  @click="
+                    model.loadHistory({
+                      page: model.historyPage.value.current_page - 1,
+                      ticket_public_id: route.query.ticket,
+                    })
+                  "
+                >
+                  Previous</button
+                ><span
+                  >Page {{ model.historyPage.value.current_page }} of
+                  {{ model.historyPage.value.last_page }}</span
+                ><button
+                  class="rh-row-button"
+                  :disabled="
+                    model.historyPage.value.current_page >= model.historyPage.value.last_page
+                  "
+                  @click="
+                    model.loadHistory({
+                      page: model.historyPage.value.current_page + 1,
+                      ticket_public_id: route.query.ticket,
+                    })
+                  "
+                >
+                  Next
+                </button>
+              </nav></template
+            >
             <div>
               <div
-                v-for="(session, index) in sessions"
+                v-for="(session, index) in preview ? sessions : []"
                 :key="session.entry.at + index"
                 class="rh-v26-visit"
               >
@@ -1063,13 +1335,17 @@ onBeforeUnmount(() => {
                   }}</small>
                 </div>
               </div>
-              <div v-if="!sessions.length" class="rh-v26-history-empty">
+              <div v-if="preview && !sessions.length" class="rh-v26-history-empty">
                 This guest hasn’t checked in yet. Their entry and exit times will appear here when
                 they do.
               </div>
             </div>
           </section>
-          <section class="rh-module rh-v26-activity-card" aria-labelledby="rh-v26-activity-heading">
+          <section
+            v-if="historyGuest && preview"
+            class="rh-module rh-v26-activity-card"
+            aria-labelledby="rh-v26-activity-heading"
+          >
             <h2 id="rh-v26-activity-heading">Recent updates</h2>
             <ul class="rh-v25-updates-list">
               <li v-for="(item, index) in historyUpdates(historyGuest)" :key="index">
@@ -1176,19 +1452,33 @@ onBeforeUnmount(() => {
           ><span>Full name</span
           ><input
             v-model="edit.name"
+            :disabled="
+              !preview &&
+              editing?.schema?.length > 0 &&
+              !editing.schema.some((field) => field.id === 'name')
+            "
             name="name"
             autocomplete="name"
-            required
-            maxlength="100" /></label
+            :required="
+              preview || editing?.schema?.some((field) => field.id === 'name' && field.required)
+            "
+            maxlength="200" /></label
         ><label class="rh-field"
           ><span>Email for this ticket</span
           ><input
             v-model="edit.email"
+            :disabled="
+              !preview &&
+              editing?.schema?.length > 0 &&
+              !editing.schema.some((field) => field.id === 'email')
+            "
             name="email"
             type="email"
             autocomplete="email"
-            required
-            maxlength="160"
+            :required="
+              preview || editing?.schema?.some((field) => field.id === 'email' && field.required)
+            "
+            maxlength="255"
         /></label>
         <div class="rh-v26-edit-readonly">
           <div>
@@ -1207,12 +1497,36 @@ onBeforeUnmount(() => {
         </p>
         <p v-if="editError" class="rh-error" role="alert">{{ editError }}</p>
         <div class="rh-v25-edit-controls">
-          <button class="rh-button rh-button-dark" type="submit">Save changes</button
+          <button
+            class="rh-button rh-button-dark"
+            :disabled="!preview && model.busy.value"
+            type="submit"
+          >
+            Save changes</button
           ><button class="rh-button rh-button-outline" type="button" @click="editDialog.close()">
             Cancel
           </button>
         </div>
-        <p>Changes are saved in this browser.</p>
+        <template v-if="!preview"
+          ><label
+            v-for="field in (editing?.schema || []).filter(
+              (field) => !['name', 'email'].includes(field.id),
+            )"
+            :key="field.id"
+            class="rh-field"
+            ><span>{{ field.label }}</span
+            ><input
+              v-model="edit.answers[field.id]"
+              :required="field.required"
+              maxlength="2000" /></label
+        ></template>
+        <p>
+          {{
+            preview
+              ? 'Changes are saved in this browser.'
+              : 'Changes are saved to this event. Historical purchase details stay the same.'
+          }}
+        </p>
       </form>
     </dialog>
     <dialog
@@ -1274,7 +1588,11 @@ onBeforeUnmount(() => {
             ><span class="rh-wordmark-tickets">Tickets</span></span
           ><span>{{ free ? 'Registration summary' : 'Purchase receipt' }}</span>
         </div>
-        <h1>{{ free ? 'Registration summary' : 'Purchase receipt' }}</h1>
+        <h1>{{ free ? 'Registration summary' : 'Purchase items' }}</h1>
+        <p v-if="!preview">
+          Status: {{ selectedOrder.payment }}. This printout contains the purchase items loaded on
+          this page.
+        </p>
         <div class="rh-v24-print-summary">
           <div>
             <span>{{ free ? 'Registered by' : 'Paid by' }}</span
@@ -1298,14 +1616,14 @@ onBeforeUnmount(() => {
           <thead>
             <tr>
               <th>#</th>
-              <th>Guest</th>
-              <th>Type</th>
-              <th>Ticket code</th>
+              <th>{{ preview ? 'Guest' : 'Ticket product' }}</th>
+              <th>{{ preview ? 'Type' : 'Quantity' }}</th>
+              <th>{{ preview ? 'Ticket code' : 'Admissions per unit' }}</th>
               <th v-if="!free || context !== 'door'">Price</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(guest, index) in purchaseGuests" :key="guest.id">
+            <tr v-for="(guest, index) in preview ? purchaseGuests : []" :key="guest.id">
               <td>{{ index + 1 }}</td>
               <td>
                 <strong>{{ guest.name }}</strong
@@ -1314,8 +1632,24 @@ onBeforeUnmount(() => {
               <td>{{ guest.type }}</td>
               <td>{{ guest.id }}</td>
               <td v-if="!free || context !== 'door'" class="rh-v24-print-money">
-                {{ free ? 'Free' : money(samplePriceMinor[guest.type] || 0) }}
+                {{
+                  free
+                    ? 'Free'
+                    : money(
+                        preview
+                          ? samplePriceMinor[guest.type] || 0
+                          : selectedOrder.lines.find((line) => line.id === guest.orderItemId)
+                              ?.unit_price_minor || 0,
+                      )
+                }}
               </td>
+            </tr>
+            <tr v-for="(line, index) in preview ? [] : selectedOrder.lines" :key="line.id">
+              <td>{{ index + 1 }}</td>
+              <td>{{ line.ticket_name }}</td>
+              <td>{{ line.quantity }}</td>
+              <td>{{ line.people_per_unit }}</td>
+              <td class="rh-v24-print-money">{{ money(line.line_total_minor) }}</td>
             </tr>
           </tbody>
         </table>

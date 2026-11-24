@@ -142,7 +142,7 @@ export function buildEarnings({
       .map((code) => ({
         code,
         config: codes.find((c) => c.code === code),
-        original: originalOffers[code],
+        original: preview ? originalOffers[code] : null,
         stats: stats({ tier, code }),
       }))
       .sort((a, b) => (b.stats.paid || 0) - (a.stats.paid || 0))

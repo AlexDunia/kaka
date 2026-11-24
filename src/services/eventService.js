@@ -30,7 +30,7 @@ export default {
   getEventsByCategory: (category, page = 1, limit = 12) =>
     listEvents({ category, page, per_page: limit }),
   searchEvents: (search, category, page = 1, limit = 12) =>
-    listEvents({ search, category, page, per_page: limit }),
+    listEvents({ q: search, category, page, per_page: limit }),
   async getEventById(id) {
     if (!/^[1-9]\d*$/.test(String(id))) throw new Error('Choose an event to continue.')
     if (DASHBOARD_PREVIEW) {

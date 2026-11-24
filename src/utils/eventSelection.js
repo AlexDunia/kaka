@@ -2,6 +2,7 @@
 // Other events stay in the cart and are not silently added to this checkout.
 export function commitEventSelection(cart, profile, selection) {
   if (!profile.canBuy || !selection.length) return false
+  if (new Set(selection.map((item) => item.key)).size !== selection.length) return false
   const current = new Map(profile.tickets.map((ticket) => [ticket.key, ticket]))
   if (
     selection.some((item) => {

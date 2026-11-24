@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { MinusIcon, PlusIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline'
 import EventPublicControls from '@/components/EventPublicControls.vue'
 import { profileDate } from '@/utils/eventProfile'
@@ -24,7 +24,8 @@ const money = (value) =>
     : new Intl.NumberFormat('en-NG', {
         style: 'currency',
         currency: 'NGN',
-        maximumFractionDigits: 0,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
       }).format(value)
 const visibleTickets = computed(() =>
   props.profile.tickets.filter((ticket) => filter.value === 'all' || ticket.unit === filter.value),
@@ -32,7 +33,10 @@ const visibleTickets = computed(() =>
 const selection = computed(() =>
   props.profile.tickets
     .filter((ticket) => quantities.value[ticket.key] > 0 && ticket.available)
-    .map((ticket) => ({ ...ticket, quantity: quantities.value[ticket.key] })),
+    .map((ticket) => ({
+      ...ticket,
+      quantity: Math.min(ticket.max, Math.max(0, Math.floor(quantities.value[ticket.key]))),
+    })),
 )
 const total = computed(() =>
   selection.value.reduce((sum, ticket) => sum + ticket.price * ticket.quantity, 0),
@@ -40,6 +44,7 @@ const total = computed(() =>
 const count = computed(() => selection.value.reduce((sum, ticket) => sum + ticket.quantity, 0))
 const hasTables = computed(() => props.profile.tickets.some((ticket) => ticket.unit === 'table'))
 function change(ticket, delta) {
+  if (!props.profile.canBuy || !ticket.available) return
   quantities.value[ticket.key] = Math.max(
     0,
     Math.min(ticket.max, (quantities.value[ticket.key] || 0) + delta),
@@ -74,6 +79,7 @@ watch(
       ]),
     )
   },
+  { immediate: true },
 )
 watch(
   () => props.profile.id,
@@ -171,7 +177,7 @@ function editSelection() {
                 <button
                   type="button"
                   :aria-label="`Remove one ${ticket.name}`"
-                  :disabled="!quantities[ticket.key] || !ticket.available || profile.salesEnded"
+                  :disabled="!quantities[ticket.key] || !ticket.available || !profile.canBuy"
                   @click="change(ticket, -1)"
                 >
                   <MinusIcon /></button
@@ -183,7 +189,7 @@ function editSelection() {
                   :aria-label="`Add one ${ticket.name}`"
                   :disabled="
                     !ticket.available ||
-                    profile.salesEnded ||
+                    !profile.canBuy ||
                     (quantities[ticket.key] || 0) >= ticket.max
                   "
                   @click="change(ticket, 1)"
@@ -215,7 +221,7 @@ function editSelection() {
           <button
             type="button"
             class="rh24-cta"
-            :disabled="!count || profile.salesEnded"
+            :disabled="!count || !profile.canBuy"
             @click="review"
           >
             Continue <span aria-hidden="true">→</span>
@@ -240,7 +246,7 @@ function editSelection() {
           ><button
             type="button"
             class="ep-primary"
-            :disabled="!count || profile.salesEnded"
+            :disabled="!count || !profile.canBuy"
             @click="emit('checkout', selection)"
           >
             Continue to checkout

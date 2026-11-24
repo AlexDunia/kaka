@@ -1,11 +1,53 @@
 ﻿<script setup>
-import { computed } from "vue"
-import { useRouter } from "vue-router"
-import SkeletonLoader from "@/components/SkeletonLoader.vue"
-import SeoImage from "@/components/SeoImage.vue"
-import { useSlug } from "@/composables/useSlug"
-const props=defineProps({event:{type:Object,default:null},loading:Boolean,color:{type:String,default:"rgba(255,255,255,.08)"},showDetails:{type:Boolean,default:true}})
-const router=useRouter();const {getEventUrl}=useSlug();const eventTitle=computed(()=>props.event?.title||"Untitled event");const eventImage=computed(()=>props.event?.main_image||props.event?.image||"");const venue=computed(()=>props.event?.address?.venue_name||props.event?.venue||props.event?.location||"Venue TBA");const displayDate=computed(()=>{const value=props.event?.date||props.event?.event_date;const date=value?new Date(value):null;return date&&!Number.isNaN(date.valueOf())?new Intl.DateTimeFormat("en-NG",{weekday:"short",month:"short",day:"numeric"}).format(date):"Date TBA"});const price=computed(()=>{const value=props.event?.price??props.event?.starting_price??props.event?.min_price;if(value===undefined||value===null||value===""||Number(value)===0)return "Free";return `From ₦${new Intl.NumberFormat("en-NG").format(Number(value))}`});const isExpired=computed(()=>Boolean(props.event?.sales_status?.is_expired));const open=()=>{if(props.showDetails&&props.event)router.push(getEventUrl(props.event))};const onKeydown=(event)=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();open()}}
+import { normalizeEventProfile, profileDate } from '@/utils/eventProfile'
+import { computed } from 'vue'
+import { useRouter } from 'vue-router'
+import SkeletonLoader from '@/components/SkeletonLoader.vue'
+import SeoImage from '@/components/SeoImage.vue'
+import { useSlug } from '@/composables/useSlug'
+const props = defineProps({
+  event: { type: Object, default: null },
+  loading: Boolean,
+  color: { type: String, default: 'rgba(255,255,255,.08)' },
+  showDetails: { type: Boolean, default: true },
+})
+const router = useRouter()
+const { getEventUrl } = useSlug()
+const eventTitle = computed(() => props.event?.title || 'Untitled event')
+const eventImage = computed(
+  () => props.event?.main_image || props.event?.image || '',
+)
+const venue = computed(
+  () =>
+    props.event?.address?.venue_name ||
+    props.event?.venue ||
+    props.event?.location ||
+    'Venue TBA',
+)
+const displayDate = computed(
+  () =>
+    profileDate(
+      props.event?.date || props.event?.event_date,
+      props.event?.event_timezone || props.event?.timeZone || 'Africa/Lagos',
+      { weekday: 'short', month: 'short', day: 'numeric' },
+    ) || 'Date to be confirmed',
+)
+const price = computed(() => {
+  const value = normalizeEventProfile(props.event || {}).price
+  if (value == null) return 'View ticket options'
+  if (value === 0) return 'Free'
+  return `From ₦${new Intl.NumberFormat('en-NG', { maximumFractionDigits: 2 }).format(value)}`
+})
+const isExpired = computed(() => Boolean(props.event?.sales_status?.is_expired))
+const open = () => {
+  if (props.showDetails && props.event) router.push(getEventUrl(props.event))
+}
+const onKeydown = (event) => {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault()
+    open()
+  }
+}
 </script>
 <template><div v-if="loading||!event" class="event-card"><SkeletonLoader type="card" :color="color"/></div><article v-else class="event-card event-card--loaded" tabindex="0" role="link" :aria-label="`View ${eventTitle}`" @click="open" @keydown="onKeydown"><div class="event-card__image"><SeoImage v-if="eventImage" :src="eventImage" :alt="eventTitle" :title="eventTitle" imgClass="event-card-image" lazy/><div v-else class="event-card__empty-image">Cover photo will appear here</div><span v-if="isExpired" class="expired">Expired</span></div><div class="event-card__content"><h3>{{ eventTitle }}</h3><p><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>{{ displayDate }}</p><p><svg viewBox="0 0 24 24"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>{{ venue }}</p><strong>{{ price }}</strong></div></article></template>
 <style scoped>.event-card{min-width:0}.event-card--loaded{cursor:pointer;color:var(--color-text);outline:none}.event-card--loaded:focus-visible{outline:2px solid var(--color-accent);outline-offset:4px}.event-card__image{position:relative;aspect-ratio:16/9;overflow:hidden;border:1px solid var(--color-border);border-radius:16px;background:var(--color-tab-bg)}.event-card__image :deep(img){width:100%;height:100%;object-fit:cover;transition:transform .2s ease}.event-card--loaded:hover :deep(img){transform:scale(1.018)}.event-card__empty-image{height:100%;display:grid;place-items:center;color:var(--color-muted);font-size:.82rem}.expired{position:absolute;top:12px;left:12px;padding:5px 8px;border:1px solid var(--color-border);border-radius:999px;background:var(--color-surface);color:var(--color-muted);font-size:.65rem;font-weight:750}.event-card__content{padding-top:17px}.event-card__content h3{margin:0;color:var(--color-text);font-size:clamp(1.22rem,2vw,1.48rem);line-height:1.18;transition:color .2s ease}.event-card--loaded:hover h3{color:var(--color-accent)}.event-card__content p{display:flex;align-items:center;gap:7px;margin:10px 0 0;color:var(--color-muted);font-size:.78rem}.event-card__content svg{width:15px;height:15px;flex:none;fill:none;stroke:currentColor;stroke-width:1.7}.event-card__content strong{display:block;margin-top:16px;color:var(--color-accent);font-size:.9rem}</style>

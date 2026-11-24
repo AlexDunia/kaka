@@ -8,6 +8,12 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
+      path: '/orders/recover',
+      name: 'order-recovery',
+      component: () => import('../pages/OrderRecovery.vue'),
+      meta: { title: 'Recover your order', disableRouteSkeleton: true },
+    },
+    {
       path: '/events/:id-:slug/tickets',
       name: 'event-tickets',
       component: () => import('../pages/EventTickets.vue'),
@@ -37,10 +43,33 @@ const router = createRouter({
         disableRouteSkeleton: true,
       },
     },
-    { path: '/find-events', name: 'find-events', component: () => import('../pages/FindEvents.vue'), meta: { title: 'Find events', publicSite: true, disableRouteSkeleton: true } },
-    { path: '/features', name: 'features', component: HomePage, props: { sectionOnly: 'features' }, meta: { title: 'Features', publicSite: true, disableRouteSkeleton: true } },
-    { path: '/event-moments', name: 'event-moments', component: HomePage, props: { sectionOnly: 'moments' }, meta: { title: 'Event moments', publicSite: true, disableRouteSkeleton: true } },
-    { path: '/about', alias: '/about-us', name: 'about', component: () => import('../pages/AboutPage.vue'), meta: { title: 'About us', publicSite: true, disableRouteSkeleton: true } },
+    {
+      path: '/find-events',
+      name: 'find-events',
+      component: () => import('../pages/FindEvents.vue'),
+      meta: { title: 'Find events', publicSite: true, disableRouteSkeleton: true },
+    },
+    {
+      path: '/features',
+      name: 'features',
+      component: HomePage,
+      props: { sectionOnly: 'features' },
+      meta: { title: 'Features', publicSite: true, disableRouteSkeleton: true },
+    },
+    {
+      path: '/event-moments',
+      name: 'event-moments',
+      component: HomePage,
+      props: { sectionOnly: 'moments' },
+      meta: { title: 'Event moments', publicSite: true, disableRouteSkeleton: true },
+    },
+    {
+      path: '/about',
+      alias: '/about-us',
+      name: 'about',
+      component: () => import('../pages/AboutPage.vue'),
+      meta: { title: 'About us', publicSite: true, disableRouteSkeleton: true },
+    },
     {
       path: '/login',
       name: 'login',
@@ -73,7 +102,9 @@ const router = createRouter({
       name: 'music',
       component: () => import('../pages/FindEvents.vue'),
       props: { category: 'music' },
-      meta: { publicSite: true, discoveryCategory: 'music',
+      meta: {
+        publicSite: true,
+        discoveryCategory: 'music',
         title: 'Music Events',
         description:
           'Find and book tickets for the best music events, concerts, and performances near you.',
@@ -85,7 +116,9 @@ const router = createRouter({
       name: 'movies',
       component: () => import('../pages/FindEvents.vue'),
       props: { category: 'movies' },
-      meta: { publicSite: true, discoveryCategory: 'movies',
+      meta: {
+        publicSite: true,
+        discoveryCategory: 'movies',
         title: 'Movie Events',
         description:
           'Find and book tickets for the latest movie screenings, premieres, and film festivals.',
@@ -97,7 +130,9 @@ const router = createRouter({
       name: 'theatre',
       component: () => import('../pages/FindEvents.vue'),
       props: { category: 'theatre' },
-      meta: { publicSite: true, discoveryCategory: 'theatre',
+      meta: {
+        publicSite: true,
+        discoveryCategory: 'theatre',
         title: 'Theatre & Comedy Events',
         description:
           'Find and book tickets for theatre shows, plays, musicals, and comedy performances.',
@@ -109,7 +144,9 @@ const router = createRouter({
       name: 'sports',
       component: () => import('../pages/FindEvents.vue'),
       props: { category: 'sports' },
-      meta: { publicSite: true, discoveryCategory: 'sports',
+      meta: {
+        publicSite: true,
+        discoveryCategory: 'sports',
         title: 'Sports Events',
         description:
           'Find and book tickets for sports events, matches, tournaments, and competitions.',
@@ -121,7 +158,9 @@ const router = createRouter({
       name: 'festivals',
       component: () => import('../pages/FindEvents.vue'),
       props: { category: 'festivals' },
-      meta: { publicSite: true, discoveryCategory: 'festivals',
+      meta: {
+        publicSite: true,
+        discoveryCategory: 'festivals',
         title: 'Festivals',
         description:
           'Find and book tickets for the best festivals, celebrations, and cultural events.',
@@ -133,7 +172,9 @@ const router = createRouter({
       name: 'others',
       component: () => import('../pages/FindEvents.vue'),
       props: { category: 'others' },
-      meta: { publicSite: true, discoveryCategory: 'others',
+      meta: {
+        publicSite: true,
+        discoveryCategory: 'others',
         title: 'Other Events',
         description:
           "Discover unique events and experiences that don't fit traditional categories.",
@@ -166,8 +207,15 @@ const router = createRouter({
       path: '/dashboard/events/:eventId',
       name: 'dashboard-event',
       component: () => import('../pages/Dashboard.vue'),
-      meta: { title: 'Event Dashboard', description: 'Manage event performance, tickets, guests, payouts, and settings.', requiresAuth: true, disableRouteSkeleton: true, fullScreenShell: true },
-    },    {
+      meta: {
+        title: 'Event Dashboard',
+        description: 'Manage event performance, tickets, guests, payouts, and settings.',
+        requiresAuth: true,
+        disableRouteSkeleton: true,
+        fullScreenShell: true,
+      },
+    },
+    {
       path: '/trolio',
       name: 'trolio',
       component: () => import('../pages/Trolio.vue'),
@@ -219,8 +267,13 @@ const router = createRouter({
       name: 'EditEvent',
       component: CreateEvent,
       props: true,
-      meta: { title: 'Edit Event', description: 'Update your published event.', requiresAuth: true },
-    },    {
+      meta: {
+        title: 'Edit Event',
+        description: 'Update your published event.',
+        requiresAuth: true,
+      },
+    },
+    {
       path: '/checkout',
       name: 'checkout',
       component: () => import('../pages/Checkout.vue'),
@@ -235,8 +288,13 @@ const router = createRouter({
       path: '/payment-success/:orderId',
       name: 'payment-success',
       component: () => import('../pages/PaymentSuccess.vue'),
-      meta: { title: 'Payment Confirmed', description: 'View your KakaTickets order and tickets.', disableRouteSkeleton: true },
-    },    {
+      meta: {
+        title: 'Payment Confirmed',
+        description: 'View your KakaTickets order and tickets.',
+        disableRouteSkeleton: true,
+      },
+    },
+    {
       path: '/cart',
       name: 'cart',
       component: () => import('../pages/Cart.vue'),
@@ -282,6 +340,18 @@ const router = createRouter({
       },
     },
     {
+      path: '/door/:eventId',
+      name: 'event-door',
+      component: () => import('../pages/EventDoor.vue'),
+      meta: { title: 'Door check-in', requiresAuth: true },
+    },
+    {
+      path: '/event-invitations/accept',
+      name: 'event-invitation',
+      component: () => import('../pages/EventInvitation.vue'),
+      meta: { title: 'Event invitation' },
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: () => import('../pages/NotFound.vue'),
@@ -321,6 +391,9 @@ router.beforeEach(async (to) => {
       }
     }
 
+    if (to.meta.requiresAdmin && !authStore.isAdmin) {
+      return { name: 'home' }
+    }
   }
 
   if (to.meta.title) {
@@ -331,4 +404,3 @@ router.beforeEach(async (to) => {
 })
 
 export default router
-

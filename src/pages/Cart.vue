@@ -1,13 +1,56 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
+import { quoteCheckout } from '@/services/checkoutService'
 
 defineOptions({ name: 'CartPage' })
 
 const cart = useCartStore()
 const router = useRouter()
 const notification = ref(null)
+const quote = ref(null),
+  quoteError = ref(''),
+  quoting = ref(false)
+let quoteVersion = 0,
+  quoteTimer,
+  notificationTimer
+const money = (minor) =>
+  new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: quote.value?.currency || 'NGN',
+  }).format(Number(minor) / 100)
+const lineTotal = (item) =>
+  quote.value?.items?.find((line) => Number(line.ticket_type_id) === Number(item.ticketId))
+    ?.line_total_minor
+watch(
+  () => JSON.stringify(cart.checkoutItems),
+  () => {
+    const version = ++quoteVersion
+    clearTimeout(quoteTimer)
+    quote.value = null
+    quoteError.value = ''
+    quoting.value = !cart.isEmpty
+    if (cart.isEmpty) return
+    quoteTimer = setTimeout(async () => {
+      try {
+        const current = await quoteCheckout(cart.checkoutItems)
+        if (version === quoteVersion) quote.value = current
+      } catch {
+        if (version === quoteVersion)
+          quoteError.value = 'We couldn’t confirm these tickets. Review availability at checkout.'
+      } finally {
+        if (version === quoteVersion) quoting.value = false
+      }
+    }, 200)
+  },
+  { immediate: true },
+)
+onUnmounted(() => {
+  quoteVersion++
+  clearTimeout(quoteTimer)
+  clearTimeout(notificationTimer)
+})
 const isMobile = ref(window.innerWidth <= 700)
 
 function handleResize() {
@@ -18,7 +61,8 @@ onUnmounted(() => window.removeEventListener('resize', handleResize))
 
 function showNotification(msg) {
   notification.value = msg
-  setTimeout(() => (notification.value = null), 1800)
+  clearTimeout(notificationTimer)
+  notificationTimer = setTimeout(() => (notification.value = null), 1800)
 }
 
 function removeItem(item) {
@@ -46,7 +90,7 @@ function proceedToCheckout() {
 
 <template>
   <div class="cart-bg">
-    <button class="back-button" @click="router.back()">â† Back</button>
+    <button class="back-button" @click="router.back()">← Back</button>
     <div class="cart-container">
       <h1 class="cart-title">Your Cart</h1>
       <div v-if="cart.isEmpty" class="cart-empty">
@@ -86,7 +130,7 @@ function proceedToCheckout() {
             </div>
             <div class="cart-actions">
               <div class="cart-price">
-                {{ 'â‚¦' + (item.pricePerTicket * item.quantity).toLocaleString('en-NG') }}
+                {{ lineTotal(item) == null ? 'Checking price...' : money(lineTotal(item)) }}
               </div>
               <button
                 class="cart-remove-inline"
@@ -122,8 +166,11 @@ function proceedToCheckout() {
     <div class="cart-footer-summary" v-if="!cart.isEmpty">
       <div class="cart-footer-row">
         <span>Subtotal</span>
-        <span>{{ 'â‚¦' + cart.total.toLocaleString('en-NG') }}</span>
+        <span>{{
+          quote ? money(quote.total_minor) : quoting ? 'Checking total...' : 'Unavailable'
+        }}</span>
       </div>
+      <p v-if="quoteError" role="alert">{{ quoteError }}</p>
       <div class="cart-footer-actions">
         <button class="cart-clear-btn" @click="clearCart">Clear Cart</button>
         <button class="cart-checkout-btn" @click="proceedToCheckout">Proceed to Checkout</button>
