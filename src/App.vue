@@ -297,6 +297,12 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <div v-if="!authStore.initialized && authStore.error" role="alert">
+    {{ authStore.error }}
+    <button type="button" :disabled="authStore.isLoading" @click="authStore.initialize()">
+      {{ authStore.isLoading ? 'Checking your login...' : 'Try again' }}
+    </button>
+  </div>
   <PublicBrandLoader v-if="publicLoading" :stage="publicLoadingStage" :destination="publicLoadingDestination" :sequence="publicLoadingSequence" />
   <PublicSite v-if="usesPublicSite" :header-collapsed="isEventProfileRoute && eventProfileHeaderCollapsed" :inert="publicLoading || undefined" :aria-busy="publicLoading || undefined"><RouterView /></PublicSite>
   <div v-else :inert="publicLoading || undefined" class="app-container" :class="{ 'public-typography': usesPublicTypography(route), 'has-global-header': showGlobalHeader, 'event-profile-route': isEventProfileRoute, 'event-profile-header-collapsed': isEventProfileRoute && eventProfileHeaderCollapsed }">

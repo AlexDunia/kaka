@@ -19,7 +19,7 @@ export const useAuthStore = defineStore('auth', () => {
   const initialized = ref(false)
   let initializePromise = null
 
-  const isAuthenticated = computed(() => Boolean(user.value))
+  const isAuthenticated = computed(() => initialized.value && Boolean(user.value))
   const getUser = computed(() => user.value)
   const getError = computed(() => error.value)
   const isAdmin = computed(() => user.value?.role === 'admin')
@@ -46,22 +46,29 @@ export const useAuthStore = defineStore('auth', () => {
 
   const fetchUser = async () => {
     error.value = null
+    initialized.value = false
     try {
       const response = await api.get('/user')
       const userData = response.data?.user ?? response.data
       if (!userData || typeof userData !== 'object')
         throw new Error('The server did not return an authenticated user.')
+      initialized.value = true
       return applyUser(userData)
     } catch (requestError) {
-      error.value = getApiErrorMessage(requestError, 'We could not load your account details.')
-      clearLocalSession()
+      if (requestError.response?.status === 401) {
+        clearLocalSession()
+        initialized.value = true
+      } else {
+        initialized.value = false
+        error.value = 'We could not check your login. Please try again.'
+      }
       throw requestError
     }
   }
 
   const initialize = async ({ force = false } = {}) => {
-    if (initialized.value && !force) return user.value
     if (initializePromise) return initializePromise
+    if (initialized.value && !force) return user.value
     initializePromise = (async () => {
       isLoading.value = true
       try {
@@ -69,7 +76,6 @@ export const useAuthStore = defineStore('auth', () => {
       } catch {
         return null
       } finally {
-        initialized.value = true
         isLoading.value = false
       }
     })()
@@ -134,19 +140,34 @@ export const useAuthStore = defineStore('auth', () => {
   const logout = async () => {
     isLoading.value = true
     error.value = null
-    let serverLogoutSucceeded = true
     try {
-      await ensureCsrfCookie()
-      await api.post('/logout')
-    } catch (requestError) {
-      serverLogoutSucceeded = false
-      console.warn('Server logout failed. Local auth state was still cleared.', requestError)
-    } finally {
+      try {
+        await ensureCsrfCookie()
+        await api.post('/logout')
+      } catch (requestError) {
+        if (requestError.response?.status === 419) {
+          // A stale CSRF token alone does not prove the session has expired.
+          try {
+            await fetchUser()
+          } catch (verificationError) {
+            if (verificationError.response?.status !== 401) throw verificationError
+            clearLocalSession()
+            initialized.value = true
+            return { serverLogoutSucceeded: true }
+          }
+          throw requestError
+        }
+        if (requestError.response?.status !== 401) throw requestError
+      }
       clearLocalSession()
       initialized.value = true
+      return { serverLogoutSucceeded: true }
+    } catch {
+      error.value = 'We could not log you out. Please try again.'
+      throw new Error(error.value)
+    } finally {
       isLoading.value = false
     }
-    return { serverLogoutSucceeded }
   }
 
   const forgotPassword = async (email) => {
@@ -199,13 +220,6 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  const setUser = (userData, provider = 'google') => {
-    applyUser(userData)
-    authProvider.value = provider
-    persistProvider(provider)
-    initialized.value = false
-  }
-
   return {
     user,
     isLoading,
@@ -224,6 +238,5 @@ export const useAuthStore = defineStore('auth', () => {
     forgotPassword,
     resetPassword,
     updateUser,
-    setUser,
   }
 })

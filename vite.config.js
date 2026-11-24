@@ -17,6 +17,7 @@ export default defineConfig(({ command }) => ({
   base: command === 'serve' ? '/' : '/kaka/',
 
   server: {
+    host: 'localhost',
     port: 5174,
     strictPort: true,
 

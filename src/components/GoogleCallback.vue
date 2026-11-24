@@ -8,7 +8,6 @@ const authStore = useAuthStore()
 
 onMounted(async () => {
   const urlParams = new URLSearchParams(window.location.search)
-  const userData = urlParams.get('user')
   const error = urlParams.get('error')
 
   if (error) {
@@ -16,15 +15,12 @@ onMounted(async () => {
     return
   }
 
-  if (!userData) {
-    await router.replace('/login?error=session_not_established')
-    return
-  }
-
   try {
-    const callbackUser = JSON.parse(decodeURIComponent(userData))
-    authStore.setUser(callbackUser, 'google')
-    const authenticatedUser = await authStore.fetchUser()
+    const authenticatedUser = await authStore.initialize()
+    if (!authenticatedUser || !authStore.isAuthenticated) {
+      await router.replace('/login?error=session_not_established')
+      return
+    }
 
     if (authenticatedUser?.role === 'admin') {
       await router.replace('/admin')
