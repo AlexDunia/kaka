@@ -16,11 +16,26 @@ try {
  $socket=@stream_socket_client('tcp://127.0.0.1:8014',$errno,$error,1);
  if($socket){fclose($socket);throw new RuntimeException('Integration port is already in use.');}
  $run([PHP_BINARY,'artisan','migrate','--force'],$root);
- $seed=proc_open([PHP_BINARY,__DIR__.'/phase04-http-fixture.php'],[0=>STDIN,1=>['file',$fixture,'w'],2=>STDERR],$pipes,$root,$environment);
+ $seed=proc_open([PHP_BINARY,$integrationFixture ?? __DIR__.'/phase04-http-fixture.php'],[0=>STDIN,1=>['file',$fixture,'w'],2=>STDERR],$pipes,$root,$environment);
  if(!is_resource($seed)||proc_close($seed)!==0)throw new RuntimeException('Fixture creation failed.');
  $source=file_get_contents($root.'/tests/Support/phase03-http-router.php');
  $source=str_replace("dirname(__DIR__, 2)",var_export($root,true),$source);
  $source=str_replace('rushhour-phase03-','rushhour-phase04-',$source);
+ if ($instrumentRequests ?? false) {
+   $source=str_replace('$app->handleRequest(Illuminate\\Http\\Request::capture());', <<<'PHP'
+$started = hrtime(true);
+$queries = 0;
+Illuminate\Support\Facades\DB::listen(function () use (&$queries) { $queries++; });
+$kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
+$request = Illuminate\Http\Request::capture();
+$response = $kernel->handle($request);
+$response->headers->set('X-Test-Query-Count', (string) $queries);
+$response->headers->set('X-Test-Peak-Bytes', (string) memory_get_peak_usage(true));
+$response->headers->set('X-Test-App-Ms', (string) ((hrtime(true)-$started)/1e6));
+$response->send();
+$kernel->terminate($request, $response);
+PHP, $source);
+ }
  file_put_contents($router,$source);
  $server=proc_open([PHP_BINARY,'-S','127.0.0.1:8014',$router],[0=>['pipe','r'],1=>['file',$log,'a'],2=>['file',$log,'a']],$pipes,$root,$environment);
  if(!is_resource($server))throw new RuntimeException('Cannot start isolated server.');fclose($pipes[0]);

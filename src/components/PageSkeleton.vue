@@ -1646,4 +1646,14 @@ const rowCount = computed(() => Math.max(1, props.rows))
     animation: none;
   }
 }
+/* Match the organiser editor while its route is loading. */
+.create-event-skeleton__body { width: 85%; max-width: var(--ds-rhythm-page-max); padding: var(--ds-space-40) 0 var(--ds-space-64); }
+.create-event-skeleton .ce-header { min-height: 76px; padding-inline: 7.5%; }
+.create-event-skeleton .ce-logo { height: 48px; }
+.create-event-skeleton .ce-card, .create-event-skeleton .tip-card { border-radius: var(--ds-radius-card); }
+.create-event-skeleton .ce-card { padding: var(--ds-rhythm-card-padding); }
+.create-event-skeleton .field-input { border-radius: var(--ds-radius-control); }
+.create-event-skeleton__headline, .create-event-skeleton__headline-accent { height: 28px; }
+@media(max-width:1024px) { .create-event-skeleton__body { width: 80%; } }
+@media(max-width:640px) { .create-event-skeleton .ce-card { padding: var(--ds-rhythm-card-padding-mobile); } }
 </style>

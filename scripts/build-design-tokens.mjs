@@ -2,7 +2,7 @@ import fs from 'node:fs'
 
 const tokens = JSON.parse(fs.readFileSync('src/design-system/tokens.json', 'utf8'))
 const declarations = []
-for (const group of ['color', 'space', 'radius', 'font', 'size', 'weight', 'rhythm']) {
+for (const group of ['color', 'space', 'radius', 'font', 'size', 'weight', 'rhythm', 'shadow']) {
   for (const [name, value] of Object.entries(tokens[group])) declarations.push(`  --ds-${group}-${name}: ${value};`)
 }
 const aliases = []

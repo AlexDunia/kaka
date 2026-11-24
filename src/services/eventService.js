@@ -25,6 +25,7 @@ const retiredMutation = async () => {
 }
 export default {
   EVENTS_API_URL: apiUrl('/events'),
+  getFilteredEvents: listEvents,
   getAllEvents: (page = 1, limit = 12) => listEvents({ page, per_page: limit }),
   getFeaturedEvents: (limit = 6) => listEvents({ featured: 1, per_page: limit }),
   getEventsByCategory: (category, page = 1, limit = 12) =>

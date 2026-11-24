@@ -34,6 +34,7 @@ const emit = defineEmits([
 ])
 const auth = useAuthStore()
 const route = useRoute()
+const accountWorkspace = computed(() => props.view === 'events' || !props.event)
 const attendeeMode = computed(() =>
   props.event && props.overview
     ? DASHBOARD_PREVIEW
@@ -57,7 +58,8 @@ const activeView = computed(() =>
   props.view === 'purchase' ? 'attendees' : props.view === 'event-page' ? 'overview' : props.view,
 )
 function navigateMobile(key) {
-  emit('navigate', key)
+  if (key === 'create') emit('create')
+  else emit('navigate', key)
   mobileOpen.value = false
 }
 const displayName = computed(
@@ -95,7 +97,7 @@ const groups = [
   { name: 'Manage', items: [{ key: 'settings', label: 'Settings', icon: 'nav-settings' }] },
 ]
 const visibleGroups = computed(() =>
-  groups
+  (accountWorkspace.value ? [] : groups)
     .map((group) => ({
       ...group,
       items: group.items.filter(
@@ -105,17 +107,23 @@ const visibleGroups = computed(() =>
     .filter((group) => group.items.length),
 )
 const title = computed(() =>
-  props.view === 'event-page'
-    ? 'Event preview'
-    : props.view === 'events'
-      ? 'Dashboard'
-      : groups.flatMap((g) => g.items).find((i) => i.key === activeView.value)?.label || 'Overview',
+  accountWorkspace.value
+    ? 'Dashboard'
+    : props.view === 'event-page'
+      ? 'Event preview'
+      : props.view === 'events'
+        ? 'Dashboard'
+        : groups.flatMap((g) => g.items).find((i) => i.key === activeView.value)?.label ||
+          'Overview',
 )
 const page = computed(() =>
-  props.view === 'promo' && route.query.screen === 'discount'
-    ? 'discount-detail'
-    : { share: 'promote', promo: 'discounts', email: 'messages', payout: 'earnings' }[props.view] ||
-      props.view,
+  accountWorkspace.value
+    ? 'events'
+    : props.view === 'promo' && route.query.screen === 'discount'
+      ? 'discount-detail'
+      : { share: 'promote', promo: 'discounts', email: 'messages', payout: 'earnings' }[
+          props.view
+        ] || props.view,
 )
 const phase = computed(
   () =>
@@ -134,6 +142,7 @@ const phase = computed(
     :data-rh-history-view="view === 'checkin' && Boolean(route.query.history)"
   >
     <WorkspaceNotifications
+      v-if="!accountWorkspace && overview"
       ref="notificationPanel"
       :key="event?.id"
       :event="overview?.event || event"
@@ -157,13 +166,13 @@ const phase = computed(
             ><span class="rh-wordmark-tickets">Tickets</span></span
           ></a
         >
-        <div class="rh-side-current-event">
+        <div v-if="!accountWorkspace" class="rh-side-current-event">
           <span
             class="rh-event-thumb mini-cover"
             :style="
               event?.cover_image
                 ? { backgroundImage: `url(${JSON.stringify(event.cover_image)})` }
-                : {}
+                : { backgroundImage: 'none' }
             "
             aria-hidden="true"
           />
@@ -186,20 +195,24 @@ const phase = computed(
             event
           </button>
         </nav>
-        <nav class="rh-back-nav" aria-label="Your events">
+        <nav v-if="!accountWorkspace" class="rh-back-nav" aria-label="Your events">
           <a class="rh-my-events" href="#" @click.prevent="$emit('back')"
             ><svg class="rh-side-icon" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M14 6l-6 6 6 6M9 12h11" /></svg
             ><span>My events</span></a
           >
         </nav>
-        <label v-if="events?.length > 1" class="workspace-event-picker"
+        <label v-if="!accountWorkspace && events?.length > 1" class="workspace-event-picker"
           ><span class="rh-sr">Change event</span
           ><select :value="event?.id" @change="$emit('select-event', Number($event.target.value))">
             <option v-for="item in events" :key="item.id" :value="item.id">{{ item.title }}</option>
           </select></label
         >
-        <nav class="rh-side-links" aria-label="Event management navigation">
+        <nav
+          v-if="!accountWorkspace"
+          class="rh-side-links"
+          aria-label="Event management navigation"
+        >
           <div v-for="group in visibleGroups" :key="group.name" class="rh-menu-group">
             <div class="rh-menu-title">{{ group.name }}</div>
             <a
@@ -245,6 +258,7 @@ const phase = computed(
           </div>
           <div class="top-actions">
             <button
+              v-if="!accountWorkspace && overview"
               class="small-circle nx-bell"
               aria-label="Notifications"
               :aria-expanded="notifications"
@@ -264,7 +278,7 @@ const phase = computed(
               class="workspace-mobile-toggle"
               :aria-expanded="mobileOpen"
               aria-controls="workspace-mobile-nav"
-              aria-label="Open event navigation"
+              aria-label="Open workspace navigation"
               @click="mobileOpen = !mobileOpen"
             >
               <svg class="icon" aria-hidden="true"><use href="#ico-menu" /></svg>
@@ -278,7 +292,9 @@ const phase = computed(
         class="workspace-mobile-nav"
         aria-label="Mobile event navigation"
       >
-        <button @click="$emit('back')">My events</button><strong>{{ event?.title }}</strong
+        <button @click="$emit('back')">My events</button>
+        <button v-if="accountWorkspace" @click="navigateMobile('create')">Create event</button>
+        <strong v-else>{{ event?.title }}</strong
         ><template v-for="group in visibleGroups" :key="group.name"
           ><span>{{ group.name }}</span
           ><button
@@ -293,27 +309,31 @@ const phase = computed(
       </nav>
       <main class="main-inner content" :aria-busy="loading">
         <div v-if="loading" class="workspace-loading" role="status">
-          <span class="rh-sr">Getting your event ready…</span>
+          <span class="rh-sr">Getting your workspace ready…</span>
           <div class="workspace-skeleton-hero" />
           <div class="workspace-skeleton-row"><i v-for="i in 4" :key="i" /></div>
           <div class="workspace-skeleton-panels"><i /><i /></div>
         </div>
         <section v-else-if="error" class="rh-module workspace-empty" role="alert">
-          <h1>We couldn’t load your event.</h1>
+          <h1>
+            {{
+              accountWorkspace ? 'We couldn’t load your events.' : 'We couldn’t load this event.'
+            }}
+          </h1>
           <p>{{ error }}</p>
           <button class="rh-button rh-button-dark" @click="$emit('retry')">Try again</button>
         </section>
         <WorkspaceEvents
-          v-else-if="view === 'events'"
+          v-else-if="accountWorkspace"
           :events="events"
           :overview="overview"
           @open="$emit('select-event', $event.id, $event.query)"
           @create="$emit('create')"
         />
-        <section v-else-if="!event || !overview" class="rh-module workspace-empty">
-          <h1>Your events start here.</h1>
-          <p>Create an event to manage its tickets, guests and earnings.</p>
-          <button class="rh-button rh-button-dark" @click="$emit('create')">Create event</button>
+        <section v-else-if="!overview" class="rh-module workspace-empty" role="alert">
+          <h1>We couldn’t load this event’s overview.</h1>
+          <p>Your event is selected. Reload its details to continue.</p>
+          <button class="rh-button rh-button-dark" @click="$emit('retry')">Reload event</button>
         </section>
         <template v-else>
           <WorkspaceEventPreview

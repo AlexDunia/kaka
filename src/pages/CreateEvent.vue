@@ -1739,9 +1739,9 @@ watch(
       </div>
 
       <div v-if="!editorLoading && !editorLoadError" :inert="isSaving || isPublishing" class="ce-columns" :class="{ 'preview-off': !previewOn }">
+        <CreateEventStepSkeleton v-if="isStepLoading" :step="loadingStep" :preview-on="previewOn" />
         <section v-if="!isStepLoading" class="ce-form">
           <div v-if="currentStep === 1" class="screen">
-        <CreateEventStepSkeleton v-if="isStepLoading" :step="loadingStep" :preview-on="previewOn" />
             <div class="screen-head">
               <h1>
                 Let's build your<br /><em>event.</em>
@@ -2582,27 +2582,27 @@ watch(
 
 <style scoped>
 .create-event-page {
-  --ce-ink: var(--color-text);
-  --ce-ink2: #3d3935;
-  --ce-ink3: var(--color-muted);
-  --ce-ink4: #b0aaa4;
-  --ce-ink5: #d8d3ce;
-  --ce-paper: var(--color-surface);
-  --ce-p2: var(--color-bg);
-  --ce-p3: var(--color-tab-bg);
-  --ce-p4: var(--color-border);
-  --ce-acc: var(--color-accent);
-  --ce-acc-soft: rgba(236, 72, 153, 0.1);
-  --ce-acc-border: rgba(236,72,153,0.187);
-  --ce-green: var(--success);
-  --ce-greenbg: #e8f7ef;
-  --ce-pinkbg: rgba(236, 72, 153, 0.08);
-  --ce-pinkbdr: rgba(236, 72, 153, 0.24);
-  --ce-red: var(--error);
+  --ce-ink: var(--ds-color-text);
+  --ce-ink2: var(--ds-color-text);
+  --ce-ink3: var(--ds-color-text-secondary);
+  --ce-ink4: var(--ds-color-text-muted);
+  --ce-ink5: var(--ds-color-border-control);
+  --ce-paper: var(--ds-color-surface);
+  --ce-p2: var(--ds-color-surface);
+  --ce-p3: var(--ds-color-surface-subtle);
+  --ce-p4: var(--ds-color-border);
+  --ce-acc: var(--ds-color-brand);
+  --ce-acc-soft: var(--ds-color-selection-soft);
+  --ce-acc-border: var(--ds-color-selection-border);
+  --ce-green: var(--ds-color-success);
+  --ce-greenbg: var(--ds-color-success-soft);
+  --ce-pinkbg: var(--ds-color-brand-soft);
+  --ce-pinkbdr: var(--ds-color-brand);
+  --ce-red: var(--ds-color-danger);
   background: var(--ce-p2);
   color: var(--ce-ink);
   min-height: 100vh;
-  font-family: 'Figtree', sans-serif;
+  font-family: var(--ds-font-body);
 }
 
 .create-event-page.is-dark {
@@ -2694,7 +2694,7 @@ watch(
   background: transparent;
   color: var(--ce-ink4);
   border: 0;
-  font-size: 11px;
+  font-size: var(--ds-size-small);
   font-weight: 500;
   text-transform: none;
   letter-spacing: 0;
@@ -2720,7 +2720,7 @@ watch(
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: var(--ds-size-small);
   font-weight: 600;
 }
 
@@ -2763,7 +2763,7 @@ watch(
   border: 1px solid rgba(26,122,74,0.110);
   padding: 4px 10px;
   border-radius: 100px;
-  font-size: 11px;
+  font-size: var(--ds-size-small);
   opacity: 0;
   transition: opacity 0.2s ease;
 }
@@ -2780,9 +2780,9 @@ watch(
   border: 1px solid var(--ce-p4);
   background: transparent;
   color: var(--ce-ink3);
-  border-radius: 10px;
+  border-radius: var(--ds-radius-control);
   padding: 6px 14px;
-  font-size: 12px;
+  font-size: var(--ds-size-body);
   font-weight: 500;
   text-transform: none;
   letter-spacing: 0;
@@ -2795,19 +2795,20 @@ watch(
 }
 
 .ce-wrap {
-  max-width: 1160px;
+  width: 85%;
+  max-width: var(--ds-rhythm-page-max);
   margin: 0 auto;
-  padding: 1.5rem 1.5rem 5rem;
+  padding: var(--ds-space-40) 0 var(--ds-space-64);
 }
 
 .api-error-summary {
   margin-bottom: 1rem;
   padding: 12px 14px;
   border: 1px solid color-mix(in srgb, var(--ce-red) 45%, transparent);
-  border-radius: 12px;
+  border-radius: var(--ds-radius-control);
   background: color-mix(in srgb, var(--ce-red) 8%, var(--ce-paper));
   color: var(--ce-red);
-  font-size: 13px;
+  font-size: var(--ds-size-body);
 }
 
 .api-error-summary ul {
@@ -2821,7 +2822,7 @@ watch(
   justify-content: flex-end;
   gap: 8px;
   margin-bottom: 14px;
-  font-size: 11.5px;
+  font-size: var(--ds-size-small);
   color: var(--ce-ink4);
 }
 
@@ -2831,10 +2832,10 @@ watch(
   gap: 7px;
   padding: 7px 14px;
   border-radius: 100px;
-  border: 1.5px solid var(--ce-p4);
+  border: 1px solid var(--ce-p4);
   background: var(--ce-paper);
   color: var(--ce-ink3);
-  font-size: 12px;
+  font-size: var(--ds-size-body);
   font-weight: 600;
   text-transform: none;
   letter-spacing: 0;
@@ -2907,11 +2908,11 @@ watch(
 .screen {
   display: flex;
   flex-direction: column;
-  gap: 1.2rem;
+  gap: var(--ds-rhythm-group-gap);
 }
 
 .screen-head h1 {
-  font-family: 'Fraunces', serif;
+  font-family: var(--ds-font-heading);
   font-size: 1.9rem;
   font-weight: 400;
   letter-spacing: 0;
@@ -2932,7 +2933,7 @@ watch(
 }
 
 .screen-head p {
-  font-size: 13.5px;
+  font-size: var(--ds-size-body);
   color: var(--ce-ink3);
   margin-top: 6px;
   line-height: 1.65;
@@ -2943,14 +2944,14 @@ watch(
 .tip-card {
   background: var(--ce-paper);
   border: 1px solid var(--ce-p4);
-  border-radius: 24px;
-  padding: 1.75rem;
+  border-radius: var(--ds-radius-card);
+  padding: var(--ds-rhythm-card-padding);
   box-shadow: var(--shadow-subtle);
 }
 
 .ce-card.compact {
   padding: 1.1rem 1.3rem;
-  border-radius: 16px;
+  border-radius: var(--ds-radius-card);
 }
 
 .field,
@@ -2959,7 +2960,7 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-bottom: 1.25rem;
+  margin-bottom: var(--ds-rhythm-group-gap);
 }
 
 .field:last-child,
@@ -2969,15 +2970,15 @@ watch(
 
 label,
 .field-top label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-size: var(--ds-size-small);
+  font-weight: var(--ds-weight-semibold);
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ce-ink3);
 }
 
 label span {
-  font-size: 10px;
+  font-size: var(--ds-size-small);
   font-weight: 500;
   text-transform: none;
   letter-spacing: 0;
@@ -2988,23 +2989,23 @@ label span {
 :deep(.datetime-input) {
   width: 100%;
   background: var(--ce-p2);
-  border: 1.5px solid var(--ce-p4);
-  border-radius: 12px;
+  border: 1px solid var(--ce-p4);
+  border-radius: var(--ds-radius-control);
   padding: 12px 14px;
-  font-family: 'Figtree', sans-serif;
-  font-size: 14px;
+  font-family: var(--ds-font-body);
+  font-size: var(--ds-size-body);
   line-height: 1.3;
   color: var(--ce-ink);
   outline: none;
 }
 
 .field-input-xl {
-  font-family: 'Fraunces', serif;
+  font-family: var(--ds-font-heading);
   font-size: 20px;
   font-weight: 300;
   letter-spacing: 0;
   padding: 14px 18px;
-  border-radius: 16px;
+  border-radius: var(--ds-radius-card);
   background: var(--ce-paper);
 }
 
@@ -3025,7 +3026,7 @@ label span {
 .help,
 :deep(.error-message),
 .error-text {
-  font-size: 11.5px;
+  font-size: var(--ds-size-small);
   line-height: 1.55;
 }
 
@@ -3040,10 +3041,10 @@ label span {
 }
 
 :deep(.input-label) {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-size: var(--ds-size-small);
+  font-weight: var(--ds-weight-semibold);
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ce-ink3);
 }
 
@@ -3065,10 +3066,10 @@ label span {
 }
 
 .divider span {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: var(--ds-size-small);
+  font-weight: var(--ds-weight-semibold);
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ce-ink4);
 }
 
@@ -3097,11 +3098,11 @@ label span {
   align-items: center;
   gap: 6px;
   padding: 9px 14px;
-  border: 1.5px solid var(--ce-p4);
-  border-radius: 10px;
+  border: 1px solid var(--ce-p4);
+  border-radius: var(--ds-radius-control);
   background: var(--ce-paper);
   color: var(--ce-ink3);
-  font-size: 12.5px;
+  font-size: var(--ds-size-body);
   font-weight: 500;
   text-transform: none;
   letter-spacing: 0;
@@ -3134,7 +3135,7 @@ label span {
   margin: -2px 0 1rem;
   padding: 9px 11px;
   border: 1px solid color-mix(in srgb, var(--ce-green) 24%, var(--ce-p4));
-  border-radius: 10px;
+  border-radius: var(--ds-radius-control);
   background: color-mix(in srgb, var(--ce-green) 7%, var(--ce-paper));
 }
 
@@ -3154,18 +3155,18 @@ label span {
 
 .multi-day-hint strong {
   color: var(--ce-ink);
-  font-size: 12px;
-  font-weight: 650;
+  font-size: var(--ds-size-body);
+  font-weight: var(--ds-weight-semibold);
 }
 
 .multi-day-hint span {
   color: var(--ce-ink3);
-  font-size: 11.5px;
+  font-size: var(--ds-size-small);
 }
 .sub-panel {
   background: var(--ce-p2);
   border: 1px solid var(--ce-p3);
-  border-radius: 14px;
+  border-radius: var(--ds-radius-card);
   padding: 1.1rem;
   margin: 0.35rem 0 1.25rem;
 }
@@ -3174,7 +3175,7 @@ label span {
   display: flex;
   flex-direction: column;
   gap: 24px;
-  font-family: var(--font-family-base, 'Figtree', sans-serif);
+  font-family: var(--font-family-base, var(--ds-font-body));
 }
 
 .recurrence-step {
@@ -3201,7 +3202,7 @@ label span {
   gap: 10px;
   padding: 10px 12px;
   border: 1px solid var(--ce-p4);
-  border-radius: 10px;
+  border-radius: var(--ds-radius-control);
   background: var(--ce-paper);
   color: var(--ce-ink3);
   cursor: pointer;
@@ -3226,13 +3227,13 @@ label span {
 
 .recurrence-choice strong {
   color: var(--ce-ink);
-  font-size: 13px;
+  font-size: var(--ds-size-body);
   font-weight: 600;
 }
 
 .recurrence-choice small {
   color: var(--ce-ink3);
-  font-size: 11.5px;
+  font-size: var(--ds-size-small);
   line-height: 1.4;
 }
 
@@ -3255,7 +3256,7 @@ label span {
 
 .occurrence-count-control span {
   color: var(--ce-ink3);
-  font-size: 12px;
+  font-size: var(--ds-size-body);
 }
 
 .recurrence-schedule-preview {
@@ -3268,14 +3269,14 @@ label span {
 .recurrence-schedule-preview > strong {
   display: block;
   color: var(--ce-ink);
-  font-size: 13px;
-  font-weight: 650;
+  font-size: var(--ds-size-body);
+  font-weight: var(--ds-weight-semibold);
 }
 
 .recurrence-schedule-preview > p {
   margin: 4px 0 0;
   color: var(--ce-ink3);
-  font-size: 12px;
+  font-size: var(--ds-size-body);
   line-height: 1.45;
 }
 
@@ -3285,10 +3286,10 @@ label span {
 
 .next-occurrences > span {
   color: var(--ce-ink4);
-  font-size: 10px;
-  font-weight: 700;
+  font-size: var(--ds-size-small);
+  font-weight: var(--ds-weight-semibold);
   letter-spacing: 0.06em;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .next-occurrences ul {
@@ -3306,7 +3307,7 @@ label span {
   border-radius: 999px;
   background: var(--ce-paper);
   color: var(--ce-ink2);
-  font-size: 11px;
+  font-size: var(--ds-size-small);
 }
 .recurrence-step.complete {
   border-color: transparent;
@@ -3321,10 +3322,10 @@ label span {
   display: block;
   margin-bottom: 8px;
   color: var(--color-text-secondary, var(--ce-ink4));
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: var(--ds-size-small);
+  font-weight: var(--ds-weight-semibold);
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .reveal-step {
@@ -3359,7 +3360,7 @@ label span {
   align-items: center;
   justify-content: center;
   padding: 8px 13px;
-  font-size: 13px;
+  font-size: var(--ds-size-body);
   font-weight: 500;
   text-transform: none;
   letter-spacing: 0;
@@ -3400,7 +3401,7 @@ label span {
   flex-direction: column;
   gap: 8px;
   color: var(--color-text-secondary, var(--ce-ink4));
-  font-size: 13px;
+  font-size: var(--ds-size-body);
   line-height: 1.5;
 }
 
@@ -3417,7 +3418,7 @@ label span {
 
 .repeat-current-schedule strong {
   color: var(--ce-ink);
-  font-size: 13px;
+  font-size: var(--ds-size-body);
   font-weight: 500;
 }
 
@@ -3425,7 +3426,7 @@ label span {
   border: 0;
   background: transparent;
   color: var(--ce-green);
-  font-size: 13px;
+  font-size: var(--ds-size-body);
   font-weight: 500;
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -3461,13 +3462,13 @@ label span {
 }
 
 .repeat-change-option strong {
-  font-size: 13px;
+  font-size: var(--ds-size-body);
   font-weight: 500;
   color: var(--ce-ink);
 }
 
 .repeat-change-option span {
-  font-size: 11px;
+  font-size: var(--ds-size-small);
   line-height: 1.35;
   color: var(--ce-ink4);
 }
@@ -3542,7 +3543,7 @@ label span {
 .repeat-day-name {
   width: 36px;
   flex-shrink: 0;
-  font-size: 13px;
+  font-size: var(--ds-size-body);
   font-weight: 500;
   color: var(--ce-ink);
 }
@@ -3553,7 +3554,7 @@ label span {
 
 .repeat-day-arrow {
   color: var(--color-text-secondary, var(--ce-ink4));
-  font-size: 13px;
+  font-size: var(--ds-size-body);
   flex-shrink: 0;
 }
 
@@ -3605,7 +3606,7 @@ label span {
 }
 
 .info-card {
-  border-radius: 14px;
+  border-radius: var(--ds-radius-card);
   padding: 0.9rem 1.1rem;
   display: flex;
   gap: 10px;
@@ -3620,12 +3621,12 @@ label span {
 }
 
 .info-card strong {
-  font-size: 12.5px;
+  font-size: var(--ds-size-body);
   color: var(--ce-ink2);
 }
 
 .info-card p {
-  font-size: 12px;
+  font-size: var(--ds-size-body);
   color: var(--ce-ink3);
   line-height: 1.6;
   margin: 3px 0 0;
@@ -3648,7 +3649,7 @@ label span {
   border: 0.5px solid color-mix(in srgb, var(--ce-p4) 55%, transparent);
   background: var(--ce-paper);
   color: var(--color-text-secondary, var(--ce-ink4));
-  font-size: 11px;
+  font-size: var(--ds-size-small);
   font-weight: 500;
   padding: 0;
   min-width: 0;
@@ -3666,7 +3667,7 @@ label span {
 
 .day-chip small {
   color: inherit;
-  font-size: 8.5px;
+  font-size: var(--ds-size-small);
   font-weight: 500;
   line-height: 1;
 }
@@ -3700,9 +3701,9 @@ label span {
 .calc-card {
   background: var(--ce-pinkbg);
   border: 1px solid var(--ce-pinkbdr);
-  border-radius: 10px;
+  border-radius: var(--ds-radius-control);
   padding: 9px 12px;
-  font-size: 12px;
+  font-size: var(--ds-size-body);
   color: var(--ce-ink2);
   line-height: 1.5;
 }
@@ -3739,15 +3740,15 @@ label span {
 .category-trigger {
   width: 100%;
   background: var(--ce-p2);
-  border: 1.5px solid var(--ce-p4);
-  border-radius: 12px;
+  border: 1px solid var(--ce-p4);
+  border-radius: var(--ds-radius-control);
   padding: 11px 14px;
   color: var(--ce-ink);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  font-size: 14px;
+  font-size: var(--ds-size-body);
   font-weight: 500;
   text-transform: none;
   letter-spacing: 0;
@@ -3802,7 +3803,7 @@ label span {
   padding: 10px;
   background: var(--ce-paper);
   border: 1px solid var(--ce-p4);
-  border-radius: 14px;
+  border-radius: var(--ds-radius-card);
 }
 
 .category-option {
@@ -3811,11 +3812,11 @@ label span {
   gap: 8px;
   min-height: 38px;
   border: 1px solid var(--ce-p4);
-  border-radius: 10px;
+  border-radius: var(--ds-radius-control);
   background: var(--ce-p2);
   color: var(--ce-ink3);
   padding: 8px 10px;
-  font-size: 12px;
+  font-size: var(--ds-size-body);
   font-weight: 600;
   text-align: left;
   text-transform: none;
@@ -3853,7 +3854,7 @@ label span {
   right: 0;
   background: var(--ce-paper);
   border: 1px solid var(--ce-p4);
-  border-radius: 12px;
+  border-radius: var(--ds-radius-control);
   box-shadow: var(--shadow-subtle);
   z-index: 10;
   overflow: hidden;
@@ -3870,13 +3871,13 @@ label span {
   border-radius: 0;
   text-transform: none;
   letter-spacing: 0;
-  font-size: 13px;
+  font-size: var(--ds-size-body);
   min-height: 0;
 }
 
 .venue-results span {
   color: var(--ce-ink4);
-  font-size: 11px;
+  font-size: var(--ds-size-small);
 }
 
 .field-top {
@@ -3899,7 +3900,7 @@ label span {
   border: 1px solid var(--ce-p4);
   border-radius: 8px;
   padding: 8px 12px;
-  font-size: 12px;
+  font-size: var(--ds-size-body);
   font-weight: 600;
   text-transform: none;
   letter-spacing: 0;
@@ -3915,7 +3916,7 @@ label span {
   display: flex;
   background: var(--ce-p3);
   border: 1px solid var(--ce-p4);
-  border-radius: 10px;
+  border-radius: var(--ds-radius-control);
   overflow: hidden;
   margin-bottom: 12px;
 }
@@ -3931,7 +3932,7 @@ label span {
   border-radius: 0;
   background: transparent;
   color: var(--ce-ink3);
-  font-size: 12px;
+  font-size: var(--ds-size-body);
   font-weight: 500;
   text-transform: none;
   letter-spacing: 0;
@@ -3952,7 +3953,7 @@ label span {
 
 .upload-zone {
   border: 2px dashed var(--ce-p4);
-  border-radius: 16px;
+  border-radius: var(--ds-radius-card);
   padding: 2rem 1.5rem;
   display: flex;
   flex-direction: column;
@@ -3984,16 +3985,16 @@ label span {
 }
 
 .upload-zone strong {
-  font-size: 13px;
+  font-size: var(--ds-size-body);
   color: var(--ce-ink2);
 }
 
 .upload-zone span {
-  font-size: 10.5px;
+  font-size: var(--ds-size-small);
 }
 
 .upload-zone small {
-  font-size: 10px;
+  font-size: var(--ds-size-small);
   color: var(--ce-ink4);
 }
 
@@ -4028,16 +4029,16 @@ label span {
 .cover-preview,
 .gallery-preview {
   border: 1px solid var(--ce-p4);
-  border-radius: 12px;
+  border-radius: var(--ds-radius-control);
   background: var(--ce-p2);
   padding: 10px;
 }
 
 .image-label {
   display: block;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
+  font-size: var(--ds-size-small);
+  font-weight: var(--ds-weight-semibold);
+  text-transform: none;
   letter-spacing: 0.06em;
   color: var(--ce-ink4);
   margin-bottom: 8px;
@@ -4046,7 +4047,7 @@ label span {
 .cover-frame {
   position: relative;
   aspect-ratio: 16 / 9;
-  border-radius: 10px;
+  border-radius: var(--ds-radius-control);
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--ce-acc) 42%, var(--ce-p4));
 }
@@ -4080,12 +4081,12 @@ label span {
 .cover-empty {
   min-height: 120px;
   border: 1.5px dashed var(--ce-p4);
-  border-radius: 10px;
+  border-radius: var(--ds-radius-control);
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--ce-ink4);
-  font-size: 12px;
+  font-size: var(--ds-size-body);
 }
 
 .image-strip {
@@ -4100,7 +4101,7 @@ label span {
   height: 58px;
   border-radius: 8px;
   overflow: hidden;
-  border: 1.5px solid var(--ce-p4);
+  border: 1px solid var(--ce-p4);
   flex-shrink: 0;
 }
 
@@ -4132,7 +4133,7 @@ label span {
   min-height: 0;
   padding: 5px 7px;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: var(--ds-size-small);
   text-transform: none;
   letter-spacing: 0;
 }
@@ -4156,7 +4157,7 @@ label span {
   position: relative;
   background: var(--ce-p2);
   border: 1px solid var(--ce-p3);
-  border-radius: 12px;
+  border-radius: var(--ds-radius-control);
   padding: 12px 14px;
 }
 
@@ -4184,8 +4185,8 @@ label span {
 
 .ticket-mode-card {
   position: relative;
-  border: 1.5px solid var(--ce-p4);
-  border-radius: 14px;
+  border: 1px solid var(--ce-p4);
+  border-radius: var(--ds-radius-card);
   padding: 1rem;
   background: var(--ce-paper);
   color: var(--ce-ink3);
@@ -4216,12 +4217,12 @@ label span {
 
 .ticket-mode-card strong {
   color: var(--ce-ink);
-  font-size: 13px;
+  font-size: var(--ds-size-body);
   font-weight: 600;
 }
 
 .ticket-mode-card span {
-  font-size: 11px;
+  font-size: var(--ds-size-small);
   line-height: 1.5;
 }
 
@@ -4232,7 +4233,7 @@ label span {
 }
 
 .count-badge {
-  font-size: 10px;
+  font-size: var(--ds-size-small);
   font-weight: 600;
   background: var(--ce-p3);
   color: var(--ce-ink3);
@@ -4257,9 +4258,9 @@ label span {
   text-align: center;
   padding: 1.5rem;
   color: var(--ce-ink4);
-  font-size: 12.5px;
+  font-size: var(--ds-size-body);
   border: 1.5px dashed var(--ce-p4);
-  border-radius: 14px;
+  border-radius: var(--ds-radius-card);
   background: var(--ce-p2);
   display: flex;
   flex-direction: column;
@@ -4286,7 +4287,7 @@ label span {
 
 .ticket-card-head strong {
   flex: 1;
-  font-family: 'Fraunces', serif;
+  font-family: var(--ds-font-heading);
   font-weight: 400;
 }
 
@@ -4312,13 +4313,13 @@ label span {
 
 .toggle-row strong {
   display: block;
-  font-size: 13px;
+  font-size: var(--ds-size-body);
   color: var(--ce-ink2);
 }
 
 .toggle-row small {
   display: block;
-  font-size: 11px;
+  font-size: var(--ds-size-small);
   color: var(--ce-ink4);
   line-height: 1.5;
 }
@@ -4333,27 +4334,27 @@ label span {
 .summary-row {
   background: var(--ce-p2);
   border: 1px solid var(--ce-p3);
-  border-radius: 10px;
+  border-radius: var(--ds-radius-control);
   padding: 10px 14px;
   margin-top: 10px;
-  font-size: 12px;
+  font-size: var(--ds-size-body);
 }
 
 .summary-row strong {
-  font-family: 'Fraunces', serif;
+  font-family: var(--ds-font-heading);
   font-size: 18px;
-  font-weight: 700;
+  font-weight: var(--ds-weight-semibold);
 }
 
 .required-tag {
-  font-size: 10px;
-  font-weight: 700;
+  font-size: var(--ds-size-small);
+  font-weight: var(--ds-weight-semibold);
   color: var(--ce-acc);
 }
 
 .email-preview {
   border: 1px solid var(--ce-p4);
-  border-radius: 16px;
+  border-radius: var(--ds-radius-card);
   overflow: hidden;
 }
 
@@ -4364,18 +4365,18 @@ label span {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  font-size: 11.5px;
+  font-size: var(--ds-size-small);
   color: var(--ce-ink3);
 }
 
 .email-head strong {
-  font-size: 13px;
+  font-size: var(--ds-size-body);
   color: var(--ce-ink);
 }
 
 .email-body {
   padding: 14px;
-  font-size: 13px;
+  font-size: var(--ds-size-body);
   color: var(--ce-ink2);
   line-height: 1.7;
 }
@@ -4383,7 +4384,7 @@ label span {
 .email-ticket {
   background: var(--ce-p2);
   border: 1px solid var(--ce-p3);
-  border-radius: 10px;
+  border-radius: var(--ds-radius-control);
   padding: 12px;
   margin-top: 10px;
   display: flex;
@@ -4404,7 +4405,7 @@ label span {
   background: var(--ce-paper);
   border: 1px solid var(--ce-p4);
   color: var(--ce-ink3);
-  border-radius: 14px;
+  border-radius: var(--ds-radius-card);
   padding: 0;
   min-height: 0;
 }
@@ -4418,9 +4419,9 @@ label span {
   background: var(--ce-ink);
   color: var(--ce-paper);
   border: 0;
-  border-radius: 14px;
+  border-radius: var(--ds-radius-card);
   padding: 14px 22px;
-  font-size: 14px;
+  font-size: var(--ds-size-body);
   font-weight: 600;
   text-transform: none;
   letter-spacing: 0;
@@ -4479,26 +4480,26 @@ label span {
 }
 
 .side-label {
-  font-size: 10px;
-  font-weight: 700;
+  font-size: var(--ds-size-small);
+  font-weight: var(--ds-weight-semibold);
   letter-spacing: 0.09em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--ce-ink4);
   padding: 0 4px;
 }
 
 .tip-card {
-  border-radius: 12px;
+  border-radius: var(--ds-radius-control);
   padding: 11px 13px;
 }
 
 .tip-card strong {
-  font-size: 11px;
+  font-size: var(--ds-size-small);
   color: var(--ce-ink2);
 }
 
 .tip-card p {
-  font-size: 11px;
+  font-size: var(--ds-size-small);
   color: var(--ce-ink4);
   line-height: 1.6;
   margin: 4px 0 0;
@@ -4512,8 +4513,8 @@ label span {
   background: var(--ce-ink);
   color: var(--ce-paper);
   padding: 11px 18px;
-  border-radius: 14px;
-  font-size: 12.5px;
+  border-radius: var(--ds-radius-card);
+  font-size: var(--ds-size-body);
   font-weight: 500;
   z-index: 500;
 }
@@ -4546,7 +4547,7 @@ label span {
 }
 
 .success-screen h1 {
-  font-family: 'Fraunces', serif;
+  font-family: var(--ds-font-heading);
   font-size: 2.2rem;
   font-weight: 400;
   line-height: 1.1;
@@ -4554,7 +4555,7 @@ label span {
 
 .success-screen p {
   color: var(--ce-ink3);
-  font-size: 14px;
+  font-size: var(--ds-size-body);
   line-height: 1.65;
 }
 
@@ -4574,7 +4575,7 @@ label span {
   width: 100%;
   background: var(--ce-p3);
   border: 1px solid var(--ce-p4);
-  border-radius: 12px;
+  border-radius: var(--ds-radius-control);
   padding: 12px 14px;
   display: flex;
   align-items: center;
@@ -4583,7 +4584,7 @@ label span {
 
 .share-box span {
   flex: 1;
-  font-size: 12px;
+  font-size: var(--ds-size-body);
   color: var(--ce-ink3);
   white-space: nowrap;
   overflow: hidden;
@@ -4596,7 +4597,7 @@ label span {
   border: 0;
   border-radius: 6px;
   padding: 7px 14px;
-  font-size: 11.5px;
+  font-size: var(--ds-size-small);
   text-transform: none;
   letter-spacing: 0;
   min-height: 0;
@@ -4644,7 +4645,8 @@ label span {
 
 @media (max-width: 640px) {
   .ce-wrap {
-    padding: 1rem 1rem 4rem;
+    width: 80%;
+    padding: var(--ds-space-32) 0 var(--ds-space-64);
   }
 
   .ce-progress {
@@ -4679,13 +4681,13 @@ label span {
   }
 
   .ce-card {
-    border-radius: 18px;
-    padding: 1.3rem;
+    border-radius: var(--ds-radius-card);
+    padding: var(--ds-rhythm-card-padding-mobile);
   }
 
   .field,
   .paid-block {
-    margin-bottom: 1.15rem;
+    margin-bottom: var(--ds-space-24);
   }
 
   .two-col {
@@ -4727,6 +4729,41 @@ label span {
   }
 
   .nav-actions .primary-btn { min-width: 0; width: 100%; }
+}
+/* Shared product roles across Basics, Details, Tickets and Attendees. */
+.create-event-page { font-size: var(--ds-size-body); line-height: 1.6; }
+.create-event-page :deep(svg) { stroke-width: 1.5; flex-shrink: 0; }
+.create-event-page :is(button, input, select, textarea) { font-family: var(--ds-font-body); }
+.create-event-page :is(button, input, select, textarea):focus-visible {
+  outline: 1px solid var(--ce-acc);
+  outline-offset: 2px;
+}
+.field-input, :deep(.datetime-input) { border-color: var(--ce-ink5); border-radius: var(--ds-radius-control); }
+.field-input-xl { font: 400 var(--ds-size-body)/1.6 var(--ds-font-body); }
+label, .field-top label, :deep(.input-label) { font-size: var(--ds-size-label); font-weight: 600; }
+.screen-head h1 em { font-style: normal; }
+.ce-columns > *, .two-col > * { min-width: 0; }
+.ce-header { height: auto; min-height: 76px; padding-inline: 7.5%; }
+.ce-logo img { height: 48px; }
+.ce-step { min-height: 36px; }
+.ce-step-number { width: 20px; height: 20px; }
+.ce-step.future { opacity: 1; }
+.primary-btn { background: var(--ce-acc); color: var(--ds-color-on-brand); border-radius: var(--ds-radius-control); }
+.primary-btn:hover:not(:disabled) { background: var(--ds-color-brand-hover); }
+@media (max-width: 1024px) {
+  .ce-wrap { width: 80%; }
+  .ce-header { padding: var(--ds-space-12) 10%; grid-template-columns: auto auto 1fr; gap: var(--ds-space-12); overflow: visible; }
+  .ce-progress { grid-row: 2; grid-column: 1 / -1; width: 100%; justify-content: space-between; }
+  .ce-header-actions { grid-column: 3; grid-row: 1; }
+}
+@media (max-width: 640px) {
+  .ce-card, .info-card, .tip-card { padding: var(--ds-rhythm-card-padding-mobile); }
+  .ce-card.compact { padding: var(--ds-space-20); }
+  .ce-header { column-gap: var(--ds-space-8); }
+  .ce-logo img { width: 80px; height: auto; }
+  .ce-header-back, .theme-btn { width: 32px; height: 32px; }
+  .ce-header-actions { flex-wrap: wrap; }
+  .ghost-btn { padding-inline: var(--ds-space-8); }
 }
 </style>
 

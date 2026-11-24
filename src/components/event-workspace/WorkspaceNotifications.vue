@@ -111,7 +111,7 @@ const tasks = computed(() =>
       done: setup.value.earnings_reviewed,
       known: setup.value.earnings_reviewed != null,
     },
-  ].filter((t) => t.known),
+  ].filter((t) => props.event?.id && props.overview && t.known),
 )
 const pending = computed(() =>
   tasks.value.filter((t) => !t.done && t.from <= stageIndex.value && t.until >= stageIndex.value),
@@ -122,6 +122,7 @@ const updates = computed(() => props.overview?.notifications || [])
 const unread = computed(() => updates.value.filter((u) => !read.value.includes(u.id)).length)
 const showReminder = computed(
   () =>
+    Boolean(props.event?.id && props.overview) &&
     !['events', 'event-page', 'checkin', 'earnings'].includes(props.page) &&
     props.eventType !== 'free' &&
     !dismissed.value &&

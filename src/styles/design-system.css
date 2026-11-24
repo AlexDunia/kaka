@@ -217,3 +217,65 @@ body[data-rh-page='event-page'].rh30-scrolled #app .event-profile .rh29-nav-row 
   #app .public-site .rh-audience-track { animation: none !important; }
   #app .public-site .site-header { transition: none; }
 }
+
+/* Official Design System: quiet surfaces, light selection, black actions. */
+#app .create-event-page {
+  --ce-pinkbg: var(--ds-color-selection-soft);
+  --ce-pinkbdr: var(--ds-color-selection-border);
+  --ce-acc-soft: var(--ds-color-selection-soft);
+  --ce-acc-border: var(--ds-color-selection-border);
+}
+#app .create-event-page.is-dark { --ce-p2: var(--ce-paper); }
+#app :is(.ce-card, .info-card, .tip-card, .workspace-content-card, .rh-card, .rh-v24-panel) {
+  border-color: var(--ds-color-border-card);
+  box-shadow: var(--ds-shadow-card);
+}
+#app .create-event-page :is(.ce-card, .info-card, .tip-card, .ticket-card, .sub-panel) {
+  border-color: var(--ds-color-border-card);
+  background: var(--ce-paper);
+  box-shadow: var(--ds-shadow-card);
+}
+#app .create-event-page :is(.pill, .detail-chip, .quick-chip, .ticket-mode, .category-trigger, .recurrence-choice) {
+  border-width: 1px;
+}
+#app .create-event-page :is(.selected, .active):not(.primary-btn) {
+  border-color: var(--ds-color-selection-border);
+  box-shadow: none;
+}
+#app :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]), textarea, select):focus {
+  outline: none !important;
+  border-color: var(--ds-color-focus) !important;
+  box-shadow: var(--ds-shadow-focus) !important;
+}
+#app :is(input, textarea, select):is([aria-invalid=true], .error):focus {
+  border-color: var(--ds-color-danger) !important;
+}
+#app :is(button, a, [tabindex]):focus-visible {
+  outline: 1px solid var(--ds-color-brand) !important;
+  outline-offset: 2px;
+}
+#app :is(input, textarea, select):focus-visible {
+  outline: none !important;
+}
+#app :is(.filter-chip.active, .rh-side-link.selected, .side-link.selected) {
+  background: var(--ds-color-selection-soft);
+  border-color: var(--ds-color-selection-border);
+  box-shadow: none;
+}
+#app ::selection { background: var(--ds-color-selection-border); }
+/* Use semantic action classes; navigation, toggles and destructive actions keep their roles. */
+#app :is(.btn-primary, .primary-btn, .ep-primary, .rh-button-dark, .rh-button-primary, .rh-button-outline, .ep-secondary, .ghost-btn):not(:disabled):not(.disabled):not([aria-disabled=true]) {
+  background: var(--ds-color-action) !important;
+  color: var(--ds-color-on-action) !important;
+  border-color: transparent !important;
+}
+#app :is(.btn-primary, .primary-btn, .ep-primary, .rh-button-dark, .rh-button-primary, .rh-button-outline, .ep-secondary, .ghost-btn):hover:not(:disabled):not(.disabled):not([aria-disabled=true]) {
+  background: var(--ds-color-action-hover) !important;
+}
+#app :is(.primary-btn, .ep-primary, .ep-secondary, .ghost-btn) svg { color: inherit; }
+@media (max-width: 768px), (hover: none) and (pointer: coarse) {
+  #app input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]),
+  #app textarea, #app select {
+    font-size: 16px !important;
+  }
+}

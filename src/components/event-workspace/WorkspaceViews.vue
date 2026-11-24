@@ -653,7 +653,12 @@ function handleSubmit(e) {
         data-settings-pane="details"
         v-show="settingsTab === &#x27;details&#x27;"
       >
-        <WorkspaceEventLifecycle v-if="!preview" :event-id="eventId" @changed="emit('refresh')" />
+        <WorkspaceEventLifecycle
+          v-if="!preview"
+          :event-id="eventId"
+          :timezone="editableForm?.timeZone || event.timezone"
+          @changed="emit('refresh')"
+        />
         <form class="rh-module rh-form-panel rhs-form" id="rh-settings-form">
           <div class="rh-module-title">
             <div>

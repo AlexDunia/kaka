@@ -115,6 +115,13 @@ export function useSeo() {
 
     if (!event) return
 
+    const category =
+      typeof event.category === 'string'
+        ? event.category
+        : typeof event.category?.name === 'string'
+          ? event.category.name
+          : ''
+
     // Create event schema with enhanced information
     const eventSchema = {
       '@context': 'https://schema.org',
@@ -166,8 +173,8 @@ export function useSeo() {
       },
       superEvent: {
         '@type': 'Event',
-        name: event.category ? `${event.category} Events in Nigeria` : 'Events in Nigeria',
-        url: `https://kakaworld.com/${event.category || ''}`,
+        name: category ? `${category} Events in Nigeria` : 'Events in Nigeria',
+        url: `https://kakaworld.com/${category}`,
       },
     }
 
@@ -185,10 +192,8 @@ export function useSeo() {
         {
           '@type': 'ListItem',
           position: 2,
-          name: event.category
-            ? event.category.charAt(0).toUpperCase() + event.category.slice(1)
-            : 'Events',
-          item: `https://kakaworld.com/${event.category || 'events'}`,
+          name: category ? category.charAt(0).toUpperCase() + category.slice(1) : 'Events',
+          item: `https://kakaworld.com/${category || 'events'}`,
         },
         {
           '@type': 'ListItem',

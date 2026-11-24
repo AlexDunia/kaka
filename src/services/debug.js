@@ -1,25 +1,25 @@
 // Debug service for logging and error handling
 const debug = {
   log: (...args) => {
-    if (process.env.NODE_ENV !== 'production') {
+    if (import.meta.env.DEV) {
       console.log('[Debug]:', ...args)
     }
   },
 
   error: (...args) => {
-    if (process.env.NODE_ENV !== 'production') {
+    if (import.meta.env.DEV) {
       console.error('[Error]:', ...args)
     }
   },
 
   warn: (...args) => {
-    if (process.env.NODE_ENV !== 'production') {
+    if (import.meta.env.DEV) {
       console.warn('[Warning]:', ...args)
     }
   },
 
   info: (...args) => {
-    if (process.env.NODE_ENV !== 'production') {
+    if (import.meta.env.DEV) {
       console.info('[Info]:', ...args)
     }
   },

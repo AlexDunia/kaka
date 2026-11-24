@@ -16,7 +16,7 @@ import {
 } from '../src/utils/authDestination.js'
 import { usesPublicTransition } from '../src/utils/routePresentation.js'
 
-test('brand animation is reserved for browsing and event creation, never auth or purchase tasks', () => {
+test('brand animation is reserved for public browsing, never auth or purchase tasks', () => {
   for (const name of [
     'login',
     'register',
@@ -27,10 +27,12 @@ test('brand animation is reserved for browsing and event creation, never auth or
     'checkout',
     'event-tickets',
     'payment-success',
+    'CreateEvent',
+    'EditEvent',
   ]) {
     assert.equal(usesPublicTransition({ name, meta: {} }), false, name)
   }
-  for (const name of ['home', 'find-events', 'features', 'event-moments', 'CreateEvent']) {
+  for (const name of ['home', 'find-events', 'features', 'event-moments']) {
     assert.equal(usesPublicTransition({ name, meta: {} }), true, name)
   }
 })
@@ -233,7 +235,7 @@ test('replays public transitions even with a session, while skipping Back and pr
     hooks.before({ name: 'dashboard', path: '/dashboard', meta: { requiresAuth: true } }, find)
     assert.equal(state.visible.value, false)
     hooks.before({ name: 'CreateEvent', path: '/create-event', meta: { requiresAuth: true } }, find)
-    assert.equal(state.visible.value, true)
+    assert.equal(state.visible.value, false)
     assert.equal(shouldShowPublicLoader({ authenticated: false, protectedRoute: true }), false)
     assert.equal(shouldShowPublicLoader({ authenticated: false, samePage: true }), false)
   } finally {

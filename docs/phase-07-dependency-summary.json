@@ -1,0 +1,21 @@
+{
+  "frontend_initial": {
+    "critical": 2,
+    "high": 12,
+    "moderate": 7,
+    "low": 1,
+    "total": 22
+  },
+  "frontend_final": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0,
+    "total": 0
+  },
+  "backend_locked_advisories": 62,
+  "backend_packages_with_advisories": 16,
+  "authentication_source_and_configuration_changed": false,
+  "note": "Installed frontend dependency versions changed within existing compatible ranges; backend packages remain unchanged."
+}

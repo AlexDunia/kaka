@@ -1,0 +1,15 @@
+{
+    "scope": "Laravel test-kernel sequential requests; not network load or production capacity",
+    "engine": "mysql",
+    "catalog_rows": 121,
+    "requests": 30,
+    "errors": 0,
+    "concurrency": 1,
+    "p50_ms": 36.598,
+    "p95_ms": 66.8181,
+    "p99_ms": 80.0485,
+    "requests_per_second": 25.484546171201785,
+    "max_queries": 6,
+    "max_response_bytes": 10585,
+    "process_peak_bytes": 52428800
+}

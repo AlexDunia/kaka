@@ -1,15 +1,17 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import EventWorkspace from '@/components/event-workspace/EventWorkspace.vue'
 import { useDashboardStore } from '@/stores/dashboard'
+import { useAuthStore } from '@/stores/auth'
 import { useSlug } from '@/composables/useSlug'
 defineOptions({ name: 'EventDashboardPage' })
 
 const route = useRoute()
 const router = useRouter()
 const dashboardStore = useDashboardStore()
+const auth = useAuthStore()
 const { generateSlug } = useSlug()
 
 const { events, eventsLoading, eventsError } = storeToRefs(dashboardStore)
@@ -28,13 +30,18 @@ const viewKeys = [
   'settings',
 ]
 const currentManageView = computed(() =>
-  viewKeys.includes(route.query.view) ? route.query.view : 'overview',
+  viewKeys.includes(route.query.view)
+    ? route.query.view
+    : route.params.eventId
+      ? 'overview'
+      : 'events',
 )
 const toast = ref(null)
 const overviewLoading = ref(false)
 const pageError = ref('')
 let toastTimer = null
 let overviewRequest = 0
+let dashboardRequest = 0
 
 const selectedEventId = computed(() => {
   const routeId = Number(route.params.eventId)
@@ -44,7 +51,8 @@ const selectedEventId = computed(() => {
 
 const selectedEvent = computed(() => {
   const event = events.value.find((event) => Number(event.id) === selectedEventId.value)
-  return event ? { ...event, ...dashboardStore.getOverview(selectedEventId.value)?.event } : null
+  const saved = dashboardStore.getOverview(selectedEventId.value)?.event
+  return event || saved ? { ...event, ...saved } : null
 })
 
 const overview = computed(() =>
@@ -53,6 +61,7 @@ const overview = computed(() =>
 
 const isDashboardLoading = computed(
   () =>
+    (!dashboardStore.eventsLoaded && !pageError.value && !eventsError.value) ||
     eventsLoading.value ||
     (currentManageView.value !== 'events' &&
       (overviewLoading.value ||
@@ -79,7 +88,7 @@ const showManage = (destination) => {
 }
 
 const loadOverview = async (eventId, { force = false } = {}) => {
-  if (!eventId) return
+  if (!eventId || (!force && dashboardStore.isOverviewLoading(eventId))) return
 
   const request = ++overviewRequest
   overviewLoading.value = true
@@ -88,7 +97,8 @@ const loadOverview = async (eventId, { force = false } = {}) => {
   try {
     await dashboardStore.fetchOverview(eventId, { force })
   } catch (error) {
-    if (request === overviewRequest) pageError.value = error.userMessage || 'We could not load this event dashboard.'
+    if (request === overviewRequest)
+      pageError.value = error.userMessage || 'We could not load this event dashboard.'
   } finally {
     if (request === overviewRequest) overviewLoading.value = false
   }
@@ -96,12 +106,17 @@ const loadOverview = async (eventId, { force = false } = {}) => {
 
 const normalizeRouteToOwnedEvent = async () => {
   if (currentManageView.value === 'events') return
-  if (!events.value.length) return
+  if (!events.value.length) {
+    if (!Number(route.params.eventId))
+      await router.replace({ name: 'dashboard', query: { view: 'events' } })
+    return
+  }
 
   const requestedId = Number(route.params.eventId)
-  const requestedIsOwned = events.value.some((event) => Number(event.id) === requestedId)
-
-  const targetId = requestedIsOwned ? requestedId : Number(events.value[0].id)
+  // The current page is not the complete owner catalog. The protected overview
+  // authorizes a directly linked event instead of silently switching its ID.
+  const targetId =
+    Number.isSafeInteger(requestedId) && requestedId > 0 ? requestedId : Number(events.value[0].id)
 
   if (route.name !== 'dashboard-event' || Number(route.params.eventId) !== targetId) {
     await router.replace({
@@ -113,18 +128,22 @@ const normalizeRouteToOwnedEvent = async () => {
 }
 
 const loadDashboard = async () => {
+  const request = ++dashboardRequest
   pageError.value = ''
 
   try {
     await dashboardStore.fetchEvents({ force: Boolean(eventsError.value) })
+    if (request !== dashboardRequest) return
     await normalizeRouteToOwnedEvent()
+    if (request !== dashboardRequest) return
 
     if (selectedEventId.value && currentManageView.value !== 'events') {
       await loadOverview(selectedEventId.value)
     }
   } catch (error) {
-    pageError.value =
-      error?.response?.data?.message || eventsError.value || 'We could not load your dashboard.'
+    if (request === dashboardRequest)
+      pageError.value =
+        error?.response?.data?.message || eventsError.value || 'We could not load your dashboard.'
   }
 }
 
@@ -175,19 +194,29 @@ watch(
     const id = Number(next)
     if (!id || id === Number(previous)) return
 
-    const owned = events.value.some((event) => Number(event.id) === id)
-
-    if (!owned) {
-      await normalizeRouteToOwnedEvent()
-      return
-    }
-
+    // The current list page is not the ownership boundary; Laravel authorizes
+    // direct links and reports a missing or forbidden event as an error.
     await loadOverview(id)
   },
 )
 
-onMounted(loadDashboard)
-onBeforeUnmount(() => window.clearTimeout(toastTimer))
+watch(
+  () => auth.user?.id,
+  (id) => {
+    overviewRequest++
+    dashboardRequest++
+    overviewLoading.value = false
+    dashboardStore.reset()
+    pageError.value = ''
+    if (id) void loadDashboard()
+  },
+  { immediate: true },
+)
+onBeforeUnmount(() => {
+  overviewRequest++
+  dashboardRequest++
+  window.clearTimeout(toastTimer)
+})
 </script>
 
 <template>

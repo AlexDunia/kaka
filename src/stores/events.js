@@ -57,15 +57,12 @@ export const useEventStore = defineStore('events', () => {
     currentPage.value = page
 
     try {
-      console.log('Fetching all events from API')
       const response = await eventService.getAllEvents(page, itemsPerPage.value, options)
 
       if (request !== collectionRequest) return []
-      console.log('Raw API response:', response)
 
       // âœ… FIX: Check for the transformed structure
       if (response && response.data && Array.isArray(response.data)) {
-        console.log(`âœ… Setting ${response.data.length} events in store`)
         events.value = response.data
 
         // Update pagination info if available
@@ -77,16 +74,14 @@ export const useEventStore = defineStore('events', () => {
         lastFetch.value = Date.now()
         forceRefresh.value = false
 
-        console.log('âœ… Events set in store:', events.value)
         return response.data
       } else {
-        console.error('âŒ Invalid response format:', response)
         throw new Error('Invalid data format received from API')
       }
     } catch (err) {
       if (request !== collectionRequest) return []
       error.value = err.message || 'Failed to fetch events from API'
-      console.error('âŒ Error fetching events:', err)
+
       throw err
     } finally {
       if (request === collectionRequest) isLoading.value = false
@@ -133,7 +128,6 @@ export const useEventStore = defineStore('events', () => {
 
   const fetchEventsByCategory = async (category, refresh = false, page = 1) => {
     // Add debug log to check what category is being passed
-    console.log(`fetchEventsByCategory called with category: ${category}`, { refresh, page })
 
     // Skip fetching if we're already on this category and have events
     if (
@@ -142,7 +136,6 @@ export const useEventStore = defineStore('events', () => {
       events.value.length > 0 &&
       page === currentPage.value
     ) {
-      console.log('Using cached events for category:', category)
       return events.value
     }
 
@@ -156,7 +149,6 @@ export const useEventStore = defineStore('events', () => {
     try {
       // Normalize the category to ensure consistency
       const normalizedCategory = category.toLowerCase().trim()
-      console.log('Using normalized category for API call:', normalizedCategory)
 
       const response = await eventService.getEventsByCategory(
         normalizedCategory,
@@ -164,7 +156,6 @@ export const useEventStore = defineStore('events', () => {
         itemsPerPage.value,
       )
       if (request !== collectionRequest) return []
-      console.log('Category API response:', response)
 
       if (response && response.data && Array.isArray(response.data)) {
         events.value = response.data
@@ -183,7 +174,7 @@ export const useEventStore = defineStore('events', () => {
     } catch (err) {
       if (request !== collectionRequest) return []
       error.value = err.message || 'Failed to fetch events by category'
-      console.error('Error in fetchEventsByCategory:', err)
+
       throw err
     } finally {
       if (request === collectionRequest) isLoading.value = false
@@ -199,23 +190,18 @@ export const useEventStore = defineStore('events', () => {
     error.value = null
 
     try {
-      console.log('â­ Fetching featured events...')
       const response = await eventService.getFeaturedEvents(limit)
-
-      console.log('â­ Featured response:', response)
 
       // âœ… FIX: Check for the transformed structure
       if (response && response.data && Array.isArray(response.data)) {
-        console.log(`âœ… Setting ${response.data.length} featured events`)
         featuredEvents.value = response.data
         return response.data
       } else {
-        console.error('âŒ Invalid featured events format:', response)
         throw new Error('Invalid featured events data format')
       }
     } catch (err) {
       error.value = err.message || 'Failed to fetch featured events'
-      console.error('âŒ Error fetching featured:', err)
+
       throw err
     } finally {
       isLoading.value = false
@@ -231,11 +217,10 @@ export const useEventStore = defineStore('events', () => {
       const processedData = { ...eventData }
 
       // Send data to API through service
-      console.log('Store: Sending event data to API')
+
       const newEvent = await eventService.createEvent(processedData)
 
       // If we get here, the API call was successful and the event was saved to the database
-      console.log('Store: Event saved to database, updating frontend state', newEvent)
 
       // Only update the frontend state if we got a valid response with an ID
       if (newEvent && newEvent.id) {
@@ -250,7 +235,7 @@ export const useEventStore = defineStore('events', () => {
     } catch (err) {
       // Set error message and re-throw to let component handle it
       error.value = err.message || 'Failed to create event in database'
-      console.error('Store: Failed to save event to database:', err)
+
       throw err
     } finally {
       isLoading.value = false
@@ -342,102 +327,33 @@ export const useEventStore = defineStore('events', () => {
     }
 
     // Added detailed logging at start of search
-    console.log(`Search initiated in store with: "${query}", category: ${category || 'all'}`)
 
     try {
-      // Build the query parameters with advanced filtering
-      let url = `${eventService.EVENTS_API_URL}?page=${page}&per_page=${limit}`
-
-      // Add search query
-      if (query && query.trim() !== '') {
-        url += `&q=${encodeURIComponent(query.trim())}`
-      }
-
-      // Add category filter
-      if (category && category !== 'all') {
-        url += `&${/^\d+$/.test(String(category)) ? 'category_id' : 'category'}=${encodeURIComponent(category)}`
-      }
-
-      const sortValue = ['date-asc', 'date-desc', 'price-asc', 'price-desc', 'latest'].includes(
-        sort,
-      )
-        ? sort
-        : sort === 'price'
-          ? `price-${direction === 'desc' ? 'desc' : 'asc'}`
-          : `date-${direction === 'desc' ? 'desc' : 'asc'}`
-      url += `&sort=${sortValue}`
-
-      // Add date range filters
-      if (dateFrom) {
-        url += `&date_from=${encodeURIComponent(dateFrom)}`
-      }
-
-      if (dateTo) {
-        url += `&date_to=${encodeURIComponent(dateTo)}`
-      }
-
-      const response = await api.get(url.replace(eventService.EVENTS_API_URL, '/events'))
-
+      const result = await eventService.getFilteredEvents({
+        page,
+        per_page: limit,
+        q: query?.trim() || undefined,
+        ...(category && category !== 'all'
+          ? { [/^\d+$/.test(String(category)) ? 'category_id' : 'category']: category }
+          : {}),
+        sort: ['date-asc', 'date-desc', 'price-asc', 'price-desc', 'latest'].includes(sort)
+          ? sort
+          : `${sort === 'price' ? 'price' : 'date'}-${direction === 'desc' ? 'desc' : 'asc'}`,
+        date_from: dateFrom || undefined,
+        date_to: dateTo || undefined,
+      })
       if (request !== collectionRequest) return []
-      // Debug the raw response - Changed from .debug to .log
-      console.log('<<< RAW API RESPONSE RECEIVED >>>:', response.data)
-      console.log('Search response status:', response.status)
-      console.log('Search response length:', response.data?.data?.length || 'N/A')
-
-      // Handle different response formats - robust approach
-      let eventData = []
-      let paginationData = null
-
-      // Case 1: Response has data property that is an array (standard format)
-      if (response.data && response.data.data && Array.isArray(response.data.data)) {
-        eventData = response.data.data
-        paginationData = response.data.meta
-          ? { total: response.data.meta.total, pages: response.data.meta.last_page }
-          : response.data.pagination || null
-      }
-      // Case 2: Response is an array directly
-      else if (response.data && Array.isArray(response.data)) {
-        eventData = response.data
-      }
-      // Case 3: Unexpected format, try to extract any array we can find
-      else if (response.data && typeof response.data === 'object') {
-        // Loop through all properties looking for an array
-        for (const [key, value] of Object.entries(response.data)) {
-          if (Array.isArray(value) && value.length > 0 && value[0].id) {
-            console.debug(`Found events array in response.data.${key}`)
-            eventData = value
-            break
-          }
-        }
-      }
-
-      // If we found events, use them
-      if (eventData.length > 0) {
-        events.value = eventData
-
-        // Update pagination if available
-        if (paginationData) {
-          totalItems.value = paginationData.total || eventData.length
-          totalPages.value = paginationData.pages || 1
-        } else {
-          // Set reasonable defaults if no pagination info
-          totalItems.value = eventData.length
-          totalPages.value = 1
-        }
-
-        lastFetch.value = Date.now()
-        return eventData
-      } else {
-        // No events found - this is a valid result (empty search result)
-        events.value = []
-        totalItems.value = 0
-        totalPages.value = 0
-        return []
-      }
+      if (!Array.isArray(result.data) || !result.pagination)
+        throw new Error('We could not read the event results. Please try again.')
+      events.value = result.data
+      totalItems.value = result.pagination.total
+      totalPages.value = result.pagination.pages
+      lastFetch.value = Date.now()
+      return result.data
     } catch (err) {
       if (request !== collectionRequest) return []
       error.value = err.message || 'Failed to search events'
-      console.error('Search error:', err)
+
       // Set empty results and return empty array
       events.value = []
       totalItems.value = 0
@@ -456,9 +372,9 @@ export const useEventStore = defineStore('events', () => {
     try {
       // Try to fetch all events
       return await fetchAllEvents(true)
-    } catch (err) {
+    } catch {
       // If fetching fails, at least reset the local state to avoid showing stale results
-      console.error('Failed to fetch events when resetting filters:', err)
+
       events.value = []
       totalItems.value = 0
       totalPages.value = 0
@@ -499,7 +415,6 @@ export const useEventStore = defineStore('events', () => {
     try {
       const apiResponse = await eventService.getEventBySlug(slug)
       if (request !== detailRequest) return null
-      console.log('Event by slug API response:', apiResponse)
 
       // Check if the response structure is { data: [eventObject, ...], ... }
       // and the data array is not empty.
@@ -514,13 +429,12 @@ export const useEventStore = defineStore('events', () => {
         return fetchedEventObject
       } else {
         // If the structure is not as expected or data array is empty
-        console.warn('Event not found or invalid data structure from getEventBySlug:', apiResponse)
+
         error.value = 'Event not found'
         currentEvent.value = null // Explicitly set to null
         return null // Indicate event was not found or data was malformed
       }
     } catch (err) {
-      console.error('Error in fetchEventBySlug:', err)
       error.value = err.message || 'Failed to fetch event details'
       currentEvent.value = null // Clear currentEvent on error
       throw err // Re-throw the error so the component can handle it

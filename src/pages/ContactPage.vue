@@ -17,7 +17,7 @@ const showError = (message) => {
   error.value = message
 }
 
-const showSuccess = (message) => {
+const showSuccess = () => {
   success.value = true
   // You might want to add a success message display in your UI
 }
@@ -31,7 +31,7 @@ const isValidEmail = (email) => {
 onMounted(async () => {
   try {
     await emailjs.init(EMAILJS_PUBLIC_KEY)
-  } catch (error) {
+  } catch {
     showError('Failed to initialize contact form. Please try again later.')
   }
 })

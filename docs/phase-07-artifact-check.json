@@ -1,0 +1,4 @@
+{
+  "findings": [],
+  "scope": "final dist files; pattern scan only, not a complete secret audit"
+}

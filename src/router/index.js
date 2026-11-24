@@ -1,8 +1,6 @@
 ﻿import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import HomePage from '../pages/HomePage.vue'
-import EventDetails from '../pages/EventDetails.vue'
-import CreateEvent from '../pages/CreateEvent.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -230,7 +228,7 @@ const router = createRouter({
     {
       path: '/event/:id',
       name: 'event-details-legacy',
-      component: EventDetails,
+      component: () => import('../pages/EventDetails.vue'),
       props: true,
       meta: {
         title: 'Event Details',
@@ -241,7 +239,7 @@ const router = createRouter({
     {
       path: '/events/:id-:slug',
       name: 'event-details',
-      component: EventDetails,
+      component: () => import('../pages/EventDetails.vue'),
       props: (route) => ({
         id: route.params.id,
         slug: route.params.slug,
@@ -255,22 +253,24 @@ const router = createRouter({
     {
       path: '/create-event',
       name: 'CreateEvent',
-      component: CreateEvent,
+      component: () => import('../pages/CreateEvent.vue'),
       meta: {
         title: 'Create Event',
         requiresAuth: true,
+        fullScreenShell: true,
         description: 'Create and publish your own event to sell tickets.',
       },
     },
     {
       path: '/events/:id/edit',
       name: 'EditEvent',
-      component: CreateEvent,
+      component: () => import('../pages/CreateEvent.vue'),
       props: true,
       meta: {
         title: 'Edit Event',
         description: 'Update your published event.',
         requiresAuth: true,
+        fullScreenShell: true,
       },
     },
     {

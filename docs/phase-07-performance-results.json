@@ -1,0 +1,120 @@
+{
+  "environment": "Local single-worker PHP development server; disposable SQLite; provider fake; array cache; no production or distributed capacity inference",
+  "fixture": {
+    "events": 38,
+    "attendees": 1000
+  },
+  "samples": [
+    {
+      "name": "public discovery",
+      "count": 24,
+      "concurrency": 4,
+      "failures": 0,
+      "error_rate": 0,
+      "requests_per_second": 0.8094533001989471,
+      "p50_ms": 4966.899600000001,
+      "p95_ms": 6136.234799999998,
+      "p99_ms": 6332.551700000004,
+      "max_queries": 9,
+      "max_app_ms": 583.6072,
+      "max_php_peak_bytes": 27262976,
+      "max_response_bytes": 3163
+    },
+    {
+      "name": "popular launch quote",
+      "count": 20,
+      "concurrency": 4,
+      "failures": 0,
+      "error_rate": 0,
+      "requests_per_second": 1.0002537193571837,
+      "p50_ms": 3725.8439999999973,
+      "p95_ms": 4751.336300000003,
+      "p99_ms": 4864.411799999994,
+      "max_queries": 7,
+      "max_app_ms": 815.7686,
+      "max_php_peak_bytes": 27262976,
+      "max_response_bytes": 479
+    },
+    {
+      "name": "inventory reservations",
+      "count": 8,
+      "concurrency": 4,
+      "failures": 0,
+      "error_rate": 0,
+      "requests_per_second": 0.6061194593417453,
+      "p50_ms": 5777.472800000003,
+      "p95_ms": 7533.369399999996,
+      "p99_ms": 7533.369399999996,
+      "max_queries": null,
+      "max_app_ms": null,
+      "max_php_peak_bytes": null,
+      "max_response_bytes": null,
+      "instrumentation_note": "This workload used a service that unwraps HTTP headers; these resource fields were not observed."
+    },
+    {
+      "name": "payment verification",
+      "count": 8,
+      "concurrency": 4,
+      "failures": 0,
+      "error_rate": 0,
+      "requests_per_second": 1.3545443005660662,
+      "p50_ms": 2839.135899999994,
+      "p95_ms": 3310.5504999999976,
+      "p99_ms": 3310.5504999999976,
+      "max_queries": 34,
+      "max_app_ms": 288.7721,
+      "max_php_peak_bytes": 31457280,
+      "max_response_bytes": 1254
+    },
+    {
+      "name": "dashboard reads",
+      "count": 20,
+      "concurrency": 4,
+      "failures": 0,
+      "error_rate": 0,
+      "requests_per_second": 1.4650523196554297,
+      "p50_ms": 2521.7114,
+      "p95_ms": 3470.40419999999,
+      "p99_ms": 3755.416499999992,
+      "max_queries": 41,
+      "max_app_ms": 554.259,
+      "max_php_peak_bytes": 29360128,
+      "max_response_bytes": 6339
+    },
+    {
+      "name": "large attendee pages",
+      "count": 20,
+      "concurrency": 4,
+      "failures": 0,
+      "error_rate": 0,
+      "requests_per_second": 1.2255631215899123,
+      "p50_ms": 2650.3881999999867,
+      "p95_ms": 4804.661200000002,
+      "p99_ms": 5283.840399999986,
+      "max_queries": 8,
+      "max_app_ms": 491.444,
+      "max_php_peak_bytes": 29360128,
+      "max_response_bytes": 21086
+    },
+    {
+      "name": "idempotent scan retries (one owner session)",
+      "count": 12,
+      "concurrency": 4,
+      "failures": 0,
+      "error_rate": 0,
+      "requests_per_second": 1.0271985043989782,
+      "p50_ms": 3525.517000000007,
+      "p95_ms": 4841.1426000000065,
+      "p99_ms": 4841.1426000000065,
+      "max_queries": 19,
+      "max_app_ms": 1355.0361,
+      "max_php_peak_bytes": 27262976,
+      "max_response_bytes": 292
+    }
+  ],
+  "node_peak_rss_bytes": 103272448,
+  "node_cpu_microseconds": {
+    "user": 5718000,
+    "system": 2703000
+  }
+}

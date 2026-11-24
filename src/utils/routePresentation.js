@@ -36,6 +36,5 @@ export function usesPublicTransition(route) {
     'event-moments',
     'event-details',
     'event-details-legacy',
-    'CreateEvent',
   ].includes(route?.name)
 }

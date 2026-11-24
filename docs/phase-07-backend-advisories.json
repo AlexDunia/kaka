@@ -1,0 +1,436 @@
+[
+  {
+    "package": "firebase/php-jwt",
+    "id": "PKSA-y2cr-5h3j-g3ys",
+    "severity": "low",
+    "title": "php-jwt contains weak encryption",
+    "url": "https://github.com/advisories/GHSA-2x45-7fc3-mxwq"
+  },
+  {
+    "package": "guzzlehttp/guzzle",
+    "id": "PKSA-gcrk-3vtt-1r14",
+    "severity": "high",
+    "title": "Guzzle: Noncanonical host can bypass host-based checks",
+    "url": "https://github.com/advisories/GHSA-v5mv-p594-2x33"
+  },
+  {
+    "package": "guzzlehttp/guzzle",
+    "id": "PKSA-cnw1-2ytm-cgr8",
+    "severity": "medium",
+    "title": "Guzzle: Noncanonical cookie domain keeps subdomain scope",
+    "url": "https://github.com/advisories/GHSA-f7vp-7xgx-4w4r"
+  },
+  {
+    "package": "guzzlehttp/guzzle",
+    "id": "PKSA-fy2t-3c5f-827y",
+    "severity": "medium",
+    "title": "Guzzle: URI fragments disclosed in redirect Referer headers",
+    "url": "https://github.com/advisories/GHSA-h95v-h523-3mw8"
+  },
+  {
+    "package": "guzzlehttp/guzzle",
+    "id": "PKSA-qxvb-2bpp-dnk6",
+    "severity": "medium",
+    "title": "Guzzle: Host-only cookie scope is not preserved",
+    "url": "https://github.com/advisories/GHSA-wm3w-8rrp-j577"
+  },
+  {
+    "package": "guzzlehttp/guzzle",
+    "id": "PKSA-bbs6-q5q9-f3t4",
+    "severity": "medium",
+    "title": "Guzzle: Unbounded response cookies risk denial of service",
+    "url": "https://github.com/advisories/GHSA-f283-ghqc-fg79"
+  },
+  {
+    "package": "guzzlehttp/guzzle",
+    "id": "PKSA-bcdd-5xc7-gwfb",
+    "severity": "medium",
+    "title": "Guzzle: Cookie Disclosure and Injection via IP-Address Domains",
+    "url": "https://github.com/advisories/GHSA-g446-98w2-8p5w"
+  },
+  {
+    "package": "guzzlehttp/guzzle",
+    "id": "PKSA-pwsk-hy21-4gby",
+    "severity": "medium",
+    "title": "Guzzle: Proxy-Authorization headers can be sent to origin servers",
+    "url": "https://github.com/advisories/GHSA-94pj-82f3-465w"
+  },
+  {
+    "package": "guzzlehttp/guzzle",
+    "id": "PKSA-93qv-9n9h-6k6p",
+    "severity": "medium",
+    "title": "Dot-only cookie domains match all hosts",
+    "url": "https://github.com/guzzle/guzzle/security/advisories/GHSA-cwxw-98qj-8qjx"
+  },
+  {
+    "package": "guzzlehttp/guzzle",
+    "id": "PKSA-k22t-f949-t9g6",
+    "severity": "medium",
+    "title": "Silent HTTPS proxy downgrade to cleartext",
+    "url": "https://github.com/guzzle/guzzle/security/advisories/GHSA-wpwq-4j6v-78m3"
+  },
+  {
+    "package": "guzzlehttp/psr7",
+    "id": "PKSA-vznr-tgp9-fd7d",
+    "severity": "medium",
+    "title": "guzzlehttp/psr7: Host Confusion via Weak URI Host Validation",
+    "url": "https://github.com/advisories/GHSA-c2w2-prh8-qm98"
+  },
+  {
+    "package": "guzzlehttp/psr7",
+    "id": "PKSA-7qs6-zvnz-h66r",
+    "severity": "medium",
+    "title": "CRLF injection in HTTP start-line serialization",
+    "url": "https://github.com/guzzle/psr7/security/advisories/GHSA-vm85-hxw5-5432"
+  },
+  {
+    "package": "guzzlehttp/psr7",
+    "id": "PKSA-gm5x-j3mz-71n9",
+    "severity": "medium",
+    "title": "CRLF injection via URI host component",
+    "url": "https://github.com/guzzle/psr7/security/advisories/GHSA-hq7v-mx3g-29hw"
+  },
+  {
+    "package": "guzzlehttp/psr7",
+    "id": "PKSA-jj5t-2zs1-dcfm",
+    "severity": "medium",
+    "title": "Host confusion via authority reinterpretation",
+    "url": "https://github.com/guzzle/psr7/security/advisories/GHSA-34xg-wgjx-8xph"
+  },
+  {
+    "package": "laravel/framework",
+    "id": "PKSA-yxbx-3c9s-cjt9",
+    "severity": "low",
+    "title": "Laravel: Task Output Injection - Concurrency Process",
+    "url": "https://github.com/advisories/GHSA-63hm-g96r-2m2q"
+  },
+  {
+    "package": "laravel/framework",
+    "id": "PKSA-b41t-wbzk-9q51",
+    "severity": "critical",
+    "title": "Laravel TokenGuard authentication bypass through non-string API credentials",
+    "url": "https://github.com/advisories/GHSA-f9x3-7vq9-cph6"
+  },
+  {
+    "package": "laravel/framework",
+    "id": "PKSA-d5tc-s1qs-h781",
+    "severity": "low",
+    "title": "Laravel: XSS in Debug Page Information",
+    "url": "https://github.com/advisories/GHSA-jh5r-qr3c-85q8"
+  },
+  {
+    "package": "laravel/framework",
+    "id": "PKSA-m5cs-t1y6-qpcs",
+    "severity": "medium",
+    "title": "Laravel Framework: Temporary Signed URL Path Confusion",
+    "url": "https://github.com/advisories/GHSA-crmm-hgp2-wgrp"
+  },
+  {
+    "package": "laravel/framework",
+    "id": "PKSA-3r5d-mb8f-1qw9",
+    "severity": "high",
+    "title": "Laravel Framework: CRLF injection in default email rule ",
+    "url": "https://github.com/advisories/GHSA-5vg9-5847-vvmq"
+  },
+  {
+    "package": "laravel/framework",
+    "id": "PKSA-mdq4-51ck-6kdq",
+    "severity": null,
+    "title": "Laravel CRLF injection in default email rule",
+    "url": "https://github.com/laravel/framework/security/advisories/GHSA-5vg9-5847-vvmq"
+  },
+  {
+    "package": "league/commonmark",
+    "id": "PKSA-m2dq-1fhr-29b1",
+    "severity": "medium",
+    "title": "league/commonmark: DisallowedRawHtml bypassed when a disallowed tag name ends the raw-HTML literal",
+    "url": "https://github.com/advisories/GHSA-97jj-33gv-5xf9"
+  },
+  {
+    "package": "league/commonmark",
+    "id": "PKSA-m4t9-vsgq-8khn",
+    "severity": "high",
+    "title": "league/commonmark: Quadratic-time denial of service in the GitHub Flavored Markdown Table extension block-start scan",
+    "url": "https://github.com/advisories/GHSA-3q6v-r5mr-hxv8"
+  },
+  {
+    "package": "league/commonmark",
+    "id": "PKSA-zyf5-hrxv-hrd7",
+    "severity": "high",
+    "title": "league/commonmark: Denial of service via distinctly-named attributes in the Attributes extension",
+    "url": "https://github.com/advisories/GHSA-8rr7-cvq3-gmfh"
+  },
+  {
+    "package": "league/commonmark",
+    "id": "PKSA-nv44-1b4d-6gjg",
+    "severity": "high",
+    "title": "league/commonmark: Denial of service in the SmartPunct and Attributes extensions",
+    "url": "https://github.com/advisories/GHSA-jjv6-8j6v-6j52"
+  },
+  {
+    "package": "league/commonmark",
+    "id": "PKSA-9q1p-3s19-bp1q",
+    "severity": "high",
+    "title": "league/commonmark: Denial of service via crafted code fences, reference links, and emphasis delimiters",
+    "url": "https://github.com/advisories/GHSA-j8pm-gj4c-rq4x"
+  },
+  {
+    "package": "league/commonmark",
+    "id": "PKSA-5mzr-szzf-z6cn",
+    "severity": "medium",
+    "title": "league/commonmark: Denial of service via deeply nested XML output",
+    "url": "https://github.com/advisories/GHSA-mj63-m3rc-8ppr"
+  },
+  {
+    "package": "league/commonmark",
+    "id": "PKSA-cqd6-fg4n-nxpf",
+    "severity": "high",
+    "title": "league/commonmark: Denial of service via colliding heading slugs",
+    "url": "https://github.com/advisories/GHSA-mh25-x5hq-wrqp"
+  },
+  {
+    "package": "league/commonmark",
+    "id": "PKSA-1q6p-sqkj-8mmj",
+    "severity": "high",
+    "title": "league/commonmark:  Denial of service via duplicate footnote definitions",
+    "url": "https://github.com/advisories/GHSA-jfm3-95jq-q3rf"
+  },
+  {
+    "package": "league/commonmark",
+    "id": "PKSA-mc58-w91n-f5gv",
+    "severity": "high",
+    "title": "league/commonmark: Denial of service via adjacent inline attribute blocks",
+    "url": "https://github.com/advisories/GHSA-g2gp-3wwq-f4ph"
+  },
+  {
+    "package": "league/commonmark",
+    "id": "PKSA-t21r-vtr5-3mdz",
+    "severity": "high",
+    "title": "league/commonmark: Quadratic-time denial of service when parsing crafted Markdown",
+    "url": "https://github.com/advisories/GHSA-2q4p-g7hv-5rgv"
+  },
+  {
+    "package": "league/commonmark",
+    "id": "PKSA-scnn-p8mm-jbft",
+    "severity": "medium",
+    "title": "league/commonmark: AttributesExtension href/src unsafe-link filter bypass via embedded control bytes",
+    "url": "https://github.com/advisories/GHSA-29pj-957v-52mc"
+  },
+  {
+    "package": "league/commonmark",
+    "id": "PKSA-21fb-n1x5-5nf7",
+    "severity": "medium",
+    "title": "league/commonmark has an embed extension allowed_domains bypass",
+    "url": "https://github.com/advisories/GHSA-hh8v-hgvp-g3f5"
+  },
+  {
+    "package": "league/commonmark",
+    "id": "PKSA-2cx9-ynrq-qdk3",
+    "severity": "medium",
+    "title": "CommonMark has DisallowedRawHtml extension bypass via whitespace in HTML tag names",
+    "url": "https://github.com/advisories/GHSA-4v6x-c7xx-hw9f"
+  },
+  {
+    "package": "league/commonmark",
+    "id": "PKSA-rqc2-tcc6-nc79",
+    "severity": "medium",
+    "title": "league/commonmark contains a XSS vulnerability in Attributes extension",
+    "url": "https://github.com/advisories/GHSA-3527-qv2q-pfvx"
+  },
+  {
+    "package": "league/flysystem",
+    "id": "PKSA-w9tt-7782-78jx",
+    "severity": "low",
+    "title": "Flysystem: WhitespacePathNormalizer's control-character (CorruptedPathDetected) check is bypassed by malformed UTF-8 in the path, affecting every adapter",
+    "url": "https://github.com/advisories/GHSA-cxf4-7mrp-vvpr"
+  },
+  {
+    "package": "phpseclib/phpseclib",
+    "id": "PKSA-h7cz-q7zq-mdkt",
+    "severity": null,
+    "title": "phpseclib unbounded PBKDF iteration count in encrypted key/PFX/CMS parsing enables CPU-exhaustion DoS",
+    "url": "https://github.com/phpseclib/phpseclib/security/advisories/GHSA-w3p9-g4p2-h3rr"
+  },
+  {
+    "package": "phpseclib/phpseclib",
+    "id": "PKSA-12sz-bcny-pk4m",
+    "severity": "medium",
+    "title": "phpseclib \u2014 non-constant-time X25519 scalar multiplication permits full private-key recovery",
+    "url": "https://github.com/advisories/GHSA-q97c-8qh3-fpc6"
+  },
+  {
+    "package": "phpseclib/phpseclib",
+    "id": "PKSA-432p-hv1d-chf7",
+    "severity": "medium",
+    "title": "phpseclib: X.509 certificate validation sends attacker-controlled outbound requests (server-side request forgery) via Authority Information Access",
+    "url": "https://github.com/advisories/GHSA-m557-wrgg-6rp4"
+  },
+  {
+    "package": "phpseclib/phpseclib",
+    "id": "PKSA-smrh-yx37-92ws",
+    "severity": "high",
+    "title": "phpseclib has a CVE-2024-27355 mitigation bypass \u2014 OID amplification DoS in ASN1::decodeOID()",
+    "url": "https://github.com/advisories/GHSA-3qpq-r242-jqj7"
+  },
+  {
+    "package": "phpseclib/phpseclib",
+    "id": "PKSA-zh4j-by9m-7mz8",
+    "severity": "low",
+    "title": "phpseclib has a variable-time HMAC comparison in SSH2::get_binary_packet() using != instead of hash_equals()",
+    "url": "https://github.com/advisories/GHSA-r854-jrxh-36qx"
+  },
+  {
+    "package": "phpseclib/phpseclib",
+    "id": "PKSA-km2b-zc3b-mjm3",
+    "severity": "high",
+    "title": "phpseclib's AES-CBC unpadding susceptible to padding oracle timing attack",
+    "url": "https://github.com/advisories/GHSA-94g3-g5v7-q4jg"
+  },
+  {
+    "package": "phpunit/phpunit",
+    "id": "PKSA-z3gr-8qht-p93v",
+    "severity": "high",
+    "title": "Unsafe Deserialization in PHPT Code Coverage Handling",
+    "url": "https://github.com/sebastianbergmann/phpunit/security/advisories/GHSA-vvj3-c3rp-c85p"
+  },
+  {
+    "package": "psy/psysh",
+    "id": "PKSA-4s4z-t146-6123",
+    "severity": "medium",
+    "title": "PsySH has Local Privilege Escalation via CWD .psysh.php auto-load",
+    "url": "https://github.com/advisories/GHSA-4486-gxhx-5mg7"
+  },
+  {
+    "package": "symfony/http-foundation",
+    "id": "PKSA-nxjs-s6hn-vb6m",
+    "severity": null,
+    "title": "The \"private_ranges\" Trusted Proxies Shortcut Trusts Clients Presenting an IPv4-Mapped, 6to4, Teredo or NAT64 Address as Reverse Proxies",
+    "url": "https://github.com/symfony/symfony/security/advisories/GHSA-xg2q-4rrq-657q"
+  },
+  {
+    "package": "symfony/http-foundation",
+    "id": "PKSA-qgp8-6q73-5w6n",
+    "severity": null,
+    "title": "CVE-2026-135802: Generated URLs Can Point to a Host Chosen by the Client",
+    "url": "https://symfony.com/cve-2026-135802"
+  },
+  {
+    "package": "symfony/http-foundation",
+    "id": "PKSA-24ph-xkrh-y79j",
+    "severity": null,
+    "title": "CVE-2026-118514: HEAD Requests Bypass the methods Option of security.access_control Rules and Firewalls: Incomplete Fix for CVE-2026-45075",
+    "url": "https://symfony.com/cve-2026-118514"
+  },
+  {
+    "package": "symfony/http-foundation",
+    "id": "PKSA-xmwy-rmx5-m7h4",
+    "severity": "high",
+    "title": "CVE-2026-108082: ReDoS in HeaderUtils::split() Reachable Through the Cache-Control Request Header",
+    "url": "https://symfony.com/cve-2026-108082"
+  },
+  {
+    "package": "symfony/http-foundation",
+    "id": "PKSA-y6py-qpv1-h52p",
+    "severity": "medium",
+    "title": "CVE-2026-48736: IpUtils::PRIVATE_SUBNETS Omits IPv6 Transition Forms (6to4, NAT64, Teredo, IPv4-compatible): SSRF Bypass in NoPrivateNetworkHttpClient",
+    "url": "https://symfony.com/cve-2026-48736"
+  },
+  {
+    "package": "symfony/http-foundation",
+    "id": "PKSA-365x-2zjk-pt47",
+    "severity": "high",
+    "title": "CVE-2025-64500: Incorrect parsing of PATH_INFO can lead to limited authorization bypass",
+    "url": "https://symfony.com/blog/cve-2025-64500-incorrect-parsing-of-path-info-can-lead-to-limited-authorization-bypass"
+  },
+  {
+    "package": "symfony/http-kernel",
+    "id": "PKSA-3gxv-7xhq-mgmz",
+    "severity": null,
+    "title": "Inline Fragments Let Untrusted Forwarded Headers Set the Host, Scheme and Port of the URLs Generated for the Main Request",
+    "url": "https://github.com/symfony/symfony/security/advisories/GHSA-wg5q-m2ww-f3c9"
+  },
+  {
+    "package": "symfony/mailer",
+    "id": "PKSA-28rh-rzzn-djk4",
+    "severity": "medium",
+    "title": "CVE-2026-45068: Argument Injection in SendmailTransport via Dash-Prefixed Recipient Address",
+    "url": "https://symfony.com/cve-2026-45068"
+  },
+  {
+    "package": "symfony/mime",
+    "id": "PKSA-wtxr-p26d-nn42",
+    "severity": "medium",
+    "title": "CVE-2026-45070: Email Header Injection via Non-Token Characters in Mime Parameter Names",
+    "url": "https://symfony.com/cve-2026-45070"
+  },
+  {
+    "package": "symfony/mime",
+    "id": "PKSA-2n2k-66v2-bwg3",
+    "severity": "high",
+    "title": "CVE-2026-45067: Email Header / SMTP Command Injection via CRLF in Symfony\\Component\\Mime\\Address",
+    "url": "https://symfony.com/cve-2026-45067"
+  },
+  {
+    "package": "symfony/polyfill-intl-idn",
+    "id": "PKSA-dwsq-ppd2-mb1x",
+    "severity": "low",
+    "title": "CVE-2026-46644: symfony/polyfill-intl-idn accepts xn-- labels whose Punycode payload decodes to ASCII-only: insecure equivalence",
+    "url": "https://symfony.com/cve-2026-46644"
+  },
+  {
+    "package": "symfony/routing",
+    "id": "PKSA-y8c5-1b7f-r1gj",
+    "severity": null,
+    "title": "CVE-2026-118516: Host Placeholders Can Match the Start of the Path in Compiled URL Matchers, Bypassing Path-Based Access Control",
+    "url": "https://symfony.com/cve-2026-118516"
+  },
+  {
+    "package": "symfony/routing",
+    "id": "PKSA-bf7t-jnpz-492k",
+    "severity": "medium",
+    "title": "CVE-2026-48784: UrlGenerator Dot-Segment Encoding Skips Every Other Chained `../` or `./` \u2192 Generated URL Collapses Off-Route Under RFC 3986 Normalization",
+    "url": "https://symfony.com/cve-2026-48784"
+  },
+  {
+    "package": "symfony/routing",
+    "id": "PKSA-yc7t-91v9-99xs",
+    "severity": "medium",
+    "title": "CVE-2026-45065: UrlGenerator Route-Requirement Bypass via Unanchored Regex Alternation \u2192 Off-Site //host URL Injection",
+    "url": "https://symfony.com/cve-2026-45065"
+  },
+  {
+    "package": "symfony/yaml",
+    "id": "PKSA-nktx-f1n1-b4yd",
+    "severity": null,
+    "title": "Exponential and Quadratic Parse Times in the YAML Parser Let a Single Document Hold a Process",
+    "url": "https://github.com/symfony/symfony/security/advisories/GHSA-hwfg-qwvh-2wfx"
+  },
+  {
+    "package": "symfony/yaml",
+    "id": "PKSA-xz3r-9gp4-4m1z",
+    "severity": "high",
+    "title": "CVE-2026-109413: Unbounded Recursion in the YAML Inline Lexer Lets a Single Document Crash the Process",
+    "url": "https://symfony.com/cve-2026-109413"
+  },
+  {
+    "package": "symfony/yaml",
+    "id": "PKSA-v5yj-8nmz-sk2q",
+    "severity": "low",
+    "title": "CVE-2026-45304: YAML Parser Exponential Memory Allocation via Recursive Collection-Alias Expansion (\"Billion Laughs\")",
+    "url": "https://symfony.com/cve-2026-45304"
+  },
+  {
+    "package": "symfony/yaml",
+    "id": "PKSA-ft77-7h5f-p3r6",
+    "severity": "low",
+    "title": "CVE-2026-45305: YAML Parser ReDoS via Catastrophic Backtracking in Parser::cleanup() Regex",
+    "url": "https://symfony.com/cve-2026-45305"
+  },
+  {
+    "package": "symfony/yaml",
+    "id": "PKSA-b14r-zh1d-vdrc",
+    "severity": "low",
+    "title": "CVE-2026-45133: YAML Parser Stack Exhaustion via Unbounded Recursion in Nested Blocks, Sequences, and Mappings",
+    "url": "https://symfony.com/cve-2026-45133"
+  }
+]

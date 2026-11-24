@@ -30,7 +30,7 @@ export function usePublicPageLoader(router) {
   const removeBefore = router.beforeEach((to, from) => {
     const back = (window.history.state?.position ?? lastPosition) < lastPosition
     const samePage = to.path === from.path
-    if (shouldShowPublicLoader({ protectedRoute: to.meta.requiresAuth && to.name !== 'CreateEvent', publicPage: usesPublicTransition(to), samePage, back })) start(to)
+    if (shouldShowPublicLoader({ protectedRoute: to.meta.requiresAuth, publicPage: usesPublicTransition(to), samePage, back })) start(to)
     else stop()
   })
   const removeAfter = router.afterEach((_to, _from, failure) => {
@@ -40,7 +40,7 @@ export function usePublicPageLoader(router) {
   })
   const removeError = router.onError(stop)
   const navigation = performance.getEntriesByType('navigation')[0]
-  if (shouldShowPublicLoader({ protectedRoute: router.currentRoute.value.meta.requiresAuth && router.currentRoute.value.name !== 'CreateEvent', publicPage: usesPublicTransition(router.currentRoute.value), samePage: false, back: navigation?.type === 'back_forward' })) start(router.currentRoute.value, true)
+  if (shouldShowPublicLoader({ protectedRoute: router.currentRoute.value.meta.requiresAuth, publicPage: usesPublicTransition(router.currentRoute.value), samePage: false, back: navigation?.type === 'back_forward' })) start(router.currentRoute.value, true)
   onBeforeUnmount(() => { stop(); removeBefore(); removeAfter(); removeError() })
   return { visible, stage, destination, sequence }
 }

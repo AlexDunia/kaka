@@ -5,7 +5,7 @@
   --accent: var(--color-secondary);
   --success: #1a7a4a;
   --error: #c0392b;
-  --focus-ring: 0 0 0 2px var(--color-accent);
+  --focus-ring: var(--ds-shadow-focus, 0 0 0 1px rgba(191, 24, 91, .08));
   --font-family-base: "Figtree",sans-serif;
   --background: #fff;
   --secondary: #f7f7f8;
@@ -56,7 +56,7 @@
   --accent: #f368e0;
   --success: #1db954;
   --error: #ff4757;
-  --focus-ring: 0 0 0 2px var(--color-accent);
+  --focus-ring: var(--ds-shadow-focus, 0 0 0 1px rgba(191, 24, 91, .08));
   --font-family-base: "Figtree",sans-serif;
   --background: #0a0a0f;
   --secondary: #121216;

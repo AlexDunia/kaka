@@ -6,7 +6,7 @@ import { changeEventLifecycle } from '@/services/eventFinanceService'
 import { operationsError } from '@/services/eventOperationsService'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useEventStore } from '@/stores/events'
-const props = defineProps({ eventId: [String, Number] })
+const props = defineProps({ eventId: [String, Number], timezone: String })
 const emit = defineEmits(['changed'])
 const auth = useAuthStore()
 const dashboard = useDashboardStore(),
@@ -15,7 +15,8 @@ const version = ref(null),
   state = ref(''),
   action = ref('close_sales'),
   reason = ref(''),
-  cutoff = ref('')
+  cutoff = ref(''),
+  savedCutoff = ref(null)
 const busy = ref(false),
   error = ref(''),
   notice = ref(''),
@@ -26,6 +27,9 @@ async function reload() {
   try {
     const record = (await getEventForEditing(props.eventId)).data
     if (request !== generation) return
+    // Reloading a version after conflict must not erase the user's cutoff edit.
+    if (version.value == null) cutoff.value = record.booking_cutoff_at || ''
+    savedCutoff.value = record.booking_cutoff_at || null
     version.value = record.version
     state.value = record.lifecycle_state || record.form?.lifecycle_state || ''
     conflict.value = false
@@ -55,6 +59,7 @@ async function submit() {
     if (request !== generation) return
     version.value = result.version
     state.value = result.lifecycle_state
+    savedCutoff.value = result.booking_cutoff_at || null
     notice.value =
       action.value === 'cancel'
         ? 'Event cancelled. Refunds will be checked in the background.'
@@ -81,6 +86,7 @@ watch(
   () => {
     generation++
     version.value = null
+    savedCutoff.value = null
     reason.value = cutoff.value = notice.value = error.value = state.value = ''
     conflict.value = false
     busy.value = false
@@ -104,6 +110,10 @@ onBeforeUnmount(() => {
       </div>
     </div>
     <p v-if="state">Current status: {{ state.replaceAll('_', ' ') }}</p>
+    <p v-if="version">
+      Saved booking cutoff: {{ savedCutoff || 'No additional cutoff'
+      }}<span v-if="timezone"> · Event timezone: {{ timezone }}</span>
+    </p>
     <form @submit.prevent="submit">
       <div class="rh-form-grid">
         <label class="rh-field"

@@ -154,7 +154,14 @@ try {
     if (config.url.endsWith('/retry'))
       return response(config, { data: { public_id: 'refund-1', status: 'queued' } })
     if (config.url.startsWith('/create-event/'))
-      return response(config, { data: { version: 4, form: {} } })
+      return response(config, {
+        data: {
+          version: 4,
+          lifecycle_state: 'sales_closed',
+          booking_cutoff_at: '2030-06-21T16:00:00+00:00',
+          form: {},
+        },
+      })
     if (config.url.endsWith('/lifecycle')) {
       if (stale) {
         stale = false
@@ -234,12 +241,23 @@ try {
   )
   const lifecycle = mount(Lifecycle, { eventId: 1 })
   await flush()
+  assert.equal(
+    lifecycle.state.cutoff.value,
+    '2030-06-21T16:00:00+00:00',
+    'Saved UTC cutoff is read without reinterpreting its timezone',
+  )
+  lifecycle.state.cutoff.value = '2030-06-21T18:00:00+01:00'
   lifecycle.state.action.value = 'cancel'
   lifecycle.state.reason.value = 'Venue unavailable'
   await lifecycle.state.submit()
   assert.equal(lifecycle.state.conflict.value, true)
   assert.equal(lifecycle.state.reason.value, 'Venue unavailable', '409 preserves unsaved reason')
   await lifecycle.state.reload()
+  assert.equal(
+    lifecycle.state.cutoff.value,
+    '2030-06-21T18:00:00+01:00',
+    'Reloading the revision retains unsaved cutoff edits',
+  )
   await lifecycle.state.submit()
   assert.equal(lifecycle.state.version.value, 5)
   assert.match(lifecycle.state.notice.value, /Refunds will be checked/)

@@ -271,20 +271,6 @@ const { visible: publicLoading, stage: publicLoadingStage, destination: publicLo
 provide('publicPageLoading', publicLoading)
 const cartCount = computed(() => cartStore.itemCount)
 const isAuthenticated = computed(() => authStore.isAuthenticated)
-const avatarUrl = computed(
-  () =>
-    authStore.user?.avatar_url ||
-    authStore.user?.profile_picture ||
-    authStore.user?.photoURL ||
-    null,
-)
-const avatarInitials = computed(() => {
-  const name = authStore.user?.display_name || authStore.user?.name || authStore.user?.email || ''
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (!parts.length) return '??'
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-})
 const scrollPosition = ref(0)
 const handleScroll = throttle(() => {
   scrollPosition.value = window.scrollY

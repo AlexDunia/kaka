@@ -1,4 +1,5 @@
 ﻿import assert from 'node:assert/strict'
+import axios from 'axios'
 import { createServer } from 'vite'
 import { createPinia, setActivePinia } from 'pinia'
 import { createSSRApp, nextTick } from 'vue'
@@ -108,6 +109,7 @@ try {
     calls.push(config)
     return { data: await handler(config), status: 200, config, headers: {} }
   }
+  axios.defaults.adapter = api.defaults.adapter
   setActivePinia(createPinia())
   await check('hydration keeps persisted IDs, configured capacity and inventory', () => {
     const form = hydrateEditorForm(saved)

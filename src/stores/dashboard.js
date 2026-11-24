@@ -1,6 +1,6 @@
 ﻿import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
-import { getDashboardEvents, getDashboardOverview } from '@/services/dashboardService'
+import { getDashboardEventsPage, getDashboardOverview } from '@/services/dashboardService'
 
 const OVERVIEW_MEMORY_TTL = 30_000
 
@@ -11,6 +11,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const reset = () => {
     generation++
     events.value = []
+    eventsPage.value = eventsLastPage.value = 1
+    eventsTotal.value = 0
     eventsLoaded.value = false
     eventsLoading.value = false
     eventsError.value = ''
@@ -20,6 +22,9 @@ export const useDashboardStore = defineStore('dashboard', () => {
     overviewRequests.clear()
   }
   const events = shallowRef([])
+  const eventsPage = ref(1)
+  const eventsLastPage = ref(1)
+  const eventsTotal = ref(0)
   const eventsLoaded = ref(false)
   const eventsLoading = ref(false)
   const eventsError = ref('')
@@ -32,17 +37,21 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const getOverview = (eventId) => overviewByEvent.value[String(eventId)]?.data || null
   const isOverviewLoading = (eventId) => overviewLoadingIds.value.has(String(eventId))
 
-  const fetchEvents = async ({ force = false, signal } = {}) => {
-    if (eventsLoaded.value && !force) return events.value
+  const fetchEvents = async ({ force = false, signal, page = eventsPage.value } = {}) => {
+    if (eventsLoaded.value && !force && page === eventsPage.value) return events.value
     const version = generation
     const request = ++eventsRequest
     const current = () => version === generation && request === eventsRequest
     eventsLoading.value = true
     eventsError.value = ''
     try {
-      const data = await getDashboardEvents({ signal })
+      const result = await getDashboardEventsPage({ signal, page })
       if (!current()) return []
+      const data = result.data
       events.value = Array.isArray(data) ? data : []
+      eventsPage.value = result.current_page || page
+      eventsLastPage.value = result.last_page || 1
+      eventsTotal.value = result.total ?? events.value.length
       eventsLoaded.value = true
       return events.value
     } catch (error) {
@@ -114,6 +123,9 @@ export const useDashboardStore = defineStore('dashboard', () => {
     reset,
     invalidateEvent,
     events,
+    eventsPage,
+    eventsLastPage,
+    eventsTotal,
     eventsLoaded,
     eventsLoading,
     eventsError,

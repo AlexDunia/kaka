@@ -44,11 +44,12 @@ function previewSnapshot() {
   return overview
 }
 
-export const getDashboardEvents = async ({ signal } = {}) => {
-  if (DASHBOARD_PREVIEW) return [previewSnapshot().event]
-  const response = await api.get('/dashboard/events', { signal })
-  return response.data.data
+export const getDashboardEventsPage = async ({ signal, page = 1 } = {}) => {
+  if (DASHBOARD_PREVIEW)
+    return { data: [previewSnapshot().event], current_page: 1, last_page: 1, total: 1 }
+  return (await api.get('/dashboard/events', { signal, params: { page, per_page: 30 } })).data
 }
+export const getDashboardEvents = async (options) => (await getDashboardEventsPage(options)).data
 
 export const getDashboardOverview = async (eventId, { signal } = {}) => {
   if (DASHBOARD_PREVIEW) return previewSnapshot()

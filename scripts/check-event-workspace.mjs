@@ -89,10 +89,10 @@ try {
   zero.sales.units_sold = 0
   zero.revenue.total_minor = 0
   assert.ok((await render({ overview: zero })).includes('Your sales trend will appear'))
-  assert.ok((await render({ loading: true })).includes('Getting your event ready'))
-  assert.ok((await render({ error: 'Try again.' })).includes('We couldn’t load your event.'))
+  assert.ok((await render({ loading: true })).includes('Getting your workspace ready'))
+  assert.ok((await render({ error: 'Try again.' })).includes('We couldn’t load this event.'))
   assert.ok(
-    (await render({ event: null, overview: null, events: [] })).includes('Your events start here.'),
+    (await render({ event: null, overview: null, events: [] })).includes('Create your first event'),
   )
   assert.deepEqual(warnings, [], 'Vue runtime warnings')
   console.log('PASS zero-sales, loading, error, no-events, native rendering and Vue warnings')
