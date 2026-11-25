@@ -28,6 +28,7 @@ const viewKeys = [
   'checkin',
   'payout',
   'settings',
+  'edit',
 ]
 const currentManageView = computed(() =>
   viewKeys.includes(route.query.view)

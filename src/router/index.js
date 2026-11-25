@@ -264,8 +264,7 @@ const router = createRouter({
     {
       path: '/events/:id/edit',
       name: 'EditEvent',
-      component: () => import('../pages/CreateEvent.vue'),
-      props: true,
+      redirect: (to) => ({ name: 'dashboard-event', params: { eventId: to.params.id }, query: { ...to.query, view: 'edit', tab: 'details' } }),
       meta: {
         title: 'Edit Event',
         description: 'Update your published event.',

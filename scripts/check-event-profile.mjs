@@ -389,3 +389,114 @@ test('review selection replaces prior tickets for the same event and preserves u
     false,
   )
 })
+
+
+test('empty optional records cannot produce public sections or blank cards', () => {
+  const profile = normalizeEventProfile({
+    description: '   ',
+    organiser: { name: 'Unknown Organiser' },
+    public_profile: {
+      guests: [null, {}, { name: '   ' }],
+      schedule: [null, {}, { time: '6 PM', title: ' ' }],
+      moments: [null, { url: 'javascript:alert(1)' }],
+      faqs: [null, {}, { question: 'Doors?', answer: ' ' }],
+      crew: [null, {}, { name: ' ' }],
+    },
+  })
+  assert.equal(profile.description, '')
+  assert.equal(profile.organiser.name, '')
+  for (const key of ['guests', 'schedule', 'images', 'faq', 'crew']) {
+    assert.deepEqual(profile[key], [], key)
+  }
+})
+
+test('public section wrappers are conditional while required details remain visible', async () => {
+  const source = await readFile(new URL('../src/pages/EventDetails.vue', import.meta.url), 'utf8')
+  const { descriptor } = parse(source)
+  const { compile } = await import('@vue/compiler-dom')
+  const Vue = await import('vue')
+  const { renderToString } = await import('vue/server-renderer')
+  // Render the actual page section opening tags with their actual conditions.
+  const openings = descriptor.template.content.match(/<section\b[^>]*id="ep-(?:about|details|guests|schedule|moments|faq)"[^>]*>/g)
+  assert.equal(openings.length, 6)
+  const template = '<div>' + openings.map((tag) => tag + '</section>').join('') + '</div>'
+  const render = new Function('Vue', compile(template, { mode: 'function', prefixIdentifiers: true }).code)(Vue)
+  const renderProfile = (profile) => renderToString(Vue.createSSRApp({
+    setup: () => ({ profile, paragraphs: profile.description ? [profile.description] : [] }), render,
+  }))
+  const empty = await renderProfile(normalizeEventProfile({}))
+  assert.match(empty, /id="ep-details"/)
+  for (const id of ['about', 'guests', 'schedule', 'moments', 'faq']) {
+    assert.ok(!empty.includes(`id="ep-${id}"`), id)
+  }
+  const full = await renderProfile(normalizeEventProfile({
+    description: 'An evening together.',
+    public_profile: {
+      guests: [{ name: 'Ada' }], schedule: [{ title: 'Welcome' }],
+      moments: [{ url: '/photo.jpg' }], faqs: [{ question: 'Doors?', answer: '6 PM.' }],
+    },
+  }))
+  for (const id of ['about', 'details', 'guests', 'schedule', 'moments', 'faq']) {
+    assert.ok(full.includes(`id="ep-${id}"`), id)
+  }
+})
+
+
+test('mobile cover actions reuse back, share and save handlers and expose pending state', async () => {
+  const source = await readFile(new URL('../src/pages/EventDetails.vue', import.meta.url), 'utf8')
+  const { baseParse, compile } = await import('@vue/compiler-dom')
+  const Vue = await import('vue')
+  const ast = baseParse(parse(source).descriptor.template.content)
+  const findActions = (node) => {
+    if (node.props?.some((prop) => prop.name === 'class' && prop.value?.content === 'ep-mobile-hero-actions')) return node
+    for (const child of node.children || []) {
+      const found = findActions(child)
+      if (found) return found
+    }
+  }
+  const actions = findActions(ast)
+  assert.ok(actions)
+  const render = new Function('Vue', compile(actions.loc.source, { mode: 'function', prefixIdentifiers: true }).code)(Vue)
+  const calls = []
+  const saved = Vue.ref(false), saving = Vue.ref(false)
+  const app = renderer.createApp({
+    components: Object.fromEntries(['ChevronLeftIcon', 'ShareIcon', 'HeartIcon'].map((name) => [name, { render: () => null }])),
+    setup: () => ({
+      saved, saving,
+      backToEvents: () => calls.push('back'),
+      sharing: { openShare: () => calls.push('share') },
+      toggleSaved: () => { calls.push('save'); saved.value = true },
+    }), render,
+  })
+  const root = { children: [] }
+  app.mount(root)
+  const buttons = all(root).filter((node) => node.tag === 'button')
+  assert.equal(buttons.length, 3)
+  buttons.forEach((button) => button.props.onClick())
+  await nextTick()
+  assert.deepEqual(calls, ['back', 'share', 'save'])
+  assert.equal(buttons[2].props['aria-pressed'], true)
+  assert.equal(buttons[2].props['aria-label'], 'Remove event from saved events')
+  saving.value = true
+  await nextTick()
+  assert.equal(buttons[2].props.disabled, true)
+  app.unmount()
+})
+
+test('cover failure replaces the image with its accessible fallback', async () => {
+  const source = await readFile(new URL('../src/components/EventCover.vue', import.meta.url), 'utf8')
+  const compiled = compileScript(parse(source).descriptor, { id: 'cover-check', inlineTemplate: true })
+  const moduleCode = compiled.content.replace(/from (["'])([^"']+)\1/g, (_, quote, specifier) =>
+    `from ${quote}${specifier.startsWith('@/') ? new URL('../src/' + specifier.slice(2) + '.js', import.meta.url).href : import.meta.resolve(specifier)}${quote}`)
+  const { default: Cover } = await import(`data:text/javascript;base64,${Buffer.from(moduleCode).toString('base64')}`)
+  const root = { children: [] }
+  const app = renderer.createApp({ render: () => h(Cover, { src: '/cover.jpg', alt: 'Event artwork' }) })
+  app.mount(root)
+  const image = all(root).find((node) => node.tag === 'img')
+  assert.equal(image.props.alt, 'Event artwork')
+  image.props.onError()
+  await nextTick()
+  assert.equal(all(root).some((node) => node.tag === 'img'), false)
+  assert.ok(all(root).some((node) => node.props?.['aria-label'] === 'Event cover unavailable'))
+  app.unmount()
+})

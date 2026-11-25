@@ -21,6 +21,7 @@ import { useSeo } from '@/composables/useSeo'
 import { useSlug } from '@/composables/useSlug'
 import PageSkeleton from '@/components/PageSkeleton.vue'
 import EventCover from '@/components/EventCover.vue'
+import EventSharing from '@/components/EventSharing.vue'
 import EventPublicControls from '@/components/EventPublicControls.vue'
 import { eventProfileNavigation } from '@/utils/eventProfileNavigation'
 import { staticEvents, getStaticEvent } from '@/services/staticEventCatalog'
@@ -41,7 +42,7 @@ const now = ref(new Date())
 const profile = computed(() => normalizeEventProfile(currentEvent.value || {}, now.value))
 const loading = ref(true),
   error = ref(''),
-  activeSection = ref('about'),
+  activeSection = ref('details'),
   navAnchor = ref(null),
   sectionNav = ref(null)
 const toast = ref(''),
@@ -49,7 +50,7 @@ const toast = ref(''),
   saving = ref(false),
   selectedGuest = ref(null)
 const guestDialog = ref(null),
-  shareDialog = ref(null),
+  sharing = ref(null),
   galleryDialog = ref(null),
   galleryIndex = ref(0)
 const selectedRelated = ref(null),
@@ -60,19 +61,22 @@ const preview = computed(() => Boolean(getStaticEvent(route.params.id)))
 const ticketPickerOpen = computed(
   () => route.query.tickets === '1' || typeof route.query.ticket === 'string',
 )
+const attendeeView = ref(false)
 const canEdit = computed(
   () =>
     authStore.isAuthenticated &&
     Number(currentEvent.value?.created_by) === Number(authStore.user?.id),
 )
-const sections = [
-  { id: 'about', label: 'About' },
+const showOwnerActions = computed(() => canEdit.value && !attendeeView.value)
+watch(() => [route.params.id, authStore.user?.id], () => { attendeeView.value = false })
+const sections = computed(() => [
+  ...(paragraphs.value.length || profile.value.highlights.length ? [{ id: 'about', label: 'About' }] : []),
   { id: 'details', label: 'Details' },
-  { id: 'guests', label: 'Guests' },
-  { id: 'schedule', label: 'Schedule' },
-  { id: 'moments', label: 'Moments' },
-  { id: 'faq', label: 'FAQs' },
-]
+  ...(profile.value.guests.length ? [{ id: 'guests', label: 'Guests' }] : []),
+  ...(profile.value.schedule.length ? [{ id: 'schedule', label: 'Schedule' }] : []),
+  ...(profile.value.images.length ? [{ id: 'moments', label: 'Moments' }] : []),
+  ...(profile.value.faq.length ? [{ id: 'faq', label: 'FAQs' }] : []),
+])
 const money = (value) =>
   value == null
     ? 'Not available'
@@ -106,6 +110,9 @@ const purchaseLabel = computed(() =>
         ? 'View all tickets available'
         : 'Tickets unavailable',
 )
+const hasHeroSignal = computed(() => Boolean(
+  profile.value.salesEnded || profile.value.captionTitle || profile.value.captionDescription || profile.value.summary,
+))
 const galleryImage = computed(() => profile.value.images[galleryIndex.value])
 const shareUrl = computed(
   () =>
@@ -158,10 +165,11 @@ function updateScroll() {
     headerCollapsed.value = false
     return
   }
-  const headerHeight = document.querySelector('[data-public-header]')?.offsetHeight || 76
+  const publicHeader = document.querySelector('[data-public-header]')
+  const headerHeight = publicHeader ? publicHeader.offsetHeight : 76
   const height = sectionNav.value?.offsetHeight || 82
   const navigation = eventProfileNavigation({
-    leadTop: document.querySelector('#ep-about .rh25-description p')?.getBoundingClientRect().top,
+    anchorTop: navAnchor.value.getBoundingClientRect().top,
     headerHeight,
     navHeight: height,
     scrollY: window.scrollY,
@@ -173,13 +181,13 @@ function updateScroll() {
   document.documentElement.style.setProperty('--rh28-header-height', `${headerHeight}px`)
   document.documentElement.style.setProperty('--rh28-tabs-height', `${height}px`)
   const threshold = navigation.activeThreshold
-  let active = 'about'
-  for (const section of sections) {
+  let active = sections.value[0].id
+  for (const section of sections.value) {
     const element = document.getElementById(`ep-${section.id}`)
     if (element && element.getBoundingClientRect().top <= threshold) active = section.id
   }
   if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 12)
-    active = sections[sections.length - 1].id
+    active = sections.value[sections.value.length - 1].id
   if (activeSection.value !== active) {
     activeSection.value = active
     const link = sectionNav.value?.querySelector(`[href="#ep-${active}"]`)
@@ -228,24 +236,6 @@ async function toggleSaved() {
   } finally {
     saving.value = false
   }
-}
-async function copyLink() {
-  try {
-    await navigator.clipboard.writeText(shareUrl.value)
-    shareDialog.value?.close()
-    notify('Event link copied. It’s ready to share.')
-  } catch {
-    notify('We couldn’t copy the link. Select it below and copy it to share.')
-  }
-}
-const socialShare = (platform) => {
-  const url = encodeURIComponent(shareUrl.value),
-    title = encodeURIComponent(profile.value.title)
-  return platform === 'whatsapp'
-    ? `https://wa.me/?text=${title}%20${url}`
-    : platform === 'facebook'
-      ? `https://www.facebook.com/sharer/sharer.php?u=${url}`
-      : `https://twitter.com/intent/tweet?text=${title}&url=${url}`
 }
 async function openGuest(guest) {
   selectedGuest.value = guest
@@ -303,7 +293,7 @@ async function loadEvent() {
   relatedDialog.value?.close()
   guestDialog.value?.close()
   galleryDialog.value?.close()
-  shareDialog.value?.close()
+
   try {
     {
       const response = await eventService.getEventById(Number(route.params.id))
@@ -352,23 +342,6 @@ async function loadEvent() {
           !profile.value.related.some((item) => Number(item.id) === Number(event.id)),
       ),
     ]
-    {
-      // Do not populate a real profile with the service's sample fallback listings.
-      void eventStore
-        .fetchAllEvents(false, 1, { allowFallback: false, skipCache: true })
-        .then((events) => {
-          if (version === requestVersion)
-            relatedEvents.value = [
-              ...relatedEvents.value,
-              ...events.filter(
-                (item) =>
-                  Number(item.id) !== Number(data.id) &&
-                  !relatedEvents.value.some((existing) => Number(existing.id) === Number(item.id)),
-              ),
-            ].slice(0, 3)
-        })
-        .catch(() => {})
-    }
     if (authStore.isAuthenticated && !preview.value)
       void eventStore
         .checkLiked(data.id)
@@ -438,10 +411,30 @@ onBeforeUnmount(() => {
       </div>
     </section>
     <template v-else-if="currentEvent">
-      <div class="ep-container">
+      <div class="ep-container ep-hero-container">
         <section class="ep-system-hero" aria-labelledby="ep-event-title">
           <div class="ep-system-hero-cover">
             <EventCover :src="profile.cover" :alt="profile.title" />
+            <div class="ep-mobile-hero-actions" role="group" aria-label="Event actions">
+              <button type="button" class="ep-cover-control" aria-label="Back to events" @click="backToEvents">
+                <ChevronLeftIcon aria-hidden="true" />
+              </button>
+              <div class="ep-mobile-hero-actions-end">
+                <button type="button" class="ep-cover-control" aria-label="Share event" @click="sharing?.openShare()">
+                  <ShareIcon aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  class="ep-cover-control"
+                  :aria-label="saved ? 'Remove event from saved events' : 'Save event'"
+                  :aria-pressed="saved"
+                  :disabled="saving"
+                  @click="toggleSaved"
+                >
+                  <HeartIcon :class="{ 'ep-heart-saved': saved }" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
           </div>
           <div class="ep-system-hero-copy">
             <span class="ep-eyebrow">{{ profile.category }}</span>
@@ -470,29 +463,39 @@ onBeforeUnmount(() => {
             </div>
           </div>
         </section>
-        <div class="ep-action-strip rh24-action-strip">
-          <div class="ep-signal rh24-signal">
+        <div class="ep-action-strip rh24-action-strip" :class="{ 'ep-action-strip--empty-mobile': !hasHeroSignal && !canEdit }">
+          <div v-if="hasHeroSignal" class="ep-signal rh24-signal">
             <span class="ep-signal-icon rh24-signal-icon"><SparklesIcon /></span>
             <div>
-              <strong>{{
+              <strong v-if="profile.salesEnded || profile.captionTitle">{{
                 profile.salesEnded
                   ? 'Ticket sales have ended'
-                  : profile.captionTitle || 'Something worth showing up for.'
+                  : profile.captionTitle
               }}</strong
-              ><span>{{ profile.captionDescription || profile.summary || profile.venue }}</span>
+              ><span v-if="profile.captionDescription || profile.summary">{{ profile.captionDescription || profile.summary }}</span>
             </div>
           </div>
           <div class="ep-inline-actions rh24-inline-actions">
+            <button v-if="canEdit" type="button" class="ep-secondary" :aria-pressed="attendeeView" @click="attendeeView = !attendeeView">
+              {{ attendeeView ? 'Return to organiser view' : 'Preview attendee view' }}
+            </button>
+            <RouterLink v-if="showOwnerActions" class="ep-secondary" :to="{ name: 'dashboard-event', params: { eventId: profile.id } }">Visit dashboard</RouterLink>
             <button
-              v-if="canEdit"
+              v-if="showOwnerActions"
               type="button"
               class="ep-secondary"
-              @click="router.push({ name: 'EditEvent', params: { id: profile.id } })"
+              @click="
+                router.push({
+                  name: 'EditEvent',
+                  params: { id: profile.id },
+                  query: { returnTo: 'event' },
+                })
+              "
             >
               Edit event</button
             ><button
               type="button"
-              class="ep-secondary rh24-quiet-button"
+              class="ep-secondary rh24-quiet-button ep-desktop-hero-action"
               :aria-pressed="saved"
               :disabled="saving"
               @click="toggleSaved"
@@ -502,11 +505,19 @@ onBeforeUnmount(() => {
               }}</button
             ><button
               type="button"
-              class="ep-secondary rh24-quiet-button"
-              @click="shareDialog.showModal()"
+              class="ep-secondary rh24-quiet-button ep-desktop-hero-action"
+              @click="sharing.openShare()"
             >
               <ShareIcon />Share
             </button>
+            <EventSharing
+              ref="sharing"
+              :event-id="profile.id"
+              :title="profile.title"
+              :cover="profile.cover"
+              :url="shareUrl"
+              :owner="showOwnerActions"
+            />
           </div>
         </div>
       </div>
@@ -514,8 +525,11 @@ onBeforeUnmount(() => {
       <div ref="sectionNav" class="ep-section-bar rh29-nav-row">
         <div class="ep-container ep-section-inner rh29-nav-inner">
           <button
+            v-if="headerCollapsed"
             type="button"
-            class="ep-back-button rh29-back-circle"
+            class="ep-back-button rh29-back-circle ep-sticky-control"
+            :inert="!headerCollapsed || undefined"
+            :aria-hidden="!headerCollapsed || undefined"
             aria-label="Back to events"
             @click="backToEvents"
           >
@@ -533,18 +547,20 @@ onBeforeUnmount(() => {
               >{{ section.label }}</a
             >
           </nav>
-          <EventPublicControls />
+          <EventPublicControls
+            v-if="headerCollapsed"
+            class="ep-sticky-control"
+            :inert="!headerCollapsed || undefined"
+            :aria-hidden="!headerCollapsed || undefined"
+          />
         </div>
       </div>
       <div class="ep-container ep-layout rh24-layout">
         <div class="ep-main rh24-primary">
-          <section id="ep-about" class="ep-chapter rh24-chapter">
+          <section v-if="paragraphs.length || profile.highlights.length" id="ep-about" class="ep-chapter rh24-chapter rh24-about">
             <h2>About this event</h2>
-            <div class="ep-description rh25-description">
+            <div v-if="paragraphs.length" class="ep-description rh25-description">
               <p v-for="(paragraph, index) in paragraphs" :key="index">{{ paragraph }}</p>
-              <p v-if="!paragraphs.length" class="ep-empty">
-                The organiser hasn’t added a description yet.
-              </p>
             </div>
             <div v-if="profile.highlights.length" class="ep-highlights rh24-experience-points">
               <span v-for="highlight in profile.highlights" :key="highlight"
@@ -595,7 +611,7 @@ onBeforeUnmount(() => {
               </div>
             </div>
           </section>
-          <section id="ep-guests" class="ep-chapter rh24-chapter">
+          <section v-if="profile.guests.length" id="ep-guests" class="ep-chapter rh24-chapter">
             <div class="ep-section-heading rh24-section-heading">
               <div><h2>Featured guests</h2></div>
               <p>Meet the artists and special guests joining the event.</p>
@@ -623,9 +639,8 @@ onBeforeUnmount(() => {
                 ></span>
               </button>
             </div>
-            <p v-else class="ep-empty">Guest details haven’t been shared yet.</p>
           </section>
-          <section id="ep-schedule" class="ep-chapter rh24-chapter">
+          <section v-if="profile.schedule.length" id="ep-schedule" class="ep-chapter rh24-chapter">
             <div class="ep-section-heading rh24-section-heading">
               <div><h2>Schedule</h2></div>
               <p>See what’s planned.</p>
@@ -641,9 +656,8 @@ onBeforeUnmount(() => {
                 <span v-if="item.label" class="rh24-schedule-label">{{ item.label }}</span>
               </div>
             </div>
-            <p v-else class="ep-empty">The organiser hasn’t shared a schedule yet.</p>
           </section>
-          <section id="ep-moments" class="ep-chapter rh24-chapter">
+          <section v-if="profile.images.length" id="ep-moments" class="ep-chapter rh24-chapter">
             <div class="ep-section-heading rh24-section-heading">
               <div><h2>Moments</h2></div>
               <p>Photos and highlights shared by the organiser.</p>
@@ -663,11 +677,8 @@ onBeforeUnmount(() => {
                 /><span v-if="image.caption">{{ image.caption }}</span>
               </button>
             </div>
-            <p v-else class="ep-empty">
-              Photos and highlights will appear here when the organiser adds them.
-            </p>
           </section>
-          <section id="ep-faq" class="ep-chapter rh24-chapter">
+          <section v-if="profile.faq.length" id="ep-faq" class="ep-chapter rh24-chapter">
             <div class="ep-section-heading rh24-section-heading">
               <h2>Frequently asked questions</h2>
               <p>Answers to help you plan your visit.</p>
@@ -678,7 +689,6 @@ onBeforeUnmount(() => {
                 <p class="rh30-faq-answer">{{ item.answer }}</p>
               </article>
             </div>
-            <p v-else class="ep-empty">The organiser hasn’t added any FAQs yet.</p>
           </section>
           <section
             v-if="profile.organiser.name"
@@ -691,7 +701,7 @@ onBeforeUnmount(() => {
             <div>
               <span class="ep-small">Presented by</span>
               <h2 id="ep-organiser-title">{{ profile.organiser.name }}</h2>
-              <p>{{ profile.organiser.bio || 'The team bringing this event to life.' }}</p>
+              <p v-if="profile.organiser.bio">{{ profile.organiser.bio }}</p>
               <a
                 v-if="profile.organiser.website"
                 :href="profile.organiser.website"
@@ -764,7 +774,7 @@ onBeforeUnmount(() => {
           </p>
         </aside>
       </div>
-      <section class="ep-container ep-related rh24-related" aria-labelledby="ep-more-events">
+      <section v-if="relatedEvents.length" class="ep-container ep-related rh24-related" aria-labelledby="ep-more-events">
         <div class="ep-section-heading rh24-section-heading">
           <h2 id="ep-more-events">More events</h2>
           <p>Explore events connected to the same community.</p>
@@ -804,10 +814,7 @@ onBeforeUnmount(() => {
             </div>
           </button>
         </div>
-        <div v-else class="ep-discover-empty">
-          <p>There’s more to discover.</p>
-          <RouterLink to="/find-events" class="ep-secondary">Explore events</RouterLink>
-        </div>
+
       </section>
       <div class="ep-mobile-buy rh24-mobile-buy">
         <div>
@@ -830,38 +837,6 @@ onBeforeUnmount(() => {
           }}
         </button>
       </div>
-      <dialog
-        ref="shareDialog"
-        class="ep-dialog"
-        aria-labelledby="ep-share-title"
-        @click="$event.target === shareDialog && shareDialog.close()"
-      >
-        <button
-          type="button"
-          class="ep-dialog-close ep-icon-button"
-          aria-label="Close sharing"
-          @click="shareDialog.close()"
-        >
-          <XMarkIcon />
-        </button>
-        <div class="ep-dialog-content">
-          <h2 id="ep-share-title">Share this event</h2>
-          <p>Bring someone along to {{ profile.title }}.</p>
-          <div class="ep-share-links">
-            <a :href="socialShare('whatsapp')" target="_blank" rel="noopener noreferrer">WhatsApp</a
-            ><a :href="socialShare('facebook')" target="_blank" rel="noopener noreferrer"
-              >Facebook</a
-            ><a :href="socialShare('x')" target="_blank" rel="noopener noreferrer">X</a>
-          </div>
-          <label for="ep-share-link">Event link</label
-          ><input
-            id="ep-share-link"
-            :value="shareUrl"
-            readonly
-            @focus="$event.target.select()"
-          /><button type="button" class="ep-primary" @click="copyLink">Copy event link</button>
-        </div>
-      </dialog>
       <dialog
         ref="guestDialog"
         class="ep-dialog ep-guest-dialog rh24-dialog"
@@ -897,9 +872,7 @@ onBeforeUnmount(() => {
             >
               {{ following.includes(followKey(selectedGuest.name)) ? 'Following' : 'Follow' }}
             </button>
-            <p>
-              {{ selectedGuest.bio || 'More about this guest will be shared by the organiser.' }}
-            </p>
+            <p v-if="selectedGuest.bio">{{ selectedGuest.bio }}</p>
             <h3>At this event</h3>
             <p>{{ profile.title }}</p>
             <template v-if="selectedGuest.events.length"
@@ -1014,3 +987,4 @@ onBeforeUnmount(() => {
 </template>
 
 <style src="@/styles/event-profile.css"></style>
+<style src="@/styles/event-profile-mobile.css"></style>

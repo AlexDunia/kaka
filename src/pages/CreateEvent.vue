@@ -10,6 +10,7 @@ import {
   watch,
 } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useSlug } from '@/composables/useSlug'
 import {
   AcademicCapIcon,
   ArrowLeftIcon,
@@ -41,7 +42,9 @@ import {
   UserIcon,
   XMarkIcon,
 } from '@heroicons/vue/24/outline'
+import { usePublishGuidanceStore } from '@/stores/publishGuidance'
 import EventEditorConflict from '@/components/EventEditorConflict.vue'
+import { editorSections, sectionChanges, retainOtherSections } from '@/utils/eventEditorSections'
 import { hydrateEditorForm } from '@/utils/eventEditor'
 import { getPublicCategories } from '@/services/publicCatalog'
 import DateTimePickerInput from '@/components/DateTimePickerInput.vue'
@@ -51,6 +54,8 @@ import { getRushHourLogo } from '@/constants/brand'
 import { playThemeToggleClick } from '@/utils/themeClickSound'
 import {
   DEFAULT_CREATE_EVENT_TIPS,
+  buildCreateEventPayload,
+  patchEvent,
   createEventDraft,
   getEventForEditing,
   publishEvent as publishEventRequest,
@@ -315,10 +320,12 @@ const form = reactive({
   attendeeFields: attendeeFieldDefaults.map((field) => ({ ...field })),
 })
 
-const isEditMode = computed(() => route.name === 'EditEvent')
+const props = defineProps({ embedded: Boolean, eventId: [Number, String], editorSection: { type: String, default: 'details' } })
+const emit = defineEmits(['section-change'])
+const isEditMode = computed(() => props.embedded || route.name === 'EditEvent')
 const editingEventId = computed(() => {
   if (!isEditMode.value) return null
-  const id = Number(route.params.id)
+  const id = Number(props.eventId || route.params.id)
   return Number.isInteger(id) && id > 0 ? id : null
 })
 const editorLoading = ref(false)
@@ -425,6 +432,7 @@ function validateAllEditableSteps() {
   for (const step of [1, 2, 3])
     if (!validateStep(step)) {
       currentStep.value = step
+      if (props.embedded) emit('section-change', step === 3 ? 'tickets' : 'details')
       maxStepReached.value = steps.length
       return false
     }
@@ -441,16 +449,30 @@ async function saveEventChanges() {
     conflict.value
   )
     return
-  if (editorStatus.value === 'active' && !validateAllEditableSteps()) return
+  if (props.embedded) {
+    const section = editorSections[props.editorSection]
+    if (!section || !section.steps.every(validateStep)) return
+  } else if (editorStatus.value === 'active' && !validateAllEditableSteps()) return
   isSaving.value = true
   saveError.value = []
   publishErrors.value = []
   try {
-    await persistDraft()
+    if (props.embedded) {
+      const section = props.editorSection
+      const retained = retainOtherSections(form, section)
+      const response = await patchEvent(editingEventId.value, sectionChanges(buildCreateEventPayload(form), section), form.version)
+      acceptSavedEvent(response.data)
+      Object.assign(form, retained)
+      lastSavedAt.value = new Date()
+    } else await persistDraft()
     showToast('Your changes are saved.')
+    if (!props.embedded && route.query.returnTo === 'event') {
+      await router.push({ name: 'event-details', params: { id: editingEventId.value, slug: useSlug().generateSlug(form.title) || 'event' } })
+    }
   } catch (error) {
     saveError.value = normalizeRequestErrors(error)
     applyBackendErrors(saveError.value, error.response?.status === 422)
+    if (props.embedded && error.response?.status === 422) emit('section-change', currentStep.value === 3 ? 'tickets' : currentStep.value === 4 ? 'checkout' : 'details')
     await handleWriteError(error)
   } finally {
     isSaving.value = false
@@ -487,7 +509,7 @@ const isStepLoading = ref(false)
 const loadingStep = ref(1)
 let stepLoadingToken = 0
 const previewOn = ref(
-  window.localStorage?.getItem('kaka-create-preview') !== 'false',
+  typeof window !== 'undefined' && window.localStorage?.getItem('kaka-create-preview') !== 'false',
 )
 const draftSaved = ref(false)
 const activeUploadTab = ref('files')
@@ -529,14 +551,19 @@ const publishedMessage = computed(
     publishedResponse.value?.message ||
     'Share it and start collecting attendees. Your dashboard can track everything live.',
 )
-const publishedUrl = computed(
-  () =>
-    publishedEvent.value.public_url ||
-    `kaka.events/e/${(form.title || 'your-event')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')}`,
-)
+const publicEventRoute = computed(() => ({
+  name: 'event-details',
+  params: { id: publishedEvent.value.id || draftId.value, slug: useSlug().generateSlug(form.title) || 'event' },
+}))
+const publishedUrl = computed(() => new URL(router.resolve(publicEventRoute.value).href, window.location.origin).href)
+async function copyPublishedLink() {
+  try {
+    await navigator.clipboard.writeText(publishedUrl.value)
+    showToast('Event link copied')
+  } catch {
+    showToast('We could not copy the link. Select the link to copy it.')
+  }
+}
 const lastSavedLabel = computed(() =>
   lastSavedAt.value
     ? `Saved ${lastSavedAt.value.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
@@ -1370,6 +1397,9 @@ function setSeriesEndType(type) {
   clearError('repeatSchedule')
 }
 
+const flyerFormat = ref('4:5')
+const flyerFormats = [{ value: '4:5', label: 'Portrait ? 4:5', width: 1080, height: 1350 }, { value: '9:16', label: 'Tall portrait ? 9:16', width: 1080, height: 1920 }, { value: '16:9', label: 'Landscape ? 16:9', width: 1600, height: 900 }, { value: '3:2', label: 'Wide landscape ? 3:2', width: 1500, height: 1000 }]
+
 async function handleFiles(files) {
   dragActive.value = false
   for (const file of Array.from(files)) {
@@ -1386,17 +1416,22 @@ async function handleFiles(files) {
     try {
       const bitmap = await createImageBitmap(file)
       const pixels = bitmap.width * bitmap.height
-      bitmap.close()
       if (pixels > 40000000) {
+        bitmap.close()
         showToast('Choose an image with no more than 40 million pixels.')
         continue
       }
-      const src = await new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(reader.result)
-        reader.onerror = reject
-        reader.readAsDataURL(file)
-      })
+      const format = flyerFormats.find(format => format.value === flyerFormat.value)
+      const canvas = document.createElement('canvas')
+      canvas.width = format.width
+      canvas.height = format.height
+      const context = canvas.getContext('2d')
+      context.fillStyle = '#ffffff'
+      context.fillRect(0, 0, canvas.width, canvas.height)
+      const scale = Math.max(canvas.width / bitmap.width, canvas.height / bitmap.height)
+      context.drawImage(bitmap, (canvas.width - bitmap.width * scale) / 2, (canvas.height - bitmap.height * scale) / 2, bitmap.width * scale, bitmap.height * scale)
+      bitmap.close()
+      const src = canvas.toDataURL('image/jpeg', 0.92)
       if (!form.coverImage) form.coverImage = src
       else form.secondaryImages.push(src)
       clearError('coverImage')
@@ -1537,6 +1572,7 @@ async function publishEvent() {
     acceptSavedEvent(response.data)
     publishedResponse.value = response
     published.value = true
+    usePublishGuidanceStore().begin(response.data.id || draftId.value, form.title)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   } catch (error) {
     publishErrors.value = normalizeRequestErrors(error)
@@ -1651,10 +1687,10 @@ watch(
 </script>
 
 <template>
-  <div class="create-event-page" :class="theme === 'dark' ? 'is-dark' : 'is-light'">
+  <div class="create-event-page" :class="[{ 'ce-embedded': embedded }, theme === 'dark' ? 'is-dark' : 'is-light']">
     <div v-if="toast" class="ce-toast">{{ toast }}</div>
 
-    <header v-if="!published" class="ce-header">
+    <header v-if="!published && !embedded" class="ce-header">
       <RouterLink to="/" class="ce-logo" aria-label="Go home">
         <img
           :src="brandLogoUrl"
@@ -1729,7 +1765,7 @@ watch(
         </ul>
       </div>
 
-      <div class="preview-toggle">
+      <div v-if="!embedded" class="preview-toggle">
         <span>See your event as attendees will</span>
         <button type="button" class="preview-btn" :class="{ on: previewOn }" @click="togglePreview">
           <EyeIcon v-if="previewOn" aria-hidden="true" />
@@ -1741,8 +1777,8 @@ watch(
       <div v-if="!editorLoading && !editorLoadError" :inert="isSaving || isPublishing" class="ce-columns" :class="{ 'preview-off': !previewOn }">
         <CreateEventStepSkeleton v-if="isStepLoading" :step="loadingStep" :preview-on="previewOn" />
         <section v-if="!isStepLoading" class="ce-form">
-          <div v-if="currentStep === 1" class="screen">
-            <div class="screen-head">
+          <div v-if="embedded ? editorSection === 'details' : currentStep === 1" class="screen">
+            <div v-if="!embedded" class="screen-head">
               <h1>
                 Let's build your<br /><em>event.</em>
                 <SparklesIcon class="headline-icon" aria-hidden="true" />
@@ -2106,8 +2142,8 @@ watch(
             </div>
           </div>
 
-          <div v-if="currentStep === 2" class="screen">
-            <div class="screen-head">
+          <div v-if="embedded ? editorSection === 'details' : currentStep === 2" class="screen">
+            <div v-if="!embedded" class="screen-head">
               <h1>Make it<br /><em>unforgettable.</em></h1>
               <p>Events with great photos and descriptions get more sign-ups.</p>
             </div>
@@ -2124,6 +2160,9 @@ watch(
                   </button>
                 </div>
 
+                <label for="flyer-format">Image format</label>
+                <select id="flyer-format" v-model="flyerFormat" class="field-input"><option v-for="format in flyerFormats" :key="format.value" :value="format.value">{{ format.label }}</option></select>
+                <p class="help">Choose a shape before uploading. Images fill this shape without borders. Edges outside the frame are cropped. Linked images keep their original shape.</p>
                 <div class="upload-tabs">
                   <button
                     type="button"
@@ -2282,13 +2321,13 @@ watch(
             </div>
           </div>
 
-          <div v-if="currentStep === 3" class="screen">
-            <div class="screen-head">
+          <div v-if="embedded ? editorSection === 'tickets' : currentStep === 3" class="screen">
+            <div v-if="!embedded" class="screen-head">
               <h1>Set up your<br /><em>tickets.</em></h1>
               <p>Tell us how people will attend and what they will pay.</p>
             </div>
 
-            <div class="info-card pink">
+            <div v-if="!embedded" class="info-card pink">
               <TicketIcon aria-hidden="true" />
               <div>
                 <strong>What are ticket categories?</strong>
@@ -2415,7 +2454,7 @@ watch(
                     </div>
                     <div class="two-col">
                       <div class="field">
-                        <label>Price (â‚¦)</label>
+                        <label>Price (NGN)</label>
                         <input v-model="ticket.price" type="number" min="0" max="999999.99" step="0.01" class="field-input" placeholder="Enter a paid ticket price" />
                         <p v-if="Number(ticket.price) <= 0" class="help">Paid tickets need a price above zero before publication. You can save a draft with a zero price.</p>
                       </div>
@@ -2469,13 +2508,13 @@ watch(
             </div>
           </div>
 
-          <div v-if="currentStep === 4" class="screen">
-            <div class="screen-head">
+          <div v-if="embedded ? editorSection === 'checkout' : currentStep === 4" class="screen">
+            <div v-if="!embedded" class="screen-head">
               <h1>Who's<br /><em>registering?</em></h1>
               <p>Choose what information to collect. Fewer fields usually means more sign-ups.</p>
             </div>
 
-            <div class="info-card pink">
+            <div v-if="!embedded" class="info-card pink">
               <DocumentTextIcon aria-hidden="true" />
               <div>
                 <strong>Your registration form</strong>
@@ -2518,7 +2557,11 @@ watch(
             </div>
           </div>
 
-          <div class="nav-actions">
+          <div v-if="embedded" class="nav-actions">
+            <span v-if="lastSavedAt" role="status">{{ lastSavedLabel }}</span>
+            <button type="button" class="primary-btn" :disabled="isSaving || isPublishing || conflict || editorLoading || Boolean(editorLoadError)" @click="saveEventChanges">{{ isSaving ? 'Saving...' : 'Save changes' }}</button>
+          </div>
+          <div v-else class="nav-actions">
             <button v-if="currentStep > 1" type="button" class="back-btn" @click="goBack">
               <ArrowLeftIcon aria-hidden="true" />
             </button>
@@ -2545,7 +2588,7 @@ watch(
           </div>
         </section>
 
-        <aside v-if="previewOn && !isStepLoading" class="preview-col">
+        <aside v-if="!embedded && previewOn && !isStepLoading" class="preview-col">
           <span class="side-label">Live preview</span>
           <EventCard :event="previewEvent" :show-details="false" />
           <div class="tip-card">
@@ -2566,15 +2609,11 @@ watch(
       </p>
       <div class="share-box">
         <span>{{ publishedUrl }}</span>
-        <button type="button" @click="showToast('Link copied')">Copy link</button>
+        <button type="button" @click="copyPublishedLink">Copy link</button>
       </div>
-      <button
-        type="button"
-        class="primary-btn"
-        @click="router.push(publishedEvent.dashboard_url || publishedEvent.public_url || '/')"
-      >
-        {{ publishedEvent.dashboard_url ? 'Open dashboard' : publishedEvent.public_url ? 'View event' : 'Back to events' }}
-      </button>
+      <button type="button" class="primary-btn" @click="router.push(publicEventRoute)">View event</button>
+      <button type="button" class="primary-btn" @click="router.push({ name: 'dashboard' })">Go to dashboard</button>
+      <button type="button" class="primary-btn" @click="router.push({ name: 'home' })">Back to home</button>
     </section>
 
   </div>
@@ -2842,6 +2881,9 @@ watch(
   min-height: 0;
 }
 
+.upload-tabs button svg,
+.quick-chip svg,
+.detail-chip svg,
 .preview-btn svg,
 .text-btn svg,
 .pill svg,
@@ -4055,7 +4097,7 @@ label span {
 .cover-frame img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 }
 
@@ -4768,3 +4810,22 @@ label, .field-top label, :deep(.input-label) { font-size: var(--ds-size-label); 
 </style>
 
 
+
+<style scoped>
+.create-event-page.ce-embedded { min-height: 0; background: transparent; }
+.create-event-page.ce-embedded .ce-wrap { width: 100%; max-width: none; margin: 0; padding: 0; }
+.ce-embedded .ce-columns { display: block; }
+.ce-embedded .ce-form { width: 100%; min-width: 0; }
+.ce-embedded .screen + .screen { margin-top: 24px; }
+.ce-embedded .nav-actions { justify-content: flex-end; gap: 16px; }
+.ce-embedded .ce-card { max-width: 100%; }
+.ce-embedded .ticket-card { display: flex; flex-direction: column; gap: 20px; }
+.ce-embedded .ticket-card .two-col > .field { margin-bottom: 0; }
+.ce-embedded .ticket-card-head { flex-wrap: wrap; row-gap: 8px; margin-bottom: 0; }
+.ce-embedded .ticket-card-head > span:not(.color-dot) { flex: 1 1 100%; order: 1; color: var(--ce-ink3); font-size: var(--ds-size-small); }
+.ce-embedded .ticket-card-head .icon-btn { margin-left: auto; }
+.ce-embedded .quick-chip.custom { white-space: nowrap; }
+.ce-embedded .ticket-mode-card > svg { height: 20px; }
+.ce-embedded label > span { margin-left: 4px; }
+
+</style>

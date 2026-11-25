@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useSeo } from '@/composables/useSeo'
 import { getRushHourLogo } from '@/constants/brand'
 import { playThemeToggleClick } from '@/utils/themeClickSound'
+import PublishGuidance from '@/components/PublishGuidance.vue'
 import HeroSection from '@/components/HeroSection.vue'
 import PageSkeleton from '@/components/PageSkeleton.vue'
 import AccountMenu from '@/components/AccountMenu.vue'
@@ -303,6 +304,7 @@ onUnmounted(() => {
       {{ authStore.isLoading ? 'Checking your login...' : 'Try again' }}
     </button>
   </div>
+  <PublishGuidance />
   <PublicBrandLoader v-if="publicLoading" :stage="publicLoadingStage" :destination="publicLoadingDestination" :sequence="publicLoadingSequence" />
   <PublicSite v-if="usesPublicSite" :header-collapsed="isEventProfileRoute && eventProfileHeaderCollapsed" :inert="publicLoading || undefined" :aria-busy="publicLoading || undefined"><RouterView /></PublicSite>
   <div v-else :inert="publicLoading || undefined" class="app-container" :class="{ 'public-typography': usesPublicTypography(route), 'has-global-header': showGlobalHeader, 'event-profile-route': isEventProfileRoute, 'event-profile-header-collapsed': isEventProfileRoute && eventProfileHeaderCollapsed }">

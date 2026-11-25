@@ -67,20 +67,26 @@ test('auth continuation preserves internal destinations and rejects external URL
   }
 })
 
-test('event tabs replace the brand header at the v31 About paragraph boundary and restore above it', () => {
+test('event tabs replace the brand header at their stable anchor and restore above it', () => {
   const position = { headerHeight: 76, navHeight: 70, scrollY: 400 }
-  assert.deepEqual(eventProfileNavigation({ ...position, leadTop: 154 }), {
+  assert.deepEqual(eventProfileNavigation({ ...position, anchorTop: 76 }), {
     collapsed: true,
     tabsTop: 0,
     activeThreshold: 112,
   })
-  assert.deepEqual(eventProfileNavigation({ ...position, leadTop: 155 }), {
+  assert.deepEqual(eventProfileNavigation({ ...position, anchorTop: 77 }), {
     collapsed: false,
     tabsTop: 76,
     activeThreshold: 188,
   })
-  assert.equal(eventProfileNavigation({ ...position, leadTop: 0, scrollY: 8 }).collapsed, false)
-  assert.equal(eventProfileNavigation({ ...position, leadTop: undefined }).collapsed, false)
+  assert.equal(eventProfileNavigation({ ...position, anchorTop: 0, scrollY: 8 }).collapsed, false)
+  assert.equal(eventProfileNavigation({ ...position, anchorTop: undefined }).collapsed, false)
+  // No description, guests or other optional content is needed at restored scroll positions.
+  assert.equal(eventProfileNavigation({ ...position, anchorTop: -600 }).collapsed, true)
+  assert.equal(eventProfileNavigation({ ...position, headerHeight: 0, anchorTop: 0 }).collapsed, true)
+  assert.equal(eventProfileNavigation({ ...position, headerHeight: 0, anchorTop: 1 }).collapsed, false)
+  assert.equal(eventProfileNavigation({ ...position, anchorTop: 64, headerHeight: 64, navHeight: 90 }).collapsed, true)
+  assert.equal(eventProfileNavigation({ ...position, anchorTop: 77 }).collapsed, false)
 })
 
 const requests = []

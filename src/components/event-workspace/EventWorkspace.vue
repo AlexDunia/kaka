@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import WorkspaceIcons from './WorkspaceIcons.vue'
 import WorkspaceOverview from './WorkspaceOverview.vue'
+import WorkspaceEditor from './WorkspaceEditor.vue'
 import WorkspaceViews from './WorkspaceViews.vue'
 import WorkspaceEarnings from './WorkspaceEarnings.vue'
 import WorkspaceNotifications from './WorkspaceNotifications.vue'
@@ -109,6 +110,8 @@ const visibleGroups = computed(() =>
 const title = computed(() =>
   accountWorkspace.value
     ? 'Dashboard'
+    : props.view === 'edit'
+      ? 'Edit event'
     : props.view === 'event-page'
       ? 'Event preview'
       : props.view === 'events'
@@ -188,7 +191,7 @@ const phase = computed(
           ><button class="rh29-workspace-link rh29-workspace-link-active" @click="$emit('back')">
             <svg class="rh-side-icon" aria-hidden="true"><use href="#ico-grid" /></svg
             >Dashboard</button
-          ><button class="rh29-workspace-link" @click="$emit('back')">
+          ><button data-publish-events class="rh29-workspace-link" @click="$emit('back')">
             <svg class="rh-side-icon" aria-hidden="true"><use href="#ico-calendar" /></svg>My events</button
           ><button class="rh29-workspace-link" @click="$emit('create')">
             <svg class="rh-side-icon" aria-hidden="true"><use href="#ico-calendar" /></svg>Create
@@ -357,7 +360,16 @@ const phase = computed(
             @navigate="$emit('navigate', $event)"
             @refresh="$emit('refresh')"
           />
+          <WorkspaceEditor
+            v-if="['settings', 'edit'].includes(view)"
+            :key="event.id"
+            :event-id="event.id"
+            :overview="overview"
+            @navigate="$emit('navigate', $event)"
+            @refresh="$emit('refresh')"
+          />
           <WorkspaceViews
+            v-if="!['settings', 'edit'].includes(view)"
             :key="event.id"
             v-show="!['overview', 'payout', 'event-page'].includes(view)"
             :page="page"

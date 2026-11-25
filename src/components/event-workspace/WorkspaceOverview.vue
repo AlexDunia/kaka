@@ -135,8 +135,8 @@ function chartDate(value) {
           </a>
           <a
             class="btn btn-quiet"
-            :href="destination('settings', { tab: 'details' })"
-            @click.prevent="navigate('settings', { tab: 'details' })"
+            :href="destination('edit', { tab: 'details' })"
+            @click.prevent="navigate('edit', { tab: 'details' })"
           >
             <svg class="icon" aria-hidden="true"><use href="#ico-edit" /></svg>Edit event
           </a>

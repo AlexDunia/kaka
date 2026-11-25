@@ -21,10 +21,10 @@ for (const [key, value] of Object.entries(tokens.size)) {
   assert.ok(found, `Generated ${key} token is stale`)
 }
 for (const heading of ['h1', 'h2', 'h3', 'h4']) {
-  const rule = css.nodes.find((node) => node.selector === `#app :is(${heading}, .rh-${heading})`)
-  assert.ok(rule?.nodes.some((node) => node.prop === 'font-size' && node.important && node.value === `var(--ds-size-${heading})`), `${heading} must use the global scale across legacy cascades`)
+  const rule = css.nodes.find((node) => node.selector === `#app :is(${heading}, .rh-${heading}):not(.event-profile *)`)
+  assert.ok(rule?.nodes.some((node) => node.prop === 'font-size' && node.important && node.value === `var(--ds-size-${heading})`), `${heading} must use the global scale outside the v31 event-profile exception`)
 }
-const paragraph = css.nodes.find((node) => node.selector === '#app :is(p, .rh-body)')
+const paragraph = css.nodes.find((node) => node.selector === '#app :is(p, .rh-body):not(.event-profile *)')
 for (const heading of ['h1', 'h2', 'h3']) {
   const publicRule = css.nodes.find((node) => node.selector === '#app .public-site, #app .public-typography' && node.nodes?.some((declaration) => declaration.prop === `--ds-size-${heading}`))
   assert.ok(publicRule.nodes.some((node) => node.prop === `--ds-size-${heading}` && node.value.includes(`--ds-size-public-${heading}`)), `${heading} must be enlarged only within public pages`)
@@ -41,6 +41,16 @@ const hover = css.nodes.find((node) => node.selector?.includes('.ep-event-card:i
 assert.ok(hover.nodes.some((node) => node.prop === 'border' && node.value === '0' && node.important))
 assert.ok(hover.nodes.some((node) => node.prop === 'background' && node.value === 'var(--ds-color-surface)' && node.important))
 assert.ok(hover.nodes.some((node) => node.prop === 'transform' && node.value === 'none' && node.important))
+
+// The public shell resets links to static; a tab must contain its own underline.
+const eventTab = css.nodes.find((node) => node.selector === "body[data-rh-page='event-page'] #app .event-profile .rh24-tab")
+assert.ok(eventTab.nodes.some((node) => node.prop === 'position' && node.value === 'relative'))
+assert.ok(eventTab.nodes.some((node) => node.prop === 'filter' && node.value === 'none'))
+const eventBar = css.nodes.find((node) => node.selector === "body[data-rh-page='event-page'] #app .event-profile .rh29-nav-row")
+assert.ok(eventBar.nodes.some((node) => node.prop === 'border-bottom' && node.value === '0'))
+assert.ok(eventBar.nodes.some((node) => node.prop === 'backdrop-filter' && node.value === 'none'))
+const profileSource = fs.readFileSync('src/pages/EventDetails.vue', 'utf8')
+assert.match(profileSource, /id="ep-about" class="[^"]*rh24-about/)
 
 const publicRoutes = [
   { path: '/', name: 'home' }, { path: '/find-events', name: 'find-events' }, { path: '/about', name: 'about' },

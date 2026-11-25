@@ -185,12 +185,14 @@ export function normalizeEventProfile(source = {}, now = new Date()) {
     })
   const scheduleSource = array(source.schedule || source.agenda)
   const schedule = scheduleSource.length
-    ? scheduleSource.map((item) => ({
-        time: text(item.time || item.starts_at),
-        title: text(item.title || item.name),
-        description: text(item.description),
-        label: text(item.label || item.type),
-      }))
+    ? scheduleSource
+        .filter((item) => item && typeof item === 'object')
+        .map((item) => ({
+          time: text(item.time || item.starts_at),
+          title: text(item.title || item.name),
+          description: text(item.description),
+          label: text(item.label || item.type),
+        }))
     : extra('agenda')
         .split('\n')
         .filter((line) => line.trim())
@@ -204,19 +206,21 @@ export function normalizeEventProfile(source = {}, now = new Date()) {
         })
   const guestSource = array(source.guests || source.speakers || source.featured_guests)
   const guests = guestSource.length
-    ? guestSource.map((guest, index) =>
-        typeof guest === 'string'
-          ? { id: `guest-${index}`, name: guest, role: '', bio: '', image: '', events: [] }
-          : {
-              ...guest,
-              id: guest.id ?? `guest-${index}`,
-              name: text(guest.name),
-              role: text(guest.role || guest.title),
-              bio: text(guest.bio || guest.description),
-              image: safePublicUrl(guest.image || guest.photo || guest.avatar),
-              events: array(guest.events),
-            },
-      )
+    ? guestSource
+        .filter((guest) => guest && (typeof guest === 'string' || typeof guest === 'object'))
+        .map((guest, index) =>
+          typeof guest === 'string'
+            ? { id: `guest-${index}`, name: text(guest), role: '', bio: '', image: '', events: [] }
+            : {
+                ...guest,
+                id: guest.id ?? `guest-${index}`,
+                name: text(guest.name),
+                role: text(guest.role || guest.title),
+                bio: text(guest.bio || guest.description),
+                image: safePublicUrl(guest.image || guest.photo || guest.avatar),
+                events: array(guest.events),
+              },
+        )
     : extra('speakers')
         .split('\n')
         .filter((line) => line.trim())
@@ -233,10 +237,12 @@ export function normalizeEventProfile(source = {}, now = new Date()) {
         })
   const rawFaq = source.faqs?.length ? source.faqs : source.faq
   const faq = Array.isArray(rawFaq)
-    ? rawFaq.map((item) => ({
-        question: text(item.question || item.title),
-        answer: text(item.answer || item.value),
-      }))
+    ? rawFaq
+        .filter((item) => item && typeof item === 'object')
+        .map((item) => ({
+          question: text(item.question || item.title),
+          answer: text(item.answer || item.value),
+        }))
     : (text(rawFaq) || extra('faq'))
         .split(/\n\s*\n/)
         .filter(Boolean)
@@ -249,6 +255,7 @@ export function normalizeEventProfile(source = {}, now = new Date()) {
   const images = array(
     source.secondaryImages || source.secondary_images || source.gallery || source.images,
   )
+    .filter(Boolean)
     .map((image) => ({
       src: safePublicUrl(typeof image === 'string' ? image : image.url || image.src || image.path),
       caption: typeof image === 'object' ? text(image.caption || image.alt) : '',
@@ -286,7 +293,9 @@ export function normalizeEventProfile(source = {}, now = new Date()) {
     summary: text(source.summary || source.tagline || source.short_description),
     captionTitle: text(source.caption_title),
     captionDescription: text(source.caption_description),
-    crew: array(source.crew),
+    crew: array(source.crew)
+      .filter((person) => person && text(person.name))
+      .map((person) => ({ ...person, name: text(person.name), role: text(person.role) })),
     date,
     end,
     timezone,
@@ -297,7 +306,7 @@ export function normalizeEventProfile(source = {}, now = new Date()) {
     location,
     isOnline,
     organiser: {
-      name: text(organiser.name),
+      name: text(organiser.name) === 'Unknown Organiser' ? '' : text(organiser.name),
       bio: text(stored.organiser_bio || organiser.bio),
       image: safePublicUrl(stored.organiser_image || organiser.image),
       website: safePublicUrl(
@@ -310,10 +319,10 @@ export function normalizeEventProfile(source = {}, now = new Date()) {
     tickets,
     salesEnded,
     lifecycleState: source.lifecycle_state,
-    guests,
-    schedule,
+    guests: guests.filter((guest) => guest.name),
+    schedule: schedule.filter((item) => item.title || item.description),
     images,
-    faq,
+    faq: faq.filter((item) => item.answer),
     ticketMode,
     registrationFields: array(source.registration_fields),
     canRegister:
