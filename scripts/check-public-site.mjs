@@ -260,6 +260,7 @@ test('all public templates compile as Vue single-file components', async () => {
     'src/components/EventCover.vue',
     'src/components/public/PublicSite.vue',
     'src/components/public/PublicEventSearch.vue',
+    'src/components/public/PublicHeaderSearch.vue',
     'src/components/public/DiscoveryHero.vue',
     'src/components/public/DiscoveryCities.vue',
     'src/components/public/PublicBrandLoader.vue',

@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import PublicSymbols from './PublicSymbols.vue'
+import PublicHeaderSearch from './PublicHeaderSearch.vue'
 import CaptionLetters from './CaptionLetters.vue'
 import HomeAudienceTicker from '@/components/home/HomeAudienceTicker.vue'
 import HomeScrollGreeting from '@/components/home/HomeScrollGreeting.vue'
@@ -81,9 +82,7 @@ const discovery = computed(
 )
 const links = [
   { to: '/', label: 'Home' },
-  { to: '/find-events', label: 'Find events' },
-  { to: '/features', label: 'Features' },
-  { to: '/event-moments', label: 'Event moments' },
+  { to: '/find-events', label: 'Find event' },
   { to: '/about', label: 'About us' },
 ]
 const escape = (event) => {
@@ -151,6 +150,7 @@ onBeforeUnmount(() => {
           >
         </nav>
         <div class="header-actions">
+          <PublicHeaderSearch />
           <RouterLink class="public-cart-link" to="/cart" aria-label="Your cart"
             ><svg class="icon" aria-hidden="true" viewBox="0 0 24 24">
               <path d="M3 3h2l3 12h10l3-9H6" />

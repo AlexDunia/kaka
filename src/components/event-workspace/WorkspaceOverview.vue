@@ -225,11 +225,7 @@ function chartDate(value) {
     </div>
     <p class="rh-sr" role="status" aria-live="polite">{{ privacyStatus }}</p>
     <div class="metrics-surface">
-      <a
-        class="metric rh-metric-link"
-        :href="destination('attendees', {})"
-        @click.prevent="navigate('attendees', {})"
-      >
+      <article class="metric">
         <div class="metric-label">
           Your tickets sold<svg class="icon" aria-hidden="true"><use href="#ico-ticket" /></svg>
         </div>
@@ -240,13 +236,8 @@ function chartDate(value) {
           }}</span>
         </div>
         <div class="mini-progress"><i :style="{ width: progress(sales.sold_percent) }" /></div>
-        <span class="rh-card-link-mark" aria-hidden="true">↗</span>
-      </a>
-      <a
-        class="metric revenue-metric rh-metric-link"
-        :href="destination('payout', {})"
-        @click.prevent="navigate('payout', {})"
-      >
+      </article>
+      <article class="metric revenue-metric">
         <div class="metric-label">
           Your ticket revenue<svg class="icon" aria-hidden="true"><use href="#ico-wallet" /></svg>
         </div>
@@ -255,13 +246,8 @@ function chartDate(value) {
           <span class="positive">{{ amount(revenue.this_week_minor, true) }}</span> this week
         </div>
         <div class="revenue-explainer">Money from ticket sales</div>
-        <span class="rh-card-link-mark" aria-hidden="true">↗</span>
-      </a>
-      <a
-        class="metric rh-metric-link"
-        :href="destination('attendees', { period: 'week' })"
-        @click.prevent="navigate('attendees', { period: 'week' })"
-      >
+      </article>
+      <article class="metric">
         <div class="metric-label">
           Tickets sold this week<svg class="icon" aria-hidden="true">
             <use href="#ico-ticket" />
@@ -269,13 +255,8 @@ function chartDate(value) {
         </div>
         <div class="metric-value">{{ number(sales.this_week_units) }}</div>
         <div class="metric-foot">Your sales this week so far</div>
-        <span class="rh-card-link-mark" aria-hidden="true">↗</span>
-      </a>
-      <a
-        class="metric rh-metric-link"
-        :href="destination('share', {})"
-        @click.prevent="navigate('share', {})"
-      >
+      </article>
+      <article class="metric">
         <div class="metric-label">
           Your event page views<svg class="icon" aria-hidden="true"><use href="#ico-eye" /></svg>
         </div>
@@ -284,8 +265,7 @@ function chartDate(value) {
           <span class="positive">{{ percent(traffic.conversion_percent) }}</span> visitor-to-buyer
           conversion
         </div>
-        <span class="rh-card-link-mark" aria-hidden="true">↗</span>
-      </a>
+      </article>
     </div>
   </section>
   <section id="sales" class="rh-overview-section" aria-labelledby="sales-title">

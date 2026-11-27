@@ -13,7 +13,7 @@ import AccountMenu from '@/components/AccountMenu.vue'
 import PublicSite from '@/components/public/PublicSite.vue'
 import PublicBrandLoader from '@/components/public/PublicBrandLoader.vue'
 import { usePublicPageLoader } from '@/composables/usePublicPageLoader'
-import { usesPublicShell, usesPublicTypography } from '@/utils/routePresentation'
+import { isScheduleNavigation, usesPublicShell, usesPublicTypography } from '@/utils/routePresentation'
 import throttle from 'lodash.throttle' // âœ… use throttling to reduce scroll event calls
 
 const isMobileMenuOpen = ref(false)
@@ -114,6 +114,7 @@ const hideRouteSkeleton = () => {
 }
 
 const removeRouteBeforeEach = router.beforeEach((to, from) => {
+  if (isScheduleNavigation(to, from)) return true
   if (to.fullPath !== from.fullPath) {
     skeletonRoute.value = to
     if (routeUsesShellSkeleton(to)) {
@@ -126,7 +127,8 @@ const removeRouteBeforeEach = router.beforeEach((to, from) => {
   return true
 })
 
-const removeRouteAfterEach = router.afterEach((to) => {
+const removeRouteAfterEach = router.afterEach((to, from) => {
+  if (isScheduleNavigation(to, from)) return
   if (routeUsesShellSkeleton(to)) {
     hideRouteSkeleton()
   } else {

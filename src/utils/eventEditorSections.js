@@ -1,7 +1,7 @@
 export const editorSections = {
   details: {
     steps: [1, 2],
-    fields: ['title', 'startsAt', 'endsAt', 'timeZone', 'eventType', 'recurrence', 'format', 'venue', 'city', 'meetingLink', 'category', 'description', 'organiser', 'organiserWebsite', 'tags', 'coverImage', 'secondaryImages', 'extraDetails'],
+    fields: ['title', 'startsAt', 'endsAt', 'startsAtLocal', 'endsAtLocal', 'timeZone', 'eventType', 'recurrence', 'format', 'venue', 'city', 'meetingLink', 'category', 'description', 'organiser', 'organiserWebsite', 'tags', 'coverImage', 'secondaryImages', 'extraDetails'],
     localFields: ['venueTimezone', '_savedTimes', 'coverGradient', 'urlImages'],
   },
   tickets: {

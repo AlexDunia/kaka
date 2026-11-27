@@ -1,4 +1,5 @@
 ﻿import { createRouter, createWebHistory } from 'vue-router'
+import { isScheduleNavigation } from '@/utils/routePresentation'
 import { useAuthStore } from '@/stores/auth'
 import HomePage from '../pages/HomePage.vue'
 
@@ -362,6 +363,7 @@ const router = createRouter({
   ],
   // Add scrollBehavior to reset scroll position to top on route changes
   scrollBehavior(to, from) {
+    if (isScheduleNavigation(to, from)) return false
     // Ticket selection is a full-screen layer over the same event profile.
     if (to.path === from.path && ['event-details', 'event-details-legacy'].includes(to.name)) {
       return false

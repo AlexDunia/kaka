@@ -249,6 +249,14 @@ body[data-rh-page='event-page'].rh30-scrolled #app .event-profile .rh29-nav-row 
   border-color: var(--ds-color-selection-border);
   box-shadow: none;
 }
+#app .create-event-page .upload-tabs button { border: 1px solid transparent; }
+#app .create-event-page :is(.pill, .detail-chip, .ticket-mode-card, .category-option, .recurrence-choice, .repeat-frequency-pill, .day-chip).selected ,
+#app .create-event-page .upload-tabs button.active {
+  border: 1px solid color-mix(in srgb, var(--ds-color-brand-accent) 65%, var(--ds-color-selection-border));
+  background: var(--ds-color-selection-soft);
+  color: var(--ds-color-brand);
+  box-shadow: none;
+}
 #app :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]), textarea, select):focus {
   outline: none !important;
   border-color: var(--ds-color-focus) !important;

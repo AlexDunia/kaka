@@ -38,3 +38,10 @@ export function usesPublicTransition(route) {
     'event-details-legacy',
   ].includes(route?.name)
 }
+
+// Calendar navigation stays inside the mounted editor and keeps unsaved fields.
+export function isScheduleNavigation(to, from) {
+  if (to.path !== from.path || !['CreateEvent', 'EditEvent', 'dashboard-event'].includes(to.name)) return false
+  const withoutCalendar = query => JSON.stringify(Object.fromEntries(Object.entries(query || {}).filter(([key]) => !['scheduleMonth', 'scheduleMode'].includes(key)).sort(([a], [b]) => a.localeCompare(b))))
+  return withoutCalendar(to.query) === withoutCalendar(from.query)
+}

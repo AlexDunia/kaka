@@ -1,7 +1,6 @@
 <script setup>
 import { computed, inject, onMounted, onBeforeUnmount, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import PublicEventSearch from '@/components/public/PublicEventSearch.vue'
 import { useLandingMotion } from '@/composables/useLandingMotion'
 defineProps({ sectionOnly: String })
 const root = ref(null)
@@ -58,7 +57,10 @@ const asset = (path) => `${import.meta.env.BASE_URL}${path}`
               >{{ index < heroCaption.length - 1 ? ' ' : '' }}</template
             >
           </p>
-          <PublicEventSearch />
+          <div class="hero-actions">
+            <RouterLink class="btn btn-primary" to="/find-events">Find event</RouterLink>
+            <RouterLink class="btn hero-create-event" to="/create-event">Create event</RouterLink>
+          </div>
         </div>
       </div>
       <figure class="rh-photo-hero" aria-label="Lagos waterfront eventgoers">
@@ -385,3 +387,37 @@ const asset = (path) => `${import.meta.env.BASE_URL}${path}`
     </section>
   </main>
 </template>
+
+<style scoped>
+.hero-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--ds-space-12);
+  margin-top: var(--ds-space-32);
+}
+.hero-actions .btn {
+  min-width: 148px;
+  min-height: 48px;
+  padding: var(--ds-space-12) var(--ds-space-24);
+  border-radius: var(--ds-radius-control);
+}
+.hero-actions .hero-create-event {
+  border: 1px solid var(--ds-color-border-control);
+  background: transparent;
+  color: var(--ds-color-text);
+}
+.hero-actions .hero-create-event:hover {
+  border-color: var(--ds-color-text);
+  background: var(--ds-color-surface-subtle);
+}
+@media (max-width: 390px) {
+  .hero-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+  .hero-actions .btn {
+    width: 100%;
+  }
+}
+</style>
