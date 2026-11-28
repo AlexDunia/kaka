@@ -23,6 +23,25 @@ try {
     (await adapter({ url, method, data: JSON.stringify(data), params })).data
   const rejects = (run, status) => assert.rejects(run, (error) => error.response?.status === status)
   const initial = await request('/events')
+  const { isStaticPreview } = await server.ssrLoadModule('/src/services/staticPreviewMode.js')
+  localStorage.removeItem('rushhour:static-preview:v1')
+  globalThis.window = { location: { hostname: 'alexdunia.github.io' } }
+  assert.equal(isStaticPreview(), true)
+  const { getPublicEvents, getPublicCategories } = await server.ssrLoadModule('/src/services/publicCatalog.js')
+  const discovery = await getPublicEvents()
+  assert.equal(discovery.events.length, 3)
+  assert.equal(discovery.total, 3)
+  assert.ok((await getPublicCategories()).length > 0)
+  assert.equal((await getPublicEvents({ category: 'music' })).events.length, 2)
+  assert.equal((await getPublicEvents({ q: 'rooftop' })).events.length, 1)
+  assert.equal((await getPublicEvents({ q: 'no matching event' })).events.length, 0)
+  localStorage.setItem('rushhour:static-preview:v1', 'false')
+  assert.equal(isStaticPreview(), false)
+  window.location.hostname = 'localhost'
+  localStorage.removeItem('rushhour:static-preview:v1')
+  assert.equal(isStaticPreview(), false)
+  delete globalThis.window
+  localStorage.setItem('rushhour:static-preview:v1', 'true')
   assert.equal(initial.data.length, 3)
   assert.equal(initial.data.filter((event) => event.ticket_mode === 'free').length, 1)
   assert.equal(initial.data.filter((event) => event.ticket_mode === 'paid').length, 2)
