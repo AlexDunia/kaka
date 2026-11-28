@@ -80,6 +80,10 @@
 #app .public-site .campaign-heading {
   overflow-wrap: normal;
 }
+#app .public-site .landing-page {
+  --ds-size-h2: 31px;
+  --ds-size-h3: var(--ds-size-h2);
+}
 .campaign-phrase {
   display: block;
   transform-origin: left bottom;
@@ -208,10 +212,6 @@
   background: var(--ds-color-surface-subtle, #f3f5f6);
 }
 @media (max-width: 760px) {
-  #app .public-site .campaign-heading,
-  #app .public-site .story-copy h3 {
-    font-size: 27.5px;
-  }
   #app .public-site .campaign-intro {
     gap: 16px;
   }
@@ -228,6 +228,12 @@
   }
   .event-decision::before {
     background: rgba(12, 15, 20, 0.73);
+  }
+}
+@media (max-width: 768px), (max-width: 1000px) and (hover: none) and (pointer: coarse) {
+  #app .public-site .landing-page {
+    --ds-size-public-h2-mobile: 21px;
+    --ds-size-public-h3-mobile: var(--ds-size-public-h2-mobile);
   }
 }
 @media (prefers-reduced-motion: reduce) {

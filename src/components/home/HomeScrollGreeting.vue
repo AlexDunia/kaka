@@ -3,6 +3,7 @@ import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import CaptionLetters from '@/components/public/CaptionLetters.vue'
 import { useAuthStore } from '@/stores/auth'
+import { pngIconUrl } from '@/constants/pngIcons'
 const props = defineProps({ seller: Boolean })
 const auth = useAuthStore()
 
@@ -85,7 +86,7 @@ onBeforeUnmount(() => {
         ><CaptionLetters
           :text="seller ? 'Want to sell your event?' : 'Pssst! Hey stranger'"
           :ready="textReady"
-      /></span>
+      /><span v-if="!seller" class="home-greeting-wave" aria-hidden="true"><img :src="pngIconUrl('wave')" width="20" height="20" alt="" /></span></span>
       <RouterLink
         class="home-greeting-go"
         :to="
@@ -95,8 +96,36 @@ onBeforeUnmount(() => {
               : { path: '/register', query: { redirect: '/create-event' } }
             : '/find-events'
         "
-        ><CaptionLetters :text="seller ? 'Start here' : 'Find events here'" :ready="textReady"
-      /></RouterLink>
+        ><CaptionLetters :class="{ 'home-greeting-label': !seller }" :text="seller ? 'Start here' : 'Find events here'" :ready="textReady"
+      /><svg v-if="!seller" class="home-greeting-arrow" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false"><path d="M4 12h16m-6-6 6 6-6 6" /></svg></RouterLink>
     </div>
   </div>
 </template>
+
+<style scoped>
+#app .public-site .home-greeting-wave {
+  margin-left: 4px;
+  vertical-align: middle;
+}
+#app .public-site .home-greeting-wave img {
+  display: block;
+  width: 20px;
+  height: 20px;
+  animation: none;
+}
+.home-greeting-label {
+  padding-bottom: 3px;
+  border-bottom: .5px solid color-mix(in srgb, currentColor 35%, transparent);
+}
+.home-greeting-arrow {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-left: 5px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  #app .public-site .home-scroll-greeting--ready .home-greeting-wave {
+    animation: home-greeting-wave 2.8s ease-in-out infinite;
+  }
+}
+</style>

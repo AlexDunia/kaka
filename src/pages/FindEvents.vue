@@ -31,6 +31,7 @@ const categoryScroller = ref(null)
 const canScrollBack = ref(false)
 const canScrollForward = ref(false)
 function updateCategoryScroll() {
+  isMobile.value = mobileQuery?.matches ?? false
   const element = categoryScroller.value
   canScrollBack.value = Boolean(element && element.scrollLeft > 1)
   canScrollForward.value = Boolean(element && element.scrollLeft + element.clientWidth < element.scrollWidth - 1)
@@ -52,8 +53,6 @@ const failedCovers = ref(new Set())
 const mobileQuery = typeof window !== 'undefined' ? window.matchMedia('(max-width: 760px)') : null
 const isMobile = ref(mobileQuery?.matches ?? false)
 const visibleCount = ref(4)
-function updateMobile(event) { isMobile.value = event.matches }
-mobileQuery?.addEventListener('change', updateMobile)
 const visibleCards = computed(() => isMobile.value ? cards.value.slice(0, visibleCount.value) : cards.value)
 const categoryGroups = computed(() => {
   const definitions = [
@@ -184,7 +183,6 @@ watch(() => [route.query, route.meta.discoveryCategory], loadEvents, {
 })
 onBeforeUnmount(() => {
   window.removeEventListener('resize', updateCategoryScroll)
-  mobileQuery?.removeEventListener('change', updateMobile)
   request?.abort()
   categoryRequest?.abort()
 })

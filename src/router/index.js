@@ -1,8 +1,9 @@
-﻿import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
 import { isScheduleNavigation } from '@/utils/routePresentation'
 import { useAuthStore } from '@/stores/auth'
 import { isStaticPreview } from '@/services/staticPreviewMode'
 import HomePage from '../pages/HomePage.vue'
+import FindEvents from '../pages/FindEvents.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -34,7 +35,7 @@ const router = createRouter({
     {
       path: '/search',
       name: 'search',
-      component: () => import('../pages/FindEvents.vue'),
+      component: FindEvents,
       meta: {
         title: 'Find events',
         publicSite: true,
@@ -46,7 +47,7 @@ const router = createRouter({
     {
       path: '/find-events',
       name: 'find-events',
-      component: () => import('../pages/FindEvents.vue'),
+      component: FindEvents,
       meta: { title: 'Find events', publicSite: true, disableRouteSkeleton: true },
     },
     {
@@ -100,7 +101,7 @@ const router = createRouter({
     {
       path: '/music',
       name: 'music',
-      component: () => import('../pages/FindEvents.vue'),
+      component: FindEvents,
       props: { category: 'music' },
       meta: {
         publicSite: true,
@@ -114,7 +115,7 @@ const router = createRouter({
     {
       path: '/movies',
       name: 'movies',
-      component: () => import('../pages/FindEvents.vue'),
+      component: FindEvents,
       props: { category: 'movies' },
       meta: {
         publicSite: true,
@@ -128,7 +129,7 @@ const router = createRouter({
     {
       path: '/theatre',
       name: 'theatre',
-      component: () => import('../pages/FindEvents.vue'),
+      component: FindEvents,
       props: { category: 'theatre' },
       meta: {
         publicSite: true,
@@ -142,7 +143,7 @@ const router = createRouter({
     {
       path: '/sports',
       name: 'sports',
-      component: () => import('../pages/FindEvents.vue'),
+      component: FindEvents,
       props: { category: 'sports' },
       meta: {
         publicSite: true,
@@ -156,7 +157,7 @@ const router = createRouter({
     {
       path: '/festivals',
       name: 'festivals',
-      component: () => import('../pages/FindEvents.vue'),
+      component: FindEvents,
       props: { category: 'festivals' },
       meta: {
         publicSite: true,
@@ -170,7 +171,7 @@ const router = createRouter({
     {
       path: '/others',
       name: 'others',
-      component: () => import('../pages/FindEvents.vue'),
+      component: FindEvents,
       props: { category: 'others' },
       meta: {
         publicSite: true,

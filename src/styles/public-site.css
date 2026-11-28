@@ -153,7 +153,7 @@
 .public-site .moments-dots{display:flex;justify-content:center;gap:10px;margin-top:34px}
 .public-site .moment-dot{width:10px;height:10px;border-radius:999px;border:0;background:rgba(255,255,255,.35);padding:0;transition:width .22s ease,background .22s ease;cursor:pointer}
 .public-site .moment-dot.active{width:30px;background:#fff}
-.public-site .site-footer{background:var(--pink)!important;color:#fff;border-top:1px solid rgba(255,255,255,.16)}
+.public-site .site-footer{background:var(--ds-color-brand-accent,#ef277a)!important;color:#fff;border-top:1px solid rgba(255,255,255,.16)}
 .public-site .site-footer .wordmark,.public-site .site-footer .footer-links a,.public-site .site-footer .legal-note,.public-site .site-footer .wordmark span{color:#fff!important}
 .public-site .site-footer .footer-links a{opacity:.9}.public-site .site-footer .footer-links a:hover{opacity:1;text-decoration:underline;text-underline-offset:4px}.public-site .site-footer .legal-note{opacity:.82}
 @media(max-width:980px){.public-site .pink-showcase{padding:82px 0 80px}.public-site .pink-showcase .section-head{margin-bottom:42px}.public-site .moments-slide{gap:18px}.public-site .moment-card.offset{margin-top:74px}.public-site .moment-image{border-radius:18px 18px 0 0}.public-site .moment-copy h3{font-size:23px}}
@@ -228,7 +228,7 @@
 .public-site .start-inner p{font-size:14px;line-height:1.75;color:var(--sub);margin:15px auto 27px}
 .public-site .start-button{min-width:130px}
 /* Footer is brand pink; its entire wordmark is white. */
-.public-site .site-footer{background:var(--pink)!important;color:#fff!important;border-top:0;padding:44px 0 43px}
+.public-site .site-footer{background:var(--ds-color-brand-accent,#ef277a)!important;color:#fff!important;border-top:0;padding:44px 0 43px}
 .public-site .site-footer .wordmark,.public-site .site-footer .wordmark span,.public-site .site-footer .wordmark .rh-brand-main,.public-site .site-footer .wordmark .rh-brand-tickets,.public-site .site-footer .footer-links a,.public-site .site-footer .legal-note{color:#fff!important}
 .public-site .site-footer .footer-links a{opacity:.93}
 .public-site .site-footer .legal-note{opacity:.85}

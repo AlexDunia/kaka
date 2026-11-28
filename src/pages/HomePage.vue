@@ -30,7 +30,7 @@ onBeforeUnmount(() => campaignObserver?.disconnect())
 const asset = (path) => `${import.meta.env.BASE_URL}${path}`
 </script>
 <template>
-  <main id="top" ref="root">
+  <main id="top" ref="root" class="landing-page">
     <section
       v-if="!sectionOnly"
       class="hero hero--campaign"
