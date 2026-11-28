@@ -1,16 +1,16 @@
 export const financialRows = [
   ['gross_minor', 'Original ticket value'],
-  ['discounts_minor', 'Historical discounts'],
-  ['charged_minor', 'Charged before refunds'],
+  ['discounts_minor', 'Discounts at purchase'],
+  ['charged_minor', 'Paid before refunds'],
   ['refunds_minor', 'Confirmed refunds'],
   ['platform_fee_minor', 'Original platform fees'],
   ['platform_fee_reversed_minor', 'Platform fees returned'],
-  ['provider_fee_minor', 'Verified provider fees (paid by platform)'],
-  ['seller_net_before_refunds_minor', 'Seller proceeds before refunds'],
-  ['seller_net_minor', 'Seller proceeds after confirmed refunds'],
-  ['pending_settlement_minor', 'Awaiting settlement evidence'],
-  ['confirmed_settled_minor', 'Confirmed seller settlement'],
-  ['seller_recovery_due_minor', 'Seller recovery due'],
+  ['provider_fee_minor', 'Confirmed payment fees (paid by Rush Hour)'],
+  ['seller_net_before_refunds_minor', 'Your earnings before refunds'],
+  ['seller_net_minor', 'Your earnings after confirmed refunds'],
+  ['pending_settlement_minor', 'Awaiting payout confirmation'],
+  ['confirmed_settled_minor', 'Confirmed payouts'],
+  ['seller_recovery_due_minor', 'Amount you need to repay'],
 ]
 export const financeStatus = (status) =>
   ({
@@ -22,7 +22,7 @@ export const financeStatus = (status) =>
     attention: 'Needs review',
     failed: 'Failed',
     processed: 'Refund confirmed',
-    voided: 'Registration voided',
+    voided: 'Registration cancelled',
     paid: 'Paid',
     registered: 'Registered',
     partially_refunded: 'Partially refunded',

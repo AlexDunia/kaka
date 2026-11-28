@@ -1,25 +1,28 @@
 <script setup>
 import { nextTick, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { MagnifyingGlassIcon } from '@/components/icons/pngIcons'
+import { XMarkIcon } from '@heroicons/vue/24/outline'
 import PublicEventSearch from './PublicEventSearch.vue'
 
 const route = useRoute()
 const dialog = ref(null)
 const trigger = ref(null)
 const opened = ref(false)
+// The shared native-dialog CSS owns entry and exit motion. Retain the search
+// form after its first open so it stays visible throughout the closing fade.
 async function openSearch() {
+  if (dialog.value?.open) return
   opened.value = true
   await nextTick()
+  if (!dialog.value || dialog.value.open) return
   dialog.value.showModal()
   dialog.value.querySelector('input')?.focus()
 }
 function closeSearch() {
   dialog.value?.close()
-  opened.value = false
 }
 function restoreFocus() {
-  opened.value = false
   trigger.value?.focus()
 }
 watch(() => route.fullPath, closeSearch)
@@ -34,7 +37,7 @@ watch(() => route.fullPath, closeSearch)
     aria-haspopup="dialog"
     @click="openSearch"
   >
-    <MagnifyingGlassIcon aria-hidden="true" /><span>Search</span>
+    <MagnifyingGlassIcon aria-hidden="true" @contextmenu.prevent @dragstart.prevent /><span>Search</span>
   </button>
   <Teleport to="body">
     <dialog
@@ -42,6 +45,8 @@ watch(() => route.fullPath, closeSearch)
       class="public-search-dialog"
       aria-labelledby="public-search-title"
       @close="restoreFocus"
+      @cancel.prevent="closeSearch"
+      @click="$event.target === dialog && closeSearch()"
     >
       <header>
         <div>
@@ -144,5 +149,13 @@ watch(() => route.fullPath, closeSearch)
   .header-search-trigger span {
     display: none;
   }
+}
+@media (max-width: 760px) {
+  .public-search-dialog { padding: var(--ds-space-20); box-sizing: border-box; }
+  .public-search-dialog header { margin-bottom: var(--ds-space-16); align-items: center; }
+  .public-search-dialog h2 { font-size: var(--ds-size-h4); font-weight: var(--ds-weight-medium); }
+  .public-search-dialog header p { display: none; }
+  .header-search-trigger { width: 44px; height: 44px; padding: 0; justify-content: center; border: 0; }
+  .header-search-trigger > span { display: none; }
 }
 </style>

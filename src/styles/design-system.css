@@ -204,7 +204,7 @@ body[data-rh-page='event-page'].rh30-scrolled #app .event-profile .rh29-nav-row 
 @media (max-width: 760px) {
   :root { --ds-size-h1: var(--ds-size-h1-mobile); --ds-rhythm-section-gap: var(--ds-rhythm-section-gap-mobile); --ds-rhythm-card-gap: var(--ds-rhythm-card-gap-mobile); --ds-rhythm-card-padding: var(--ds-rhythm-card-padding-mobile); }
   #app .public-site { --rh-strip-height: 0px; --content: var(--ds-rhythm-page-width-mobile); }
-  #app .public-site, #app .public-typography { --ds-size-h1: var(--ds-size-public-h1-mobile, 34px); --ds-size-h2: var(--ds-size-public-h2-mobile, 28px); --ds-size-h3: var(--ds-size-public-h3-mobile, 22px); }
+  #app .public-site, #app .public-typography { --ds-size-h1: var(--ds-size-public-h1-mobile, 24px); --ds-size-h2: var(--ds-size-public-h2-mobile, 20px); --ds-size-h3: var(--ds-size-public-h3-mobile, 15px); }
   #app .public-site--home { --rh-strip-height: 38px; }
   #app .public-site .rh-audience-group { gap: 18px; padding-right: 18px; }
   #app .public-site .rh-audience-item { font-size: 10px !important; }
@@ -338,6 +338,30 @@ body[data-rh-page='event-page'] #app .public-site .desktop-nav { gap: 29px; }
 body[data-rh-page='event-page'] #app .public-site .desktop-nav a { font: 650 13px/1.5 'DM Sans', sans-serif; }
 body[data-rh-page='event-page'] #app .event-profile .rh26-main-buy:not(:disabled) { background: #ef277a !important; color: #fff !important; border-radius: 10px; font: 750 14px/1.5 'DM Sans', sans-serif; }
 body[data-rh-page='event-page'] #app .event-profile .rh26-main-buy:hover:not(:disabled) { background: #d51d67 !important; }
+body[data-rh-page='event-page'] #app .event-profile .ep-mobile-buy .ep-primary:not(:disabled) { background: #ef277a !important; color: #fff !important; }
+body[data-rh-page='event-page'] #app .event-profile .ep-mobile-buy .ep-primary:hover:not(:disabled) { background: #d51d67 !important; }
 @media (max-width: 768px) {
  body[data-rh-page='event-page'] #app .public-site .nav-shell { min-height: 68px; }
+}
+
+/* Public mobile headings; keep the homepage hero display size unchanged. */
+@media (max-width: 768px), (max-width: 1000px) and (hover: none) and (pointer: coarse) {
+  #app :is(.public-site, .public-typography) :is(h1, .rh-h1):not(.public-site--home .hero *) {
+    font-size: var(--ds-size-public-h1-mobile, 24px) !important;
+  }
+  #app :is(.public-site, .public-typography) :is(h2, .rh-h2):not(.public-site--home .hero *) {
+    font-size: var(--ds-size-public-h2-mobile, 20px) !important;
+  }
+  #app :is(.public-site, .public-typography) :is(h3, .rh-h3):not(.public-site--home .hero *) {
+    font-size: var(--ds-size-public-h3-mobile, 15px) !important;
+  }
+  #app :is(.public-site, .public-typography) :is(h4, .rh-h4):not(.public-site--home .hero *) {
+    font-size: var(--ds-size-public-h4-mobile, 15px) !important;
+  }
+}
+/* Match the homepage hero's original breakpoint as well as its size. */
+@media (max-width: 760px) {
+  #app .public-site--home .hero {
+    --ds-size-h1: var(--ds-size-public-home-hero-h1-mobile, 34px);
+  }
 }

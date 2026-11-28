@@ -102,16 +102,16 @@ onBeforeUnmount(() => {
   <section class="rh-module rh-form-panel rhs-form">
     <div class="rh-module-title">
       <div>
-        <h2>Manage event sales and status</h2>
+        <h2>Event sales and status</h2>
         <p>
-          Closing sales keeps valid reservations. Cancellation closes admission and starts refunds.
-          Archiving retains your records and waits for financial obligations.
+          Closing sales keeps valid reservations. Cancelling stops entry and starts refunds.
+          Archiving keeps your records and waits until payments and refunds are settled.
         </p>
       </div>
     </div>
     <p v-if="state">Current status: {{ state.replaceAll('_', ' ') }}</p>
     <p v-if="version">
-      Saved booking cutoff: {{ savedCutoff || 'No additional cutoff'
+      Saved booking deadline: {{ savedCutoff || 'No extra deadline'
       }}<span v-if="timezone"> · Event timezone: {{ timezone }}</span>
     </p>
     <form @submit.prevent="submit">
@@ -121,7 +121,7 @@ onBeforeUnmount(() => {
           ><select v-model="action" :disabled="busy">
             <option value="close_sales">Close sales</option>
             <option value="open_sales">Reopen sales</option>
-            <option value="set_cutoff">Set booking cutoff</option>
+            <option value="set_cutoff">Set booking deadline</option>
             <option value="complete">Complete ended event</option>
             <option value="cancel">Cancel event and start refunds</option>
             <option value="archive">Archive event</option>
@@ -132,12 +132,12 @@ onBeforeUnmount(() => {
           ><textarea v-model="reason" minlength="3" maxlength="300" required :disabled="busy" />
         </label>
         <label v-if="action === 'set_cutoff'" class="rh-field"
-          ><span>Booking cutoff with timezone offset (leave empty to clear)</span
+          ><span>Booking deadline with time zone offset (leave empty to clear)</span
           ><input v-model="cutoff" placeholder="2030-06-21T17:00:00+01:00" :disabled="busy"
         /></label>
       </div>
       <p v-if="action === 'cancel'">
-        Confirming cancels this event and starts whole-line refunds, including admitted purchases.
+        This cancels the event and starts full refunds for each purchased item, including tickets already used.
         This cannot be undone.
       </p>
       <p v-if="error" role="alert">{{ error }}</p>
@@ -146,9 +146,9 @@ onBeforeUnmount(() => {
         <button
           class="rh-button rh-button-dark"
           :disabled="busy || !version || conflict || state === 'archived'"
-        >
+         :aria-busy="busy">
           {{ busy ? 'Updating event…' : 'Confirm event action' }}</button
-        ><button type="button" class="rh-button rh-button-outline" :disabled="busy" @click="reload">
+        ><button type="button" class="rh-button rh-button-outline" :disabled="busy" @click="reload" :aria-busy="busy">
           Reload saved version
         </button>
       </div>

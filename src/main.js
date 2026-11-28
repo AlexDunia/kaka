@@ -8,13 +8,17 @@ import router from './router'
 import { useAuthStore } from './stores/auth'
 import './styles/design-tokens.css'
 import './styles/design-system.css'
+import './styles/png-icon-motion.css'
+import './styles/interaction-feedback.css'
+import './styles/popup-motion.css'
+import './styles/event-cards.css'
 
 const app = createApp(App)
 
 app.use(createPinia())
-const authReady = useAuthStore().initialize()
+void useAuthStore().initialize()
 app.use(router)
 
-Promise.all([authReady, router.isReady()]).then(() => {
+router.isReady().then(() => {
   app.mount('#app')
 })

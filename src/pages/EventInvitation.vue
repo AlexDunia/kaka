@@ -56,15 +56,15 @@ async function accept() {
   <main class="invitation-page">
     <section>
       <h1>Your event invitation</h1>
-      <p>Use the account linked to your invitation email to accept your event access.</p>
+      <p>Log in with the email that received this invitation.</p>
       <p v-if="busy" role="status">Getting your invitation ready...</p>
       <p v-if="error" role="alert">{{ error }}</p>
       <RouterLink
         v-if="!busy && !auth.isAuthenticated"
         :to="{ path: '/login', query: { redirect: '/event-invitations/accept' } }"
         >Log in to continue</RouterLink
-      ><button v-else-if="auth.isAuthenticated && token" :disabled="busy" @click="accept">
-        Accept event access
+      ><button v-else-if="auth.isAuthenticated && token" :disabled="busy" @click="accept" :aria-busy="busy">
+        Accept invitation
       </button>
     </section>
   </main>

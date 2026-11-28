@@ -1,4 +1,5 @@
 <script setup>
+import { pngIconUrl } from '@/constants/pngIcons'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getEventShareLinks, createEventShareLink } from '@/services/dashboardShareService'
@@ -518,6 +519,7 @@ watch(
         @click="chooseTab(name)"
         @keydown="tabKeys"
       >
+        <img class="rh-tab-icon" :src="pngIconUrl(name === 'promotion' ? 'megaphone' : 'discount')" alt="" aria-hidden="true" width="20" height="20" />
         {{ name === 'promotion' ? 'Promotion' : 'Discounts' }}
       </button>
     </div>
@@ -550,10 +552,9 @@ watch(
             <div class="rh33-main-copy">
               <div class="rh33-section-heading">
                 <div>
-                  <h2 id="rh33-share-heading">You can track your sales from social media.</h2>
+                  <h2 id="rh33-share-heading">See sales from social media.</h2>
                   <p>
-                    Make a link for each social app, then see which one brings buyers when live
-                    tracking is connected.
+                    Create a link for each app. See which brings buyers once live tracking is available.
                   </p>
                 </div>
               </div>
@@ -565,7 +566,7 @@ watch(
                   type="button"
                   :disabled="loading || !!loadError"
                   @click="openCreate"
-                >
+                 :aria-busy="loading">
                   {{ links.length ? 'Add sharing links' : 'Create sharing links' }}
                 </button>
               </div>
@@ -793,7 +794,7 @@ watch(
                     /><span>{{ ticket.label }}</span></label
                   >
                 </div>
-                <small>Pick one or several tickets.</small>
+                <small>Choose one or more ticket types.</small>
               </fieldset>
             </div>
             <div class="rh37-review" aria-live="polite">{{ review }}</div>
@@ -827,8 +828,8 @@ watch(
       <section class="rh33-section rh38-code-section" aria-label="Your discount codes">
         <div class="rh33-section-heading rh37-codes-title">
           <div>
-            <h2>Discount codes you have created</h2>
-            <p>See your codes, how often people use them and whether they are available.</p>
+            <h2>Your discount codes</h2>
+            <p>See code use and availability.</p>
           </div>
         </div>
         <div class="rh38-code-shell">
@@ -842,9 +843,7 @@ watch(
                 stroke="currentColor"
                 stroke-width="1.8"
                 aria-hidden="true"
-              >
-                <circle cx="11" cy="11" r="7" />
-                <path d="m20 20-4-4" /></svg
+              ><image :href="pngIconUrl('search')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg
               ><input
                 v-model="search"
                 type="search"
@@ -862,7 +861,7 @@ watch(
           </div>
           <div v-if="!codes.length" class="rh38-codes-empty">
             <h3>You have no discount codes yet.</h3>
-            <p>Create a code to give eligible buyers a discount on their tickets.</p>
+            <p>Create a code to offer a ticket discount.</p>
             <button class="rh33-action secondary" type="button" @click="startDiscount">
               Create discount code
             </button>
@@ -937,15 +936,12 @@ watch(
                             v-if="codeStatus(code) === 'available'"
                             viewBox="0 0 24 24"
                             aria-hidden="true"
-                          >
-                            <rect x="6" y="5" width="4" height="14" rx="1" />
-                            <rect x="14" y="5" width="4" height="14" rx="1" /></svg
+                          ><image :href="pngIconUrl('pause')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg
                           ><svg
                             v-else-if="codeStatus(code) === 'paused'"
                             viewBox="0 0 24 24"
                             aria-hidden="true"
-                          >
-                            <path d="M8 5.5 19 12 8 18.5Z" /></svg
+                          ><image :href="pngIconUrl('play')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg
                           ><template v-else>{{
                             {
                               scheduled: 'Start now',
@@ -1084,9 +1080,7 @@ watch(
           type="button"
           aria-label="Close sharing links"
           @click="createDialog.close()"
-        >
-          ×
-        </button>
+        ><svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align: middle"><image :href="pngIconUrl('close')" width="24" height="24" /></svg></button>
       </div>
       <div class="rh33-modal-body">
         <form v-if="phase === 'choose'" @submit.prevent="generateLinks">
@@ -1127,10 +1121,10 @@ watch(
         </div>
         <div v-else>
           <div class="rh38-success" role="status">
-            <span class="rh38-success-symbol" aria-hidden="true">✓</span>
+            <span class="rh38-success-symbol" aria-hidden="true"><svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align: middle"><image :href="pngIconUrl('check')" width="24" height="24" /></svg></span>
             <div>
-              <h3>Congratulations! Your links are ready.</h3>
-              <p>Copy each link and share it on its matching app. Your links are saved below.</p>
+              <h3>Your links are ready.</h3>
+              <p>Share each link on its matching app. Your links are saved below.</p>
             </div>
           </div>
           <div class="rh33-ready-list">
@@ -1188,9 +1182,7 @@ watch(
           type="button"
           aria-label="Close share options"
           @click="shareDialog.close()"
-        >
-          ×
-        </button>
+        ><svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align: middle"><image :href="pngIconUrl('close')" width="24" height="24" /></svg></button>
       </div>
       <div class="rh33-modal-body">
         <div class="rh33-destination-grid">
@@ -1261,9 +1253,7 @@ watch(
           type="button"
           aria-label="Close discount update"
           @click="actionDialog.close()"
-        >
-          ×
-        </button>
+        ><svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align: middle"><image :href="pngIconUrl('close')" width="24" height="24" /></svg></button>
       </div>
       <form class="rh38-reactivate-form" @submit.prevent="applyCodeAction">
         <label

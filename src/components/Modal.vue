@@ -1,4 +1,5 @@
 <script setup>
+import { pngIconUrl } from '@/constants/pngIcons'
 import { onMounted, onBeforeUnmount, watch } from 'vue'
 
 defineOptions({
@@ -88,9 +89,9 @@ const handleOverlayClick = (event) => {
 
 <template>
   <Teleport to="body">
-    <transition name="modal-fade">
-      <div v-if="show" class="modal-overlay" @click="handleOverlayClick">
-        <div :class="['modal-container', `modal-${size}`]" :style="{ maxWidth: width }" @click.stop>
+    <transition name="rh-popup">
+      <div data-popup-overlay v-if="show" class="modal-overlay" @click="handleOverlayClick">
+        <div data-popup-panel :class="['modal-container', `modal-${size}`]" :style="{ maxWidth: width }" @click.stop>
           <!-- Header -->
           <div class="modal-header">
             <h3 class="modal-title">{{ title }}</h3>
@@ -105,10 +106,7 @@ const handleOverlayClick = (event) => {
                 stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
-              >
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
+              ><image :href="pngIconUrl('close')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg>
             </button>
           </div>
 
@@ -216,27 +214,6 @@ const handleOverlayClick = (event) => {
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
-}
-
-/* Animation */
-.modal-fade-enter-active,
-.modal-fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.modal-fade-enter-from,
-.modal-fade-leave-to {
-  opacity: 0;
-}
-
-.modal-fade-enter-active .modal-container,
-.modal-fade-leave-active .modal-container {
-  transition: transform 0.3s ease;
-}
-
-.modal-fade-enter-from .modal-container,
-.modal-fade-leave-to .modal-container {
-  transform: translateY(20px);
 }
 
 @media (max-width: 768px) {

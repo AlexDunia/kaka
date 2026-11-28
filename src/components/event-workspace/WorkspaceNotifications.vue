@@ -1,4 +1,5 @@
 <script setup>
+import { pngIconUrl } from '@/constants/pngIcons'
 import { computed, ref } from 'vue'
 import { overviewStage } from './overviewModel'
 const props = defineProps({ event: Object, overview: Object, page: String, eventType: String })
@@ -185,7 +186,7 @@ defineExpose({ toggle, pending })
         aria-label="Dismiss payout reminder"
         @click="dismissReminder"
       >
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><image :href="pngIconUrl('close')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg>
       </button>
     </div>
   </div>
@@ -200,7 +201,7 @@ defineExpose({ toggle, pending })
     <div class="np-head">
       <h2 id="nx-panel-title">Notifications</h2>
       <button class="np-close" aria-label="Close notifications" @click="close">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><image :href="pngIconUrl('close')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg>
       </button>
     </div>
     <div class="np-body">
@@ -253,7 +254,7 @@ defineExpose({ toggle, pending })
           </li>
           <li v-for="task in completed" :key="task.id" class="np-item done">
             <span class="np-ic"
-              ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4 10-10" /></svg
+              ><svg viewBox="0 0 24 24" aria-hidden="true"><image :href="pngIconUrl('check')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg
             ></span>
             <div class="np-top">
               <strong>{{ task.title }}</strong

@@ -5,7 +5,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   XMarkIcon,
-} from '@heroicons/vue/24/outline'
+} from '@/components/icons/pngIcons'
 import ScheduleCalendar from './ScheduleCalendar.vue'
 import { formatScheduleDate } from '@/utils/explicitSchedule'
 const props = defineProps({

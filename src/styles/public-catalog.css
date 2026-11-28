@@ -18,3 +18,6 @@
 .public-site .public-about-actions{display:flex;gap:12px;margin-top:28px}
 @keyframes public-catalog-shimmer{to{transform:translateX(100%)}}
 @media(prefers-reduced-motion:reduce){.public-site .catalog-skeleton:after{animation:none}}
+
+#app .public-site .public-cart-link { display: inline-flex; align-items: center; justify-content: center; width: 44px; min-height: 44px; }
+#app .public-site .public-cart-link svg { width: 24px; height: 24px; }

@@ -1,0 +1,19 @@
+/* Animate the artwork inside its existing slot, never the surrounding control. */
+@media (prefers-reduced-motion: no-preference) {
+  svg image[href*='icons/3d/'],
+  img[src*='icons/3d/'] {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: rh-icon-sway 4.8s ease-in-out infinite;
+  }
+}
+
+@keyframes rh-icon-sway {
+  0%,
+  100% {
+    transform: rotate(-2deg);
+  }
+  50% {
+    transform: rotate(2deg);
+  }
+}

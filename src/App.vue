@@ -1,4 +1,5 @@
 <script setup>
+import { pngIconUrl } from '@/constants/pngIcons'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { ref, onMounted, onUnmounted, computed, watch, provide } from 'vue'
 import { useCartStore } from '@/stores/cart'
@@ -55,10 +56,6 @@ const pageOwnedSkeletonRoutes = new Set([
 const routeUsesShellSkeleton = (targetRoute) => !pageOwnedSkeletonRoutes.has(targetRoute?.name)
 const isRouteLoading = ref(routeUsesShellSkeleton(route))
 const skeletonRoute = ref(route)
-const routeNetworkRtt = typeof navigator === 'undefined' ? 120 : Number(navigator.connection?.rtt) || 120
-const routeSkeletonMinimumMs = Math.min(1450, Math.max(1050, 900 + routeNetworkRtt))
-let routeLoadingStartedAt = Date.now()
-let routeLoadingReleaseTimer = null
 const chromeRoute = computed(() => (isRouteLoading.value ? skeletonRoute.value : route))
 const showHero = computed(
   () =>
@@ -90,27 +87,12 @@ const routeSkeletonVariant = computed(() => {
 
 const routeSkeletonEnabled = computed(() => routeUsesShellSkeleton(skeletonRoute.value))
 
-const clearRouteLoadingTimers = () => {
-  if (routeLoadingReleaseTimer) {
-    clearTimeout(routeLoadingReleaseTimer)
-    routeLoadingReleaseTimer = null
-  }
-}
-
 const showRouteSkeleton = () => {
-  clearRouteLoadingTimers()
-  routeLoadingStartedAt = Date.now()
   isRouteLoading.value = true
 }
 
 const hideRouteSkeleton = () => {
-  const elapsed = Date.now() - routeLoadingStartedAt
-  const remaining = Math.max(routeSkeletonMinimumMs - elapsed, 0)
-
-  routeLoadingReleaseTimer = setTimeout(() => {
-    isRouteLoading.value = false
-    routeLoadingReleaseTimer = null
-  }, remaining)
+  isRouteLoading.value = false
 }
 
 const removeRouteBeforeEach = router.beforeEach((to, from) => {
@@ -120,7 +102,6 @@ const removeRouteBeforeEach = router.beforeEach((to, from) => {
     if (routeUsesShellSkeleton(to)) {
       showRouteSkeleton()
     } else {
-      clearRouteLoadingTimers()
       isRouteLoading.value = false
     }
   }
@@ -132,7 +113,6 @@ const removeRouteAfterEach = router.afterEach((to, from) => {
   if (routeUsesShellSkeleton(to)) {
     hideRouteSkeleton()
   } else {
-    clearRouteLoadingTimers()
     isRouteLoading.value = false
   }
 })
@@ -141,7 +121,6 @@ router.onError(() => {
   if (routeUsesShellSkeleton(skeletonRoute.value)) {
     hideRouteSkeleton()
   } else {
-    clearRouteLoadingTimers()
     isRouteLoading.value = false
   }
 })
@@ -286,23 +265,21 @@ onMounted(() => {
   if (routeUsesShellSkeleton(route)) {
     hideRouteSkeleton()
   } else {
-    clearRouteLoadingTimers()
     isRouteLoading.value = false
   }
 })
 
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll)
-  clearRouteLoadingTimers()
   removeRouteBeforeEach()
   removeRouteAfterEach()
 })
 </script>
 
 <template>
-  <div v-if="!authStore.initialized && authStore.error" role="alert">
+  <div v-if="route.meta.requiresAuth && !authStore.initialized && authStore.error" role="alert">
     {{ authStore.error }}
-    <button type="button" :disabled="authStore.isLoading" @click="authStore.initialize()">
+    <button type="button" :disabled="authStore.isLoading" @click="authStore.initialize()" :aria-busy="authStore.isLoading">
       {{ authStore.isLoading ? 'Checking your login...' : 'Try again' }}
     </button>
   </div>
@@ -399,24 +376,8 @@ onUnmounted(() => {
           >
             <span class="theme-icon-window" aria-hidden="true">
               <span class="theme-icon-track" :class="{ 'is-light': theme === 'light' }">
-                <svg class="theme-icon theme-icon--moon" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M20.3 15.2A8.5 8.5 0 0 1 8.8 3.7a8.5 8.5 0 1 0 11.5 11.5Z"
-                    stroke="currentColor"
-                    stroke-width="1.8"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
-                <svg class="theme-icon theme-icon--sun" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="12" r="3.6" stroke="currentColor" stroke-width="1.8" />
-                  <path
-                    d="M12 2.5v2M12 19.5v2M4.5 12h-2M21.5 12h-2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M18.7 5.3l-1.4 1.4M6.7 17.3l-1.4 1.4"
-                    stroke="currentColor"
-                    stroke-width="1.8"
-                    stroke-linecap="round"
-                  />
-                </svg>
+                <svg class="theme-icon theme-icon--moon" viewBox="0 0 24 24" fill="none"><image :href="pngIconUrl('moon')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg>
+                <svg class="theme-icon theme-icon--sun" viewBox="0 0 24 24" fill="none"><image :href="pngIconUrl('sun')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg>
               </span>
             </span>
           </button>
@@ -440,11 +401,7 @@ onUnmounted(() => {
               stroke-width="2"
               stroke-linecap="round"
               stroke-linejoin="round"
-            >
-              <circle cx="9" cy="21" r="1"></circle>
-              <circle cx="20" cy="21" r="1"></circle>
-              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-            </svg>
+            ><image :href="pngIconUrl('cart')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg>
             <span v-if="cartCount > 0" class="cart-badge">{{ cartCount }}</span>
           </RouterLink>
 
@@ -463,11 +420,7 @@ onUnmounted(() => {
               stroke-width="2"
               stroke-linecap="round"
               stroke-linejoin="round"
-            >
-              <line x1="3" y1="12" x2="21" y2="12"></line>
-              <line x1="3" y1="6" x2="21" y2="6"></line>
-              <line x1="3" y1="18" x2="21" y2="18"></line>
-            </svg>
+            ><image :href="pngIconUrl('menu')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg>
           </button>
         </div>
       </div>
@@ -476,9 +429,9 @@ onUnmounted(() => {
     <HeroSection v-if="showHero" />
 
     <!-- Mobile Navigation Modal -->
-    <Transition name="modal">
-      <div v-if="isMobileMenuOpen" class="mobile-nav-modal" :class="{ open: isMobileMenuOpen }">
-        <div class="mobile-nav-content">
+    <Transition name="rh-popup">
+      <div data-popup-overlay v-if="isMobileMenuOpen" class="mobile-nav-modal" :class="{ open: isMobileMenuOpen }">
+        <div data-popup-panel class="mobile-nav-content">
           <button class="modal-close" @click="closeMenu">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -490,10 +443,7 @@ onUnmounted(() => {
               stroke-width="2"
               stroke-linecap="round"
               stroke-linejoin="round"
-            >
-              <path d="M18 6L6 18" />
-              <path d="M6 6L18 18" />
-            </svg>
+            ><image :href="pngIconUrl('close')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg>
           </button>
           <nav class="mobile-nav-list">
             <RouterLink

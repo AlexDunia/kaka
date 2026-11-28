@@ -50,7 +50,8 @@ function createModel(eventId, actualMode, account) {
     channel,
     active = true,
     refreshing = null,
-    pending = null
+    pending = null,
+    initialLoadFinished = false
   const normalizeGuest = (row) => ({
     ...row,
     id: String(row.id),
@@ -165,9 +166,9 @@ function createModel(eventId, actualMode, account) {
       if (version === versions.context) fail(err)
     }
   }
-  async function refresh() {
+  async function refresh({ background = false } = {}) {
     if (!active || refreshing) return refreshing
-    loading.value = true
+    loading.value = !background || !initialLoadFinished
     error.value = ''
     refreshing = (async () => {
       await loadContext()
@@ -178,12 +179,13 @@ function createModel(eventId, actualMode, account) {
       ])
     })().finally(() => {
       refreshing = null
+      initialLoadFinished = true
       loading.value = false
     })
     return refreshing
   }
   const visibleRefresh = () => {
-    if (document.visibilityState !== 'hidden') void refresh()
+    if (document.visibilityState !== 'hidden') void refresh({ background: true })
   }
   function attach() {
     consumers++

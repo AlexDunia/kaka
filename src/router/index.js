@@ -26,7 +26,7 @@ const router = createRouter({
         title: 'Find events worth showing up for',
         publicSite: true,
         description:
-          'Find concerts, meetups, food events, and experiences near you with Rush Hour Ticket.',
+          'Find concerts, meetups, food events, and experiences near you with Rush Hour Tickets.',
         disableRouteSkeleton: true,
       },
     },
@@ -74,8 +74,8 @@ const router = createRouter({
       name: 'login',
       component: () => import('../pages/LoginPage.vue'),
       meta: {
-        title: 'Login',
-        description: 'Login to your account to manage your tickets and events.',
+        title: 'Log in',
+        description: 'Log in to manage your tickets and events.',
       },
     },
     {
@@ -83,7 +83,7 @@ const router = createRouter({
       name: 'register',
       component: () => import('../pages/Register.vue'),
       meta: {
-        title: 'Create Account',
+        title: 'Create account',
         description: 'Create a new account to book tickets and manage your events.',
       },
     },
@@ -92,8 +92,8 @@ const router = createRouter({
       name: 'forgot-password',
       component: () => import('../pages/ForgotPassword.vue'),
       meta: {
-        title: 'Forgot Password',
-        description: 'Reset your password to regain access to your account.',
+        title: 'Reset your password',
+        description: 'Choose a new password for your account.',
       },
     },
     {
@@ -185,8 +185,8 @@ const router = createRouter({
       name: 'contact',
       component: () => import('../pages/ContactPage.vue'),
       meta: {
-        title: 'Contact Us',
-        description: 'Get in touch with our team for support, inquiries, or feedback.',
+        title: 'Contact us',
+        description: 'Get help with your tickets or event.',
       },
     },
     {
@@ -195,7 +195,7 @@ const router = createRouter({
       component: () => import('../pages/Dashboard.vue'),
       // meta: { requiresAuth: true },
       meta: {
-        title: 'My Dashboard',
+        title: 'My dashboard',
         description: 'Manage event performance, tickets, guests, payouts, and settings.',
         requiresAuth: true,
         disableRouteSkeleton: true,
@@ -207,7 +207,7 @@ const router = createRouter({
       name: 'dashboard-event',
       component: () => import('../pages/Dashboard.vue'),
       meta: {
-        title: 'Event Dashboard',
+        title: 'Event dashboard',
         description: 'Manage event performance, tickets, guests, payouts, and settings.',
         requiresAuth: true,
         disableRouteSkeleton: true,
@@ -232,7 +232,7 @@ const router = createRouter({
       component: () => import('../pages/EventDetails.vue'),
       props: true,
       meta: {
-        title: 'Event Details',
+        title: 'Event details',
         description: 'View details and book tickets for this event.',
         disableRouteSkeleton: true,
       },
@@ -246,7 +246,7 @@ const router = createRouter({
         slug: route.params.slug,
       }),
       meta: {
-        title: 'Event Details',
+        title: 'Event details',
         description: 'View details and book tickets for this event.',
         disableRouteSkeleton: true,
       },
@@ -256,7 +256,7 @@ const router = createRouter({
       name: 'CreateEvent',
       component: () => import('../pages/CreateEvent.vue'),
       meta: {
-        title: 'Create Event',
+        title: 'Create event',
         requiresAuth: true,
         fullScreenShell: true,
         description: 'Create and publish your own event to sell tickets.',
@@ -267,7 +267,7 @@ const router = createRouter({
       name: 'EditEvent',
       redirect: (to) => ({ name: 'dashboard-event', params: { eventId: to.params.id }, query: { ...to.query, view: 'edit', tab: 'details' } }),
       meta: {
-        title: 'Edit Event',
+        title: 'Edit event',
         description: 'Update your published event.',
         requiresAuth: true,
         fullScreenShell: true,
@@ -289,8 +289,8 @@ const router = createRouter({
       name: 'payment-success',
       component: () => import('../pages/PaymentSuccess.vue'),
       meta: {
-        title: 'Payment Confirmed',
-        description: 'View your KakaTickets order and tickets.',
+        title: 'Your order',
+        description: 'View your Rush Hour Tickets order and tickets.',
         disableRouteSkeleton: true,
       },
     },
@@ -299,7 +299,7 @@ const router = createRouter({
       name: 'cart',
       component: () => import('../pages/Cart.vue'),
       meta: {
-        title: 'Shopping Cart',
+        title: 'Your cart',
         description: 'Review your selected tickets before checkout.',
       },
     },
@@ -308,7 +308,7 @@ const router = createRouter({
       name: 'blog',
       component: () => import('@/pages/BlogList.vue'),
       meta: {
-        title: 'Blog - Event Planning Tips & Insights',
+        title: 'Event planning tips',
         disableRouteSkeleton: true,
       },
     },
@@ -333,8 +333,8 @@ const router = createRouter({
       name: 'transactions',
       component: () => import('../pages/TransactionHistory.vue'),
       meta: {
-        title: 'Transaction History',
-        description: 'View your transaction history and past purchases.',
+        title: 'Your tickets',
+        description: 'View your tickets and past purchases.',
         requiresAuth: true,
         disableRouteSkeleton: true,
       },
@@ -356,7 +356,7 @@ const router = createRouter({
       name: 'not-found',
       component: () => import('../pages/NotFound.vue'),
       meta: {
-        title: 'Page Not Found',
+        title: 'Page not found',
         description: 'The page you are looking for does not exist.',
       },
     },
@@ -398,7 +398,7 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta.title) {
-    document.title = `${to.meta.title} | Rush Hour Ticket`
+    document.title = `${to.meta.title} | Rush Hour Tickets`
   }
 
   return true

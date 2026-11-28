@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon } from '@/components/icons/pngIcons'
 import ScheduleCalendar from './ScheduleCalendar.vue'
 import ScheduleDatePicker from './ScheduleDatePicker.vue'
 import ScheduleDayEditor from './ScheduleDayEditor.vue'
@@ -335,7 +335,7 @@ onBeforeUnmount(() => {
         </ul>
       </section>
       <p class="schedule-muted">
-        Add days and times here, then save your event to keep your changes.
+        Add days and times, then save your event.
       </p>
     </template>
     <Teleport to="body">
@@ -462,8 +462,7 @@ onBeforeUnmount(() => {
       >
         <h2>Replace the times on your other added days?</h2>
         <p>
-          Some days have different times or unfinished changes. Replacing them will update those
-          days too.
+          This replaces different times and unfinished changes on your other days.
         </p>
         <div class="schedule-save-row">
           <button type="button" class="schedule-primary" @click="confirmBulk">Replace times</button

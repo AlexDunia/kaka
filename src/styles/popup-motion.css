@@ -1,0 +1,122 @@
+/* Shared popup motion: public pages, organiser tools, native dialogs and Vue overlays.
+   Individual translate/scale preserve existing transform-based positioning. */
+dialog,
+[popover] {
+  opacity: 0;
+  translate: 0 var(--ds-motion-popup-offset);
+  scale: var(--ds-motion-popup-scale);
+  transition:
+    opacity var(--ds-motion-popup-exit) var(--ds-motion-popup-ease-exit),
+    translate var(--ds-motion-popup-exit) var(--ds-motion-popup-ease-exit),
+    scale var(--ds-motion-popup-exit) var(--ds-motion-popup-ease-exit),
+    display var(--ds-motion-popup-exit) allow-discrete,
+    overlay var(--ds-motion-popup-exit) allow-discrete;
+}
+:is(dialog[open], [popover]:popover-open) {
+  opacity: 1;
+  translate: 0 0;
+  scale: 1;
+  transition-duration: var(--ds-motion-popup-enter);
+  transition-timing-function: var(--ds-motion-popup-ease-enter);
+}
+dialog::backdrop,
+[popover]::backdrop {
+  opacity: 0;
+  transition:
+    opacity var(--ds-motion-popup-exit) ease,
+    display var(--ds-motion-popup-exit) allow-discrete,
+    overlay var(--ds-motion-popup-exit) allow-discrete;
+}
+:is(dialog[open], [popover]:popover-open)::backdrop {
+  opacity: 1;
+  transition-duration: var(--ds-motion-popup-enter);
+}
+@starting-style {
+  :is(dialog[open], [popover]:popover-open) {
+    opacity: 0;
+    translate: 0 var(--ds-motion-popup-offset);
+    scale: var(--ds-motion-popup-scale);
+  }
+  :is(dialog[open], [popover]:popover-open)::backdrop {
+    opacity: 0;
+  }
+}
+.rh-popup-enter-active,
+.rh-popup-enter-active > [data-popup-panel] {
+  transition:
+    opacity var(--ds-motion-popup-enter) var(--ds-motion-popup-ease-enter),
+    translate var(--ds-motion-popup-enter) var(--ds-motion-popup-ease-enter),
+    scale var(--ds-motion-popup-enter) var(--ds-motion-popup-ease-enter);
+}
+.rh-popup-leave-active,
+.rh-popup-leave-active > [data-popup-panel] {
+  transition:
+    opacity var(--ds-motion-popup-exit) var(--ds-motion-popup-ease-exit),
+    translate var(--ds-motion-popup-exit) var(--ds-motion-popup-ease-exit),
+    scale var(--ds-motion-popup-exit) var(--ds-motion-popup-ease-exit);
+  pointer-events: none;
+}
+.rh-popup-enter-from,
+.rh-popup-leave-to,
+.rh-popup-enter-from > [data-popup-panel],
+.rh-popup-leave-to > [data-popup-panel] {
+  opacity: 0;
+  translate: 0 var(--ds-motion-popup-offset);
+  scale: var(--ds-motion-popup-scale);
+}
+/* Only the panel moves; a full-screen dimming layer stays aligned to the viewport. */
+[data-popup-overlay].rh-popup-enter-from,
+[data-popup-overlay].rh-popup-leave-to {
+  translate: none;
+  scale: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  dialog,
+  [popover],
+  dialog::backdrop,
+  [popover]::backdrop,
+  .rh-popup-enter-active,
+  .rh-popup-leave-active,
+  .rh-popup-enter-active > [data-popup-panel],
+  .rh-popup-leave-active > [data-popup-panel] {
+    transition: none !important;
+    translate: none !important;
+    scale: none !important;
+  }
+}
+
+/* Search option pickers use the same motion where native customisation exists. */
+@supports (appearance: base-select) {
+  :is(.hero-search, .search-with-filters) select::picker(select) {
+    opacity: 0;
+    translate: 0 var(--ds-motion-popup-offset);
+    scale: var(--ds-motion-popup-scale);
+    transition:
+      opacity var(--ds-motion-popup-exit) var(--ds-motion-popup-ease-exit),
+      translate var(--ds-motion-popup-exit) var(--ds-motion-popup-ease-exit),
+      scale var(--ds-motion-popup-exit) var(--ds-motion-popup-ease-exit),
+      display var(--ds-motion-popup-exit) allow-discrete,
+      overlay var(--ds-motion-popup-exit) allow-discrete;
+  }
+  :is(.hero-search, .search-with-filters) select:open::picker(select) {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+    transition-duration: var(--ds-motion-popup-enter);
+    transition-timing-function: var(--ds-motion-popup-ease-enter);
+  }
+  @starting-style {
+    :is(.hero-search, .search-with-filters) select:open::picker(select) {
+      opacity: 0;
+      translate: 0 var(--ds-motion-popup-offset);
+      scale: var(--ds-motion-popup-scale);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    :is(.hero-search, .search-with-filters) select::picker(select) {
+      transition: none !important;
+      translate: none !important;
+      scale: none !important;
+    }
+  }
+}

@@ -54,3 +54,62 @@
     width: 80%;
   }
 }
+
+/* Shared PNG artwork for dashboard section tabs. */
+.event-workspace [role='tab'] > .rh-tab-icon,
+.event-workspace .workspace-mobile-nav > button > .rh-tab-icon {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  margin-inline-end: 8px;
+  object-fit: contain;
+  vertical-align: middle;
+}
+
+/* One content-width, pink tab treatment throughout organiser screens. */
+#app .event-workspace [role='tablist'] {
+  display: flex; flex-wrap: nowrap; gap: var(--ds-space-24); align-items: stretch;
+  margin: 0 0 var(--ds-space-32) !important;
+  padding: 0;
+  overflow-x: auto; overflow-y: hidden; white-space: nowrap;
+  border-bottom: 1px solid var(--ds-color-border);
+  scrollbar-width: thin;
+}
+#app .event-workspace [role='tablist'] > [role='tab'] {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: var(--ds-space-8); flex: 0 0 auto; width: auto; min-width: 0;
+  min-height: 44px; padding: var(--ds-space-12) 0 !important;
+  margin: 0; border: 0; border-bottom: 1px solid transparent;
+  border-radius: 0; background: transparent !important; box-shadow: none !important;
+  color: var(--ds-color-text-secondary) !important;
+  font-weight: var(--ds-weight-medium); white-space: nowrap;
+}
+#app .event-workspace [role='tablist'] > [role='tab'][hidden] { display: none; }
+#app .event-workspace [role='tablist'] > [role='tab'][aria-selected='true'] {
+  color: var(--ds-color-brand-accent) !important;
+  border-bottom-color: var(--ds-color-brand-accent) !important;
+}
+#app .event-workspace [role='tablist'] > [role='tab']::before,
+#app .event-workspace [role='tablist'] > [role='tab']::after { content: none !important; }
+#app .event-workspace [role='tab'] > .rh-tab-icon {
+  width: 16px; height: 16px; flex: 0 0 16px; margin: 0;
+}
+@media (max-width: 760px) {
+  #app .event-workspace [role='tablist'] { gap: var(--ds-space-24); }
+  #app .event-workspace :is(h1, .rh-h1):not(.rh-summary-card *, .rh35-summary *, .rhe-card *, .metric *, .rh-v24-metric *) {
+    font-size: var(--ds-size-public-h1-mobile) !important;
+    line-height: 1.3 !important; letter-spacing: -.3px;
+  }
+  #app .event-workspace :is(h2, .rh-h2):not(.rh-summary-card *, .rh35-summary *, .rhe-card *, .metric *, .rh-v24-metric *) {
+    font-size: var(--ds-size-public-h2-mobile) !important;
+    line-height: 1.3 !important;
+  }
+  #app .event-workspace :is(h3, .rh-h3):not(.rh-summary-card *, .rh35-summary *, .rhe-card *, .metric *, .rh-v24-metric *) {
+    font-size: var(--ds-size-public-h3-mobile) !important;
+    line-height: 1.4 !important;
+  }
+  #app .event-workspace :is(.rh-page-heading, .rh33-intro, .rhe-head, .rhea-page-head, .heading-bar) p {
+    font-size: var(--ds-size-small) !important; line-height: 1.5 !important;
+  }
+}

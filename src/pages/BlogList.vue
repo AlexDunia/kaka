@@ -91,7 +91,7 @@ const navigateToPost = (slug) => {
         <!-- Content Section -->
         <div class="post-content">
           <h2 class="post-title" @click="navigateToPost(post.slug)">{{ post.title }}</h2>
-          <div class="read-more" @click="navigateToPost(post.slug)">Read More →</div>
+          <div class="read-more" @click="navigateToPost(post.slug)">Read more →</div>
         </div>
       </article>
     </div>

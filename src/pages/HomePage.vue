@@ -1,4 +1,5 @@
 <script setup>
+import { pngIconUrl } from '@/constants/pngIcons'
 import { computed, inject, onMounted, onBeforeUnmount, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useLandingMotion } from '@/composables/useLandingMotion'
@@ -58,7 +59,7 @@ const asset = (path) => `${import.meta.env.BASE_URL}${path}`
             >
           </p>
           <div class="hero-actions">
-            <RouterLink class="btn btn-primary" to="/find-events">Find event</RouterLink>
+            <RouterLink class="btn btn-primary" to="/find-events">Find events</RouterLink>
             <RouterLink class="btn hero-create-event" to="/create-event">Create event</RouterLink>
           </div>
         </div>
@@ -136,7 +137,7 @@ const asset = (path) => `${import.meta.env.BASE_URL}${path}`
                   ><span class="demo-mini-note">Sample</span>
                 </div>
                 <div class="demo-promobox">
-                  <span class="demo-success-mark">✓</span><span>Links generated</span
+                  <span class="demo-success-mark"><svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align: middle"><image :href="pngIconUrl('check')" width="24" height="24" /></svg></span><span>Sharing links</span
                   ><span class="demo-tiny-check">3 channels</span>
                 </div>
                 <div class="demo-channel">
@@ -157,7 +158,7 @@ const asset = (path) => `${import.meta.env.BASE_URL}${path}`
                 <div class="promo-conversion">
                   <span class="conversion-dot"></span>
                   <div><b>New ticket sale</b><small>From Instagram · General admission</small></div>
-                  <span class="conversion-check">✓</span>
+                  <span class="conversion-check"><svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align: middle"><image :href="pngIconUrl('check')" width="24" height="24" /></svg></span>
                 </div>
               </div>
               <button
@@ -258,20 +259,20 @@ const asset = (path) => `${import.meta.env.BASE_URL}${path}`
                 </div>
                 <div class="buyer-summary">
                   <span class="buyer-initials">DA</span
-                  ><span><strong>Damilola A.</strong><small>Purchased 3 tickets</small></span
+                  ><span><strong>Damilola A.</strong><small>Bought 3 tickets</small></span
                   ><span class="buyer-chevron">⌄</span>
                 </div>
                 <div class="buyer-tickets">
                   <div>
-                    <span class="ticket-tick ticket-one">✓</span><span>Ticket 01</span
+                    <span class="ticket-tick ticket-one"><svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align: middle"><image :href="pngIconUrl('check')" width="24" height="24" /></svg></span><span>Ticket 01</span
                     ><strong>Confirmed</strong>
                   </div>
                   <div>
-                    <span class="ticket-tick ticket-two">✓</span><span>Ticket 02</span
+                    <span class="ticket-tick ticket-two"><svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align: middle"><image :href="pngIconUrl('check')" width="24" height="24" /></svg></span><span>Ticket 02</span
                     ><strong>Confirmed</strong>
                   </div>
                   <div>
-                    <span class="ticket-tick ticket-three">✓</span><span>Ticket 03</span
+                    <span class="ticket-tick ticket-three"><svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align: middle"><image :href="pngIconUrl('check')" width="24" height="24" /></svg></span><span>Ticket 03</span
                     ><strong>Confirmed</strong>
                   </div>
                 </div>

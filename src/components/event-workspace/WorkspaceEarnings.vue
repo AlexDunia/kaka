@@ -1,4 +1,5 @@
 <script setup>
+import { pngIconUrl } from '@/constants/pngIcons'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useWorkspacePrivacy } from '@/composables/useWorkspacePrivacy'
@@ -152,6 +153,7 @@ function moveTab(e, index) {
           @click="selectTab(item.key)"
           @keydown="moveTab($event, index)"
         >
+          <img class="rh-tab-icon" :src="pngIconUrl({ sales: 'chart', discounts: 'discount', social: 'link', payouts: 'wallet' }[item.key])" alt="" aria-hidden="true" width="20" height="20" />
           {{ item.label }}
         </button>
       </div>
@@ -168,14 +170,14 @@ function moveTab(e, index) {
         />
         <div v-if="DASHBOARD_PREVIEW" class="rhe-summary rhe-sales-summary">
           <article class="rhe-card rhe-main">
-            <span>How much you’ve made so far</span><strong>{{ money(revenue.total_minor) }}</strong
+            <span>Total ticket earnings</span><strong>{{ money(revenue.total_minor) }}</strong
             ><small
               >{{ number(sales.units_sold) }} tickets at original prices, before discounts, fees and
               refunds</small
             >
           </article>
           <article class="rhe-card">
-            <span>How much you’ve made this week</span
+            <span>This week’s earnings</span
             ><strong>{{ money(revenue.this_week_minor) }}</strong
             ><small>From ticket sales this week, at original prices</small>
           </article>
@@ -183,10 +185,9 @@ function moveTab(e, index) {
         <section class="rhe-earn-section">
           <div class="rhe-section-head">
             <div>
-              <h2>How much you’ve made from each ticket type</h2>
+              <h2>Earnings by ticket type</h2>
               <p>
-                Compare what each ticket costs, how many you’ve sold and how much money each type
-                has brought in.
+                See prices, tickets sold, and earnings for each ticket type.
               </p>
             </div>
           </div>
@@ -220,8 +221,7 @@ function moveTab(e, index) {
             <div>
               <h2>How your tickets are selling</h2>
               <p>
-                See how many tickets people have bought and how many you still have available for
-                each ticket type.
+                See tickets sold and remaining for each ticket type.
               </p>
             </div>
           </div>
@@ -289,7 +289,7 @@ function moveTab(e, index) {
           <div class="rhe-section-head">
             <div>
               <h2>See where your sales came from</h2>
-              <p>Find out how much people spent using your discount codes and social links.</p>
+              <p>See sales from discount codes and social links.</p>
             </div>
           </div>
           <div class="rhea-overview">
@@ -329,8 +329,7 @@ function moveTab(e, index) {
             </article>
           </div>
           <p class="rhea-note">
-            A ticket can use both a discount code and a social link, so these amounts should not be
-            added together.
+            A sale can use both a discount code and a social link. Don’t add these amounts together.
           </p>
           <p v-if="DASHBOARD_PREVIEW" class="rhea-sample-note">
             Sales by code and social link are sample figures until payments and checkout tracking
@@ -340,7 +339,7 @@ function moveTab(e, index) {
         <section class="rhe-card rhe-get-paid">
           <div>
             <h2>Getting your money</h2>
-            <p>Add your bank account so we know where to send your money when it’s ready.</p>
+            <p>Add a bank account to receive your ticket earnings.</p>
           </div>
           <button class="rh-button rh-button-dark" @click="selectTab('payouts')">
             Set up payouts

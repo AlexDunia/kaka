@@ -26,7 +26,7 @@ const register = async () => {
   }
 
   if (password.value !== confirmPassword.value) {
-    error.value = 'Your passwords don’t match yet. Try entering them again.'
+    error.value = 'Your passwords don’t match. Enter them again.'
     return
   }
 
@@ -134,7 +134,7 @@ const goToLogin = () => {
         />
       </div>
 
-      <button type="submit" class="register-form__submit" :disabled="loading">
+      <button type="submit" class="register-form__submit" :disabled="loading" :aria-busy="loading">
         <span v-if="loading">Creating your account...</span>
         <span v-else>Create account</span>
       </button>

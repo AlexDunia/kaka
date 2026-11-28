@@ -62,7 +62,49 @@ export const leadingBuyerSources = (sources) =>
     .filter((source) => Number(source.buyers) > 0 && source.source_code !== 'unattributed')
     .sort((a, b) => Number(b.buyers) - Number(a.buyers))
 
-export function salesChart(series = []) {
+// Dates from the API are already in the event timezone. UTC here is calendar
+// arithmetic only, so a browser timezone or daylight-saving change cannot move a sale.
+export function weeklySales(series = []) {
+  const days = series
+    .flatMap((point) => {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(point?.date || '')) return []
+      const date = new Date(`${point.date}T00:00:00Z`)
+      if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== point.date)
+        return []
+      return [{ ...point, timestamp: date.getTime() }]
+    })
+    .sort((a, b) => a.timestamp - b.timestamp)
+  if (!days.length) return []
+  const monday = (timestamp) => {
+    const date = new Date(timestamp)
+    return timestamp - ((date.getUTCDay() + 6) % 7) * 86400000
+  }
+  const buckets = new Map()
+  for (const day of days) {
+    const start = monday(day.timestamp)
+    const units = Number(day.units_sold)
+    buckets.set(
+      start,
+      (buckets.get(start) || 0) + (Number.isFinite(units) ? Math.max(0, units) : 0),
+    )
+  }
+  const weeks = []
+  // The overview API supplies at most 1,095 daily aggregates (up to 158 weeks).
+  const last = monday(days.at(-1).timestamp)
+  const first = Math.max(monday(days[0].timestamp), last - 157 * 7 * 86400000)
+  for (let start = first; start <= last; start += 7 * 86400000) {
+    weeks.push({
+      date: new Date(start).toISOString().slice(0, 10),
+      end_date: new Date(Math.min(start + 6 * 86400000, days.at(-1).timestamp))
+        .toISOString()
+        .slice(0, 10),
+      units_sold: buckets.get(start) || 0,
+    })
+  }
+  return weeks
+}
+
+export function salesChart(series = [], width = 600) {
   const points = series
     .filter((p) => p?.date)
     .map((p) => ({
@@ -71,7 +113,7 @@ export function salesChart(series = []) {
     }))
   const maximum = Math.max(4, Math.ceil(Math.max(0, ...points.map((p) => p.units_sold)) / 4) * 4)
   const coordinates = points.map((p, i) => ({
-    x: 44 + (i * 536) / Math.max(1, points.length - 1),
+    x: 44 + (i * (width - 104)) / Math.max(1, points.length - 1),
     y: 226 - (p.units_sold * 200) / maximum,
   }))
   const line = coordinates.map((p, i) => `${i ? 'L' : 'M'}${p.x} ${p.y}`).join(' ')

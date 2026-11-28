@@ -12,9 +12,31 @@ const tokens = JSON.parse(fs.readFileSync('src/design-system/tokens.json', 'utf8
 assert.deepEqual(['h1', 'h2', 'h3', 'h4', 'body'].map((key) => tokens.size[key]), ['22px', '18px', '17px', '16px', '14px'])
 assert.equal(tokens.size.metric, '24px')
 assert.deepEqual(['public-h1', 'public-h2', 'public-h3'].map((key) => tokens.size[key]), ['40px', '30px', '24px'])
-assert.deepEqual(['public-h1-mobile', 'public-h2-mobile', 'public-h3-mobile'].map((key) => tokens.size[key]), ['34px', '28px', '22px'])
+assert.deepEqual(['public-h1-mobile', 'public-h2-mobile', 'public-h3-mobile'].map((key) => tokens.size[key]), ['24px', '20px', '15px'])
 const css = postcss.parse(fs.readFileSync('src/styles/design-system.css', 'utf8'))
 const generated = postcss.parse(fs.readFileSync('src/styles/design-tokens.css', 'utf8'))
+assert.equal(tokens.size['public-h4-mobile'], '15px')
+assert.equal(tokens.size['public-home-hero-h1-mobile'], '34px')
+for (const heading of ['h1', 'h2', 'h3', 'h4']) {
+  const selector = `#app :is(.public-site, .public-typography) :is(${heading}, .rh-${heading}):not(.public-site--home .hero *)`
+  let mobileRule
+  css.walkRules(selector, (rule) => { mobileRule = rule })
+  assert.ok(mobileRule, `${heading} needs a public mobile rule that excludes the homepage hero`)
+  assert.equal(mobileRule.parent.type, 'atrule')
+  assert.match(mobileRule.parent.params, /max-width: 768px/)
+  assert.deepEqual(mobileRule.nodes.map((node) => node.prop), ['font-size'])
+}
+
+// Every popup consumes one registry rather than component-specific timings.
+for (const key of ['popup-enter', 'popup-exit', 'popup-offset', 'popup-scale', 'popup-ease-enter', 'popup-ease-exit']) {
+  let found = false
+  generated.walkDecls(`--ds-motion-${key}`, declaration => { if (declaration.value === String(tokens.motion[key])) found = true })
+  assert.ok(found, `Generated popup motion token ${key} is stale`)
+}
+const popupCss = postcss.parse(fs.readFileSync('src/styles/popup-motion.css', 'utf8'))
+assert.ok(popupCss.nodes.some(node => node.type === 'atrule' && node.name === 'starting-style'))
+assert.ok(popupCss.nodes.some(node => node.type === 'atrule' && node.params === '(prefers-reduced-motion: reduce)'))
+
 for (const [key, value] of Object.entries(tokens.size)) {
   let found = false
   generated.walkDecls(`--ds-size-${key}`, (declaration) => { if (declaration.value === value) found = true })

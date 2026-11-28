@@ -1,12 +1,15 @@
 <script setup>
-import { onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
 import { isNavigationFailure, NavigationFailureType, useRoute, useRouter } from 'vue-router'
-import { MagnifyingGlassIcon, ChevronDownIcon, ArrowRightIcon } from '@heroicons/vue/24/outline'
+import { MagnifyingGlassIcon } from '@/components/icons/pngIcons'
+import { ChevronDownIcon, ArrowRightIcon } from '@heroicons/vue/24/outline'
 import { getPublicCategories } from '@/services/publicCatalog'
 const props = defineProps({ discovery: Boolean, filters: Boolean })
 const emit = defineEmits(['searched'])
 const cityId = useId()
 const categoryId = useId()
+const searching = ref(false)
+const searchError = ref('')
 const categories = ref([])
 const categoryError = ref(false)
 const categoriesLoading = ref(false)
@@ -20,6 +23,10 @@ const category = ref(String(routeCategory()))
 const query = ref(String(route.query.q || ''))
 const city = ref(String(route.query.city || 'all'))
 const cities = ['Lagos', 'Abuja', 'Ibadan', 'Port Harcourt']
+const cityInput = computed({
+  get: () => city.value === 'all' ? '' : city.value,
+  set: (value) => { city.value = value || 'all' },
+})
 watch(
   () => route.query,
   (value) => {
@@ -46,17 +53,27 @@ onMounted(() => {
 })
 onBeforeUnmount(() => request?.abort())
 async function search() {
-  const selectedCategory = props.filters ? category.value : routeCategory()
-  const failure = await router.push({
-    name: 'find-events',
-    query: {
-      ...(query.value.trim() ? { q: query.value.trim() } : {}),
-      ...(city.value !== 'all' ? { city: city.value } : {}),
-      ...(selectedCategory ? { category: selectedCategory } : {}),
-    },
-    hash: '#discover',
-  })
-  if (!failure || isNavigationFailure(failure, NavigationFailureType.duplicated)) emit('searched')
+  if (searching.value) return
+  searching.value = true
+  searchError.value = ''
+  try {
+    const selectedCategory = props.filters ? category.value : routeCategory()
+    const failure = await router.push({
+      name: 'find-events',
+      query: {
+        ...(query.value.trim() ? { q: query.value.trim() } : {}),
+        ...(city.value !== 'all' && city.value.trim() ? { city: city.value.trim() } : {}),
+        ...(selectedCategory ? { category: selectedCategory } : {}),
+      },
+      hash: '#discover',
+    })
+    if (!failure || isNavigationFailure(failure, NavigationFailureType.duplicated)) emit('searched')
+    else searchError.value = "Search couldn't open. Please try again."
+  } catch {
+    searchError.value = "Search couldn't open. Please try again."
+  } finally {
+    searching.value = false
+  }
 }
 </script>
 <template>
@@ -82,13 +99,8 @@ async function search() {
         <label class="search-field" :for="cityId">
           <span>City</span>
           <div class="search-select-wrap">
-            <select :id="cityId" v-model="city">
-              <option value="all">All cities</option>
-              <option v-if="city !== 'all' && !cities.includes(city)" :value="city">
-                {{ city }}
-              </option>
-              <option v-for="place in cities" :key="place">{{ place }}</option>
-            </select>
+            <input :id="cityId" v-model="cityInput" type="text" :list="`${cityId}-suggestions`" placeholder="Any city" maxlength="255" autocomplete="off" />
+            <datalist :id="`${cityId}-suggestions`"><option v-for="place in cities" :key="place" :value="place" /></datalist>
             <ChevronDownIcon aria-hidden="true" />
           </div>
         </label>
@@ -97,7 +109,7 @@ async function search() {
           <div class="search-select-wrap">
             <select :id="categoryId" v-model="category" :disabled="categoriesLoading">
               <option value="">
-                {{ categoriesLoading ? 'Loading categories?' : 'All categories' }}
+                {{ categoriesLoading ? 'Loading categories...' : 'All categories' }}
               </option>
               <option
                 v-if="category && !categories.some((item) => item.value === category)"
@@ -114,10 +126,10 @@ async function search() {
         </label>
       </div>
       <p v-if="categoryError" class="search-filter-error" role="status">
-        Categories couldn?t load. <button type="button" @click="loadCategories">Try again</button>
+        We couldn’t load categories. <button type="button" @click="loadCategories">Try again</button>
       </p>
       <div class="search-form-actions">
-        <button class="search-submit" type="submit">
+        <button class="search-submit" type="submit" :disabled="searching" :aria-busy="searching">
           Find events <ArrowRightIcon aria-hidden="true" />
         </button>
       </div>
@@ -138,10 +150,11 @@ async function search() {
         <option v-if="city !== 'all' && !cities.includes(city)" :value="city">{{ city }}</option>
         <option v-for="place in cities" :key="place">{{ place }}</option>
       </select>
-      <button class="btn btn-primary" type="submit">
-        Find events <svg class="icon" aria-hidden="true"><use href="#i-arrow" /></svg>
+      <button class="btn btn-primary" type="submit" :disabled="searching" :aria-busy="searching">
+        Find events <ArrowRightIcon class="icon" aria-hidden="true" />
       </button>
     </template>
+    <p v-if="searchError" class="search-filter-error" role="status">{{ searchError }}</p>
   </form>
 </template>
 
@@ -194,9 +207,10 @@ async function search() {
   font: 400 var(--ds-size-body) / 1.3 var(--ds-font-body);
   outline: none;
 }
-.search-with-filters input {
+.search-with-filters .search-input-wrap input {
   padding-left: 42px;
 }
+.search-with-filters .search-select-wrap input { padding-right: 40px; }
 .search-with-filters input::placeholder {
   color: var(--ds-color-text-muted);
   opacity: 1;
@@ -285,5 +299,16 @@ async function search() {
   .search-submit {
     width: 100%;
   }
+}
+@media (max-width: 760px) {
+  .search-with-filters { gap: var(--ds-space-16); }
+  .search-with-filters > .search-field > span {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  .search-field > span { font-weight: var(--ds-weight-medium); }
+  .search-with-filters :is(input, select) { min-height: 44px; padding-block: 10px; font-weight: var(--ds-weight-regular); }
+  .search-filter-grid { gap: var(--ds-space-16); }
+  .search-form-actions { margin-top: 0; padding-top: var(--ds-space-16); }
 }
 </style>

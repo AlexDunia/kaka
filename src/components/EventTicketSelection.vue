@@ -1,6 +1,7 @@
 <script setup>
+import { pngIconUrl } from '@/constants/pngIcons'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { MinusIcon, PlusIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline'
+import { MinusIcon, PlusIcon, ArrowLeftIcon } from '@/components/icons/pngIcons'
 import EventPublicControls from '@/components/EventPublicControls.vue'
 import { profileDate } from '@/utils/eventProfile'
 const props = defineProps({
@@ -199,7 +200,7 @@ function editSelection() {
               </div>
             </article>
             <p v-if="!visibleTickets.length" class="rh26-empty-filter">
-              No ticket options in this category.
+              No tickets in this category.
             </p>
           </div>
         </section>
@@ -209,7 +210,7 @@ function editSelection() {
             <span>{{ count }} selected</span>
           </div>
           <div class="rh26-cart-lines">
-            <p v-if="!count">No tickets selected yet.</p>
+            <p v-if="!count">You haven’t selected any tickets yet.</p>
             <div v-for="ticket in selection" :key="ticket.key" class="rh26-cart-line">
               <span>{{ ticket.quantity }} × {{ ticket.name }}</span
               ><strong>{{ money(ticket.price * ticket.quantity) }}</strong>
@@ -224,7 +225,7 @@ function editSelection() {
             :disabled="!count || !profile.canBuy"
             @click="review"
           >
-            Continue <span aria-hidden="true">→</span>
+            Continue <span aria-hidden="true"><svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align: middle"><image :href="pngIconUrl('next')" width="24" height="24" /></svg></span>
           </button>
         </aside>
       </div>

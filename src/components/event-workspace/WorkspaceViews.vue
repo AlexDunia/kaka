@@ -1,4 +1,5 @@
 <script setup>
+import { pngIconUrl } from '@/constants/pngIcons'
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import EventEditorConflict from '@/components/EventEditorConflict.vue'
@@ -400,7 +401,7 @@ function handleClick(e) {
   const id = b.id,
     data = b.dataset
   const actions = {
-    'rh-preview-message': () => notify('Your message preview is ready beside the composer.'),
+    'rh-preview-message': () => notify('Your message preview is ready beside the message form.'),
     'rhs-ticket-cancel': () => {
       editingTicket.value = null
     },
@@ -491,8 +492,7 @@ function handleSubmit(e) {
           <span class="rh-eyebrow">GROW SALES / MESSAGE ATTENDEES</span>
           <h1 id="rh-messages-title">Message attendees</h1>
           <p>
-            Write an update for your ticket holders, such as an arrival reminder or a change to the
-            event.
+            Send ticket holders a reminder or event update.
           </p>
         </div>
       </div>
@@ -501,7 +501,7 @@ function handleSubmit(e) {
           <div class="rh-module-title">
             <div>
               <h2>Write a message</h2>
-              <p>Choose who should receive your update, then write what they need to know.</p>
+              <p>Choose who to message, then write your update.</p>
             </div>
           </div>
           <label class="rh-field"
@@ -546,7 +546,7 @@ function handleSubmit(e) {
           <div class="rh-module-title">
             <div>
               <h2>Message preview</h2>
-              <p>Check how your message will look to the people you selected.</p>
+              <p>Review your message before sending.</p>
             </div>
           </div>
           <div class="rh-email-preview">
@@ -571,7 +571,7 @@ function handleSubmit(e) {
                 ><small>{{ draft.audience }}</small>
               </button>
               <p v-if="!drafts.length" class="rh-note">
-                You haven’t saved any drafts yet. Save a message to come back to it later.
+                No saved drafts yet. Save a message to finish later.
               </p>
             </div>
           </div>
@@ -609,6 +609,7 @@ function handleSubmit(e) {
           @click="settingsTab = &#x27;details&#x27;"
           :aria-selected="settingsTab === &#x27;details&#x27;"
         >
+          <img class="rh-tab-icon" :src="pngIconUrl('document')" alt="" aria-hidden="true" width="20" height="20" />
           Event details</button
         ><button
           class="rh-tab"
@@ -618,6 +619,7 @@ function handleSubmit(e) {
           @click="settingsTab = &#x27;tickets&#x27;"
           :aria-selected="settingsTab === &#x27;tickets&#x27;"
         >
+          <img class="rh-tab-icon" :src="pngIconUrl('ticket')" alt="" aria-hidden="true" width="20" height="20" />
           Ticket types</button
         ><button
           class="rh-tab"
@@ -627,6 +629,7 @@ function handleSubmit(e) {
           @click="settingsTab = &#x27;checkout&#x27;"
           :aria-selected="settingsTab === &#x27;checkout&#x27;"
         >
+          <img class="rh-tab-icon" :src="pngIconUrl('cart')" alt="" aria-hidden="true" width="20" height="20" />
           Checkout</button
         ><button
           class="rh-tab"
@@ -636,6 +639,7 @@ function handleSubmit(e) {
           @click="settingsTab = &#x27;access&#x27;"
           :aria-selected="settingsTab === &#x27;access&#x27;"
         >
+          <img class="rh-tab-icon" :src="pngIconUrl('security')" alt="" aria-hidden="true" width="20" height="20" />
           Event access</button
         ><button
           class="rh-tab"
@@ -645,6 +649,7 @@ function handleSubmit(e) {
           @click="settingsTab = &#x27;payments&#x27;"
           :aria-selected="settingsTab === &#x27;payments&#x27;"
         >
+          <img class="rh-tab-icon" :src="pngIconUrl('wallet')" alt="" aria-hidden="true" width="20" height="20" />
           Payouts
         </button>
       </div>
@@ -731,7 +736,7 @@ function handleSubmit(e) {
               class="rh-button rh-button-dark"
               type="submit"
               :disabled="detailsSaving || !detailsReady || conflict"
-            >
+             :aria-busy="detailsSaving">
               Save changes</button
             ><span class="rhs-feedback" id="rhs-details-feedback" role="status"></span>
           </div>
@@ -797,7 +802,7 @@ function handleSubmit(e) {
                       type="button"
                       :disabled="conflict || ticketSaving"
                       @click="editTicket(ticket)"
-                    >
+                     :aria-busy="ticketSaving">
                       Edit
                     </button>
                   </td>
@@ -872,7 +877,7 @@ function handleSubmit(e) {
               class="rh-button rh-button-dark"
               type="submit"
               :disabled="ticketSaving || conflict"
-            >
+             :aria-busy="ticketSaving">
               {{ ticketSaving ? 'Saving ticket…' : 'Save ticket' }}</button
             ><button class="rh-button rh-button-outline" id="rhs-ticket-cancel" type="button">
               Cancel
@@ -936,8 +941,7 @@ function handleSubmit(e) {
             ><span class="rhs-feedback" id="rhs-checkout-feedback" role="status"></span>
           </div>
           <p class="rhs-local-note">
-            Checkout settings are saved for this prototype. Live ticket delivery needs a payment
-            connection.
+            Settings are saved for this preview. Tickets can’t be sent until payments are connected.
           </p>
         </form>
       </div>
@@ -980,8 +984,7 @@ function handleSubmit(e) {
             ><span class="rhs-feedback" id="rhs-access-feedback" role="status"></span>
           </div>
           <p class="rhs-local-note">
-            Saved in this prototype. Public access, refunds and transfers need a live backend.
-            Applicable refund requirements still apply.
+            Saved for this preview. Event access, refunds, and transfers aren’t connected yet. Refund rules still apply.
           </p>
         </form>
       </div>
@@ -1011,8 +1014,7 @@ function handleSubmit(e) {
     <dialog ref="bankDialog" class="workspace-dialog" aria-labelledby="workspace-bank-title">
       <h2 id="workspace-bank-title">Payout account setup</h2>
       <p>
-        Bank account verification and payouts aren’t connected yet. We’ll show your payout details
-        here when they’re available.
+        Bank checks and payouts aren’t available yet. Your payout details will appear here when ready.
       </p>
       <button class="rh-button rh-button-outline" @click="bankDialog.close()">Close</button>
     </dialog>

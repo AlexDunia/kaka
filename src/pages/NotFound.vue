@@ -1,4 +1,5 @@
 <script setup>
+import { pngIconUrl } from '@/constants/pngIcons'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -17,10 +18,9 @@ const goBack = () => {
     <div class="container">
       <div class="not-found-content">
         <div class="not-found-code">404</div>
-        <h1 class="not-found-title">Page Not Found</h1>
+        <h1 class="not-found-title">Page not found</h1>
         <p class="not-found-message">
-          The page you are looking for might have been removed, had its name changed, or is
-          temporarily unavailable.
+          This page may have moved or is no longer available.
         </p>
 
         <div class="not-found-actions">
@@ -35,11 +35,8 @@ const goBack = () => {
               stroke-width="2"
               stroke-linecap="round"
               stroke-linejoin="round"
-            >
-              <line x1="19" y1="12" x2="5" y2="12"></line>
-              <polyline points="12 19 5 12 12 5"></polyline>
-            </svg>
-            Go Back
+            ><image :href="pngIconUrl('back')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg>
+            Go back
           </button>
 
           <button class="not-found-btn not-found-btn--primary" @click="goHome">
@@ -53,11 +50,8 @@ const goBack = () => {
               stroke-width="2"
               stroke-linecap="round"
               stroke-linejoin="round"
-            >
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-              <polyline points="9 22 9 12 15 12 15 22"></polyline>
-            </svg>
-            Go Home
+            ><image :href="pngIconUrl('home')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg>
+            Go home
           </button>
         </div>
       </div>

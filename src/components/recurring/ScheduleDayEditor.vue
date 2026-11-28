@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { PlusIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, XMarkIcon } from '@/components/icons/pngIcons'
 import ScheduleTimeDropdown from './ScheduleTimeDropdown.vue'
 import { formatScheduleDate, formatSessionTime } from '@/utils/explicitSchedule'
 const props = defineProps({ editor: Object })
@@ -22,7 +22,7 @@ const weekday = computed(() => formatScheduleDate(props.editor.selected, { weekd
     </h3>
     <p>What time does your event run? <span class="schedule-muted">(Optional)</span></p>
     <p v-if="editor.readOnly" class="schedule-muted">
-      Past dates stay in your schedule. Their times cannot be changed here.
+      Past dates stay in your schedule. You can’t change their times here.
     </p>
     <fieldset :disabled="editor.readOnly">
       <div v-if="editor.inherited" class="schedule-shared-card">
@@ -90,7 +90,7 @@ const weekday = computed(() => formatScheduleDate(props.editor.selected, { weekd
           :disabled="editor.slots.length >= editor.maxSessions"
           @click="editor.addTime"
         >
-          <PlusIcon />Add another time (same day)
+          <PlusIcon />Add another time
         </button>
         <label v-if="editor.targets.length > 1" class="schedule-check"
           ><input

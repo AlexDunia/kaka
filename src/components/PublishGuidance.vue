@@ -1,4 +1,5 @@
 <script setup>
+import { pngIconUrl } from '@/constants/pngIcons'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usePublishGuidanceStore } from '@/stores/publishGuidance'
@@ -92,22 +93,22 @@ onBeforeUnmount(() => {
   <aside v-if="eligible" class="publish-notice" aria-label="Event notification">
     <span v-if="toast" role="status">You have one new notification.</span>
     <button type="button" @click="openNotice">{{ toast ? 'View' : 'Notifications' }}</button>
-    <button v-if="toast" type="button" aria-label="Dismiss notification" @click="toast = false">×</button>
+    <button v-if="toast" type="button" aria-label="Dismiss notification" @click="toast = false"><svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align: middle"><image :href="pngIconUrl('close')" width="24" height="24" /></svg></button>
   </aside>
   <dialog ref="panel" class="publish-panel" :class="{ 'has-spotlight': spotlight }" aria-labelledby="publish-guidance-title" @cancel="dismissGuide" @close="spotlight = null">
     <div v-if="spotlight" class="publish-spotlight" :style="spotlight" aria-hidden="true"></div>
     <div class="publish-card">
-      <button class="publish-close" type="button" aria-label="Close guidance" @click="dismissGuide">×</button>
+      <button class="publish-close" type="button" aria-label="Close guidance" @click="dismissGuide"><svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align: middle"><image :href="pngIconUrl('close')" width="24" height="24" /></svg></button>
       <template v-if="guide">
         <h2 id="publish-guidance-title">Your events, in one place</h2>
-        <p>My events brings your events together. Open an event to manage tickets, follow bookings, and welcome attendees.</p>
-        <button type="button" @click="visitEvents">Visit my events</button>
+        <p>Open an event to manage tickets, bookings, and attendees.</p>
+        <button type="button" @click="visitEvents">View my events</button>
         <button type="button" @click="dismissGuide">Maybe later</button>
       </template>
       <template v-else>
         <h2 id="publish-guidance-title">Your event is live</h2>
         <p v-if="guidance.notice"><strong>{{ guidance.notice.title }}</strong> is ready to share with attendees.</p>
-        <p>Your dashboard helps you manage tickets, follow bookings, and prepare for event day. Find your event under My events whenever you need it.</p>
+        <p>Manage tickets and bookings in your dashboard. Find this event under My events.</p>
         <button type="button" @click="visitDashboard">Go to dashboard</button>
       </template>
     </div>

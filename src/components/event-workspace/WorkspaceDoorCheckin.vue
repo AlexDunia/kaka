@@ -1,4 +1,5 @@
 <script setup>
+import { pngIconUrl } from '@/constants/pngIcons'
 import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
@@ -234,7 +235,7 @@ async function record(guest, kind, entranceId = currentEntrance.value) {
     return result.ok
   }
   if (!active.value) {
-    notify('Activate door check-in before recording an arrival.')
+    notify('Start door check-in before recording an arrival.')
     return false
   }
   const door = entrances.value.find((d) => String(d.id) === String(entranceId))
@@ -631,21 +632,17 @@ onBeforeUnmount(() => {
       <div v-if="!active" id="rh-dc-start" class="rh-dc-start">
         <div class="rh-dc-start-content">
           <div class="rh-dc-start-mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path
-                d="M4 9V6a2 2 0 0 1 2-2h3M15 4h3a2 2 0 0 1 2 2v3M20 15v3a2 2 0 0 1-2 2h-3M9 20H6a2 2 0 0 1-2-2v-3M8 12h8"
-              />
-            </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><image :href="pngIconUrl('qr')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg>
           </div>
-          <h1>Activate door check-in</h1>
-          <p>Activate check-in to record guests as they arrive.</p>
+          <h1>Start door check-in</h1>
+          <p>Start check-in to record guest arrivals.</p>
           <button
             class="rh-button rh-button-dark rh-dc-activate-btn"
             type="button"
             :disabled="!preview && !model.canManage.value"
             @click="activate"
           >
-            Activate door check-in
+            Start door check-in
           </button>
         </div>
       </div>
@@ -668,6 +665,7 @@ onBeforeUnmount(() => {
             @click="changeTab(name)"
             @keydown="tabKeys"
           >
+            <img class="rh-tab-icon" :src="pngIconUrl(name === 'checkin' ? 'qr' : 'door')" alt="" aria-hidden="true" width="20" height="20" />
             {{ name === 'checkin' ? 'Check-in' : 'Entrances' }}
           </button>
         </div>
@@ -695,7 +693,7 @@ onBeforeUnmount(() => {
               </div>
             </div>
             <div class="rh-dc-scan-panel rh-dc-scan-simple">
-              <div class="rh-dc-scan-heading"><strong>Scan a guest with QR code</strong></div>
+              <div class="rh-dc-scan-heading"><strong>Scan a guest’s ticket</strong></div>
               <button
                 class="rh-button rh-button-dark rh-dc-primary-scan"
                 type="button"
@@ -709,15 +707,13 @@ onBeforeUnmount(() => {
                   stroke="currentColor"
                   stroke-width="1.7"
                   aria-hidden="true"
-                >
-                  <path d="M4 8V5h4m8 0h4v3M20 16v3h-4M8 19H4v-3M5 12h14" /></svg
+                ><image :href="pngIconUrl('qr')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg
                 >Scan tickets
               </button>
             </div>
           </div>
           <p v-if="!preview" class="rh-note">
-            Guest counts show the current page. Admission totals for a scanned ticket come from the
-            server.
+            Guest counts cover this page only. Scanned tickets show confirmed admission totals.
           </p>
           <label v-if="!preview && model.canManage.value" class="rh-field"
             ><span>Allow re-entry after an exit</span
@@ -965,7 +961,7 @@ onBeforeUnmount(() => {
                     class="rh-row-button"
                     :disabled="staffBusy"
                     @click="revokeStaff(member.id)"
-                  >
+                   :aria-busy="staffBusy">
                     Revoke access
                   </button>
                 </div>
@@ -974,7 +970,7 @@ onBeforeUnmount(() => {
                     class="rh-row-button"
                     :disabled="staffBusy || staff.meta.current_page <= 1"
                     @click="loadStaff(staff.meta.current_page - 1)"
-                  >
+                   :aria-busy="staffBusy">
                     Previous</button
                   ><span>Page {{ staff.meta.current_page }} of {{ staff.meta.last_page }}</span
                   ><button
@@ -1004,7 +1000,7 @@ onBeforeUnmount(() => {
                     class="rh-row-button"
                     :disabled="staffBusy"
                     @click="revokeStaff(invitation.id, true)"
-                  >
+                   :aria-busy="staffBusy">
                     Revoke invitation
                   </button>
                 </div></template
@@ -1021,10 +1017,7 @@ onBeforeUnmount(() => {
                       fill="none"
                       stroke="currentColor"
                       stroke-width="1.6"
-                    >
-                      <path
-                        d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17M2 21h20M9 21V7h6v14M13 14h.01"
-                      /></svg
+                    ><image :href="pngIconUrl('door')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg
                   ></span>
                   <div class="rh-dc-entrance-info">
                     <h3>{{ door.name }}</h3>
@@ -1211,8 +1204,7 @@ onBeforeUnmount(() => {
                 Print QR code
               </button>
               <p v-if="managed" class="rh-note">
-                This code opens the entrance workspace. Staff must have event access to record
-                admission.
+                This code opens entrance check-in. Staff need event access to check guests in.
               </p>
             </aside>
           </div>
@@ -1284,9 +1276,7 @@ onBeforeUnmount(() => {
           type="button"
           aria-label="Close scanner"
           @click="scanDialog.close()"
-        >
-          ×
-        </button>
+        ><svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align: middle"><image :href="pngIconUrl('close')" width="24" height="24" /></svg></button>
       </div>
       <p class="rh-dc-camera-note">
         Point your camera at a ticket QR code, or enter the ticket code below.
@@ -1330,7 +1320,7 @@ onBeforeUnmount(() => {
             class="rh-button rh-button-dark"
             :disabled="lookupBusy || (!preview && model.busy.value)"
             type="submit"
-          >
+           :aria-busy="lookupBusy || model.busy.value">
             Find ticket</button
           ><button class="rh-button rh-button-outline" type="button" @click="scanDialog.close()">
             Cancel
@@ -1360,8 +1350,7 @@ onBeforeUnmount(() => {
           ><input v-model.number="scanCount" type="number" min="1" :max="scanGuest.admit_count"
         /></label>
         <p v-if="!preview">
-          {{ scanGuest.remaining_first_entries }} first entries remaining. Entries and exits are
-          checked by the server.
+          {{ scanGuest.remaining_first_entries }} guests can still enter for the first time. Each entry and exit is checked before it is saved.
         </p>
         <div class="rh-dc-ticket-actions">
           <button
@@ -1370,7 +1359,7 @@ onBeforeUnmount(() => {
             type="button"
             :disabled="!preview && model.busy.value"
             @click="record(scanGuest, 'in')"
-          >
+           :aria-busy="model.busy.value">
             Check in guest</button
           ><button
             v-if="!preview"
@@ -1378,7 +1367,7 @@ onBeforeUnmount(() => {
             :disabled="model.busy.value"
             type="button"
             @click="record(scanGuest, 'out')"
-          >
+           :aria-busy="model.busy.value">
             Record exit</button
           ><button
             v-if="preview"
@@ -1419,7 +1408,7 @@ onBeforeUnmount(() => {
         <h1>{{ printDoor.name }}</h1>
         <QrcodeVue :value="qrValue(printDoor)" :size="240" level="M" />
         <p>Entrance QR code</p>
-        <small>Preview entrance access. Live staff access isn’t connected yet.</small
+        <small>Preview entrance access. Staff access isn’t available yet.</small
         ><button
           class="rh-button rh-button-outline workspace-no-print"
           type="button"

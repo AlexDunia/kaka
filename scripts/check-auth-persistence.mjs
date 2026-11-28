@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { createServer } from 'vite'
@@ -10,7 +11,7 @@ globalThis.localStorage = {
   removeItem: (key) => values.delete(key),
   getItem: (key) => values.get(key) ?? null,
 }
-const server = await createServer({ server: { middlewareMode: true }, appType: 'custom' })
+const server = await createServer({ configFile: false, optimizeDeps: { noDiscovery: true, include: [] }, resolve: { preserveSymlinks: true, alias: { '@': fileURLToPath(new URL('../src', import.meta.url)) } }, server: { middlewareMode: true }, appType: 'custom' })
 const failure = (status) => Object.assign(new Error('Request failed'), status ? { response: { status } } : {})
 try {
   const { default: api } = await server.ssrLoadModule('/src/api/axios.js')
@@ -106,6 +107,10 @@ try {
 
   const main = await readFile(new URL('../src/main.js', import.meta.url), 'utf8')
   assert.ok(main.indexOf('useAuthStore().initialize()') < main.indexOf('app.use(router)'))
+  assert.ok(main.includes("router.isReady().then("), 'Public mount waits only for routing')
+  assert.ok(!main.includes('Promise.all([authReady'), 'Session lookup must not block public rendering')
+  const appSource = await readFile(new URL('../src/App.vue', import.meta.url), 'utf8')
+  assert.ok(appSource.includes('route.meta.requiresAuth && !authStore.initialized && authStore.error'), 'Public pages do not show session lookup failures')
   const callback = await readFile(new URL('../src/components/GoogleCallback.vue', import.meta.url), 'utf8')
   assert.ok(callback.includes('authStore.initialize()'))
   assert.ok(!callback.includes('setUser') && !callback.includes("get('user')"))

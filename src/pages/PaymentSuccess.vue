@@ -97,10 +97,9 @@ window.addEventListener('focus', refreshVisible)
       ><button @click="router.push('/')">Back to events</button>
     </section>
     <section v-else-if="review">
-      <h1>Your payment needs a check</h1>
+      <h1>Your payment needs review</h1>
       <p>
-        This order needs a manual review. Payment and tickets aren’t confirmed. You don’t need to
-        pay again.
+        We need to review this order. Your payment and tickets aren’t confirmed. Don’t pay again.
       </p>
       <button @click="load">Check status</button>
     </section>
@@ -155,7 +154,7 @@ window.addEventListener('focus', refreshVisible)
     </section>
     <section v-else-if="order?.status === 'payment_failed'">
       <h1>Payment wasn’t completed</h1>
-      <p>Your payment attempt failed. Check ticket availability before trying again.</p>
+      <p>Payment failed. Check ticket availability before trying again.</p>
     </section>
     <section v-else-if="order?.status === 'expired'">
       <h1>Your reservation has expired</h1>
@@ -166,8 +165,8 @@ window.addEventListener('focus', refreshVisible)
       <button @click="load">Check payment</button>
     </section>
     <section v-else>
-      <h1>Payment is still confirming</h1>
-      <p>If you completed payment, we can check again without charging you twice.</p>
+      <h1>Waiting for payment confirmation</h1>
+      <p>Already paid? Check again. You won’t be charged again.</p>
       <button @click="load">Check again</button>
     </section>
   </main>

@@ -80,7 +80,11 @@ try {
       onNavigate: (value) => navigations.push(value),
     },
   )
-  assert.match(html, /view=attendees&amp;period=week/)
+  assert.equal((html.match(/<article class="metric(?: revenue-metric)?">/g) ?? []).length, 4)
+  assert.doesNotMatch(html, /Sales performance|Reach &amp; audience|Good to know|What stands out|From visit to purchase/)
+  for (const heading of ['Ticket sales', 'Where buyers find you', 'Visitors who buy tickets', 'Buying patterns', 'Sales highlights']) {
+    assert.ok(html.includes(heading), `${heading} is shown`)
+  }
   overview.navigate('settings', { tab: 'details' })
   overview.navigate('attendees', { period: 'week' })
   overview.navigate('event-page')
@@ -89,14 +93,12 @@ try {
     { view: 'attendees', period: 'week' },
     'event-page',
   ])
-  assert.equal(overview.points.length, 30)
-  overview.range = '7d'
-  assert.equal(overview.points.length, 7)
-  overview.range = 'all'
-  assert.equal(overview.points.length, previewOverview.sales_trend.all.length)
-  console.log(
-    'PASS Overview navigation payloads, real link destinations and all three chart ranges',
-  )
+  assert.deepEqual(overview.points, model.weeklySales(previewOverview.sales_trend.all))
+  assert.match(html, /Sales by week/)
+  assert.match(html, /Scroll to see more weeks/)
+  assert.doesNotMatch(html, /Ticket sales over time|Daily trend|Last 30 days/)
+  assert.equal(overview.selectedWeek, overview.points.at(-1).date)
+  console.log('PASS Overview navigation and weekly sales graph')
 
   const { state: guests, router } = await capture(
     '/src/components/event-workspace/WorkspaceAttendees.vue',

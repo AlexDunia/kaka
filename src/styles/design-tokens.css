@@ -62,9 +62,11 @@
   --ds-size-public-h1: 40px;
   --ds-size-public-h2: 30px;
   --ds-size-public-h3: 24px;
-  --ds-size-public-h1-mobile: 34px;
-  --ds-size-public-h2-mobile: 28px;
-  --ds-size-public-h3-mobile: 22px;
+  --ds-size-public-h1-mobile: 24px;
+  --ds-size-public-h2-mobile: 20px;
+  --ds-size-public-h3-mobile: 15px;
+  --ds-size-public-h4-mobile: 15px;
+  --ds-size-public-home-hero-h1-mobile: 34px;
   --ds-weight-regular: 400;
   --ds-weight-medium: 500;
   --ds-weight-semibold: 600;
@@ -82,6 +84,21 @@
   --ds-rhythm-page-max: 1440px;
   --ds-shadow-card: 0 2px 12px rgba(17, 17, 17, 0.045);
   --ds-shadow-focus: 0 0 0 1px rgba(191, 24, 91, 0.08);
+  --ds-motion-fast: 150ms;
+  --ds-motion-reveal: 220ms;
+  --ds-motion-page-skeleton: 2000ms;
+  --ds-motion-success: 420ms;
+  --ds-motion-skeleton-opacity: 0.035;
+  --ds-motion-popup-enter: 280ms;
+  --ds-motion-popup-exit: 180ms;
+  --ds-motion-popup-ease-enter: cubic-bezier(0.16, 1.12, 0.3, 1);
+  --ds-motion-popup-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ds-motion-popup-offset: 12px;
+  --ds-motion-popup-scale: 0.965;
+  --ds-event-card-max-width: 320px;
+  --ds-event-card-cover-ratio: 1.9;
+  --ds-event-card-radius: 4px;
+  --ds-event-card-price-weight: 700;
 }
 #app, #app :is(.public-site, .event-profile, .event-workspace, .app-container) {
   --rh-color-canvas: var(--ds-color-canvas);
@@ -149,6 +166,8 @@
   --rh-size-public-h1-mobile: var(--ds-size-public-h1-mobile);
   --rh-size-public-h2-mobile: var(--ds-size-public-h2-mobile);
   --rh-size-public-h3-mobile: var(--ds-size-public-h3-mobile);
+  --rh-size-public-h4-mobile: var(--ds-size-public-h4-mobile);
+  --rh-size-public-home-hero-h1-mobile: var(--ds-size-public-home-hero-h1-mobile);
   --rh-weight-regular: var(--ds-weight-regular);
   --rh-weight-medium: var(--ds-weight-medium);
   --rh-weight-semibold: var(--ds-weight-semibold);

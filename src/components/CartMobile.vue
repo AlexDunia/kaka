@@ -2,12 +2,12 @@
   <div class="cart-bg">
     <button class="back-button" @click="$emit('back')">← Back</button>
     <div class="cart-container">
-      <h1 class="cart-title">Your Cart</h1>
+      <h1 class="cart-title">Your cart</h1>
       <div v-if="isEmpty" class="cart-empty">
         <div class="empty-cart-icon">🛒</div>
         <p>Your cart is empty.</p>
         <button class="continue-shopping" @click="$emit('continue-shopping')">
-          Continue Shopping
+          Find events
         </button>
       </div>
       <div v-else class="cart-list">
@@ -33,13 +33,9 @@
                   @click="$emit('update-quantity', item, item.quantity - 1)"
                   :disabled="item.quantity <= 1"
                   class="qty-btn"
-                >
-                  -
-                </button>
+                 aria-label="Decrease quantity"><svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align: middle"><image :href="pngIconUrl('minus')" width="24" height="24" /></svg></button>
                 <span class="cart-qty">{{ item.quantity }}</span>
-                <button @click="$emit('update-quantity', item, item.quantity + 1)" class="qty-btn">
-                  +
-                </button>
+                <button @click="$emit('update-quantity', item, item.quantity + 1)" class="qty-btn" aria-label="Increase quantity"><svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align: middle"><image :href="pngIconUrl('plus')" width="24" height="24" /></svg></button>
                 <button
                   class="cart-remove cart-remove-inline"
                   @click="$emit('remove-item', item)"
@@ -56,12 +52,7 @@
                     stroke-linecap="round"
                     stroke-linejoin="round"
                     class="remove-svg"
-                  >
-                    <rect x="3" y="6" width="18" height="15" rx="2" />
-                    <path d="M9 10v6M15 10v6" />
-                    <path d="M5 6V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2" />
-                    <line x1="1" y1="6" x2="23" y2="6" />
-                  </svg>
+                  ><image :href="pngIconUrl('trash')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg>
                 </button>
               </div>
               <div class="cart-price">
@@ -78,14 +69,15 @@
         <span>{{ '₦' + total.toLocaleString('en-NG') }}</span>
       </div>
       <div class="cart-footer-actions">
-        <button class="cart-clear-btn" @click="$emit('clear-cart')">Clear Cart</button>
-        <button class="cart-checkout-btn" @click="$emit('checkout')">Proceed to Checkout</button>
+        <button class="cart-clear-btn" @click="$emit('clear-cart')">Clear cart</button>
+        <button class="cart-checkout-btn" @click="$emit('checkout')">Go to checkout</button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
+import { pngIconUrl } from '@/constants/pngIcons'
 defineProps({
   items: {
     type: Array,

@@ -9,7 +9,7 @@
               scope="col"
               class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
             >
-              Transaction ID
+              Order reference
             </th>
             <th
               scope="col"
@@ -64,7 +64,7 @@
           </tr>
           <tr v-else-if="!transactions.length">
             <td colspan="5" class="px-6 py-4 text-center">
-              Your purchased tickets will appear here.
+              Your tickets will appear here after you book.
             </td>
           </tr>
           <tr v-for="transaction in transactions" :key="transaction.id" class="hover:bg-gray-50">
@@ -99,7 +99,7 @@
       </table>
     </div>
     <nav v-if="lastPage > 1" aria-label="Order pages" class="mt-6 flex gap-4 items-center">
-      <button :disabled="page <= 1 || loading" @click="load(page - 1)">Previous</button>
+      <button :disabled="page <= 1 || loading" @click="load(page - 1)" :aria-busy="loading">Previous</button>
       <span>Page {{ page }} of {{ lastPage }}</span>
       <button :disabled="page >= lastPage || loading" @click="load(page + 1)">Next</button>
     </nav>

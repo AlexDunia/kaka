@@ -1,4 +1,5 @@
 <script setup>
+import { pngIconUrl } from '@/constants/pngIcons'
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 
 const band = ref(null), track = ref(null), firstGroup = ref(null), copies = ref(4)
@@ -28,7 +29,7 @@ onBeforeUnmount(() => { disposed = true; observer?.disconnect() })
   <div ref="band" class="rh-audience-strip" aria-label="Built for organisers, creators, and communities">
     <div ref="track" class="rh-audience-track">
       <div v-for="copy in copies" :key="copy" :ref="copy === 1 ? (element) => firstGroup = element : undefined" class="rh-audience-group" :aria-hidden="copy > 1 ? true : undefined">
-        <template v-for="audience in audiences" :key="audience"><span class="rh-audience-item">For {{ audience }}</span><span class="rh-audience-mark" aria-hidden="true">+</span></template>
+        <template v-for="audience in audiences" :key="audience"><span class="rh-audience-item">For {{ audience }}</span><span class="rh-audience-mark" aria-hidden="true"><svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align: middle"><image :href="pngIconUrl('plus')" width="24" height="24" /></svg></span></template>
       </div>
     </div>
   </div>

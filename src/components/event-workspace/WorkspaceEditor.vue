@@ -1,4 +1,5 @@
 <script setup>
+import { pngIconUrl } from '@/constants/pngIcons'
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import CreateEvent from '@/pages/CreateEvent.vue'
@@ -36,7 +37,7 @@ function tabKey(event, index) {
 <template>
   <section class="rh-screen workspace-editor" aria-label="Edit event">
     <div class="rh-tabbar rhs-tabs" role="tablist" aria-label="Event sections">
-      <button v-for="(tab, index) in tabs" :id="`event-editor-tab-${tab.key}`" :key="tab.key" type="button" class="rh-tab" role="tab" :aria-selected="selected === tab.key" :aria-controls="`event-editor-pane-${tab.key}`" :tabindex="selected === tab.key ? 0 : -1" @click="selectTab(tab.key)" @keydown="tabKey($event, index)">{{ tab.label }}</button>
+      <button v-for="(tab, index) in tabs" :id="`event-editor-tab-${tab.key}`" :key="tab.key" type="button" class="rh-tab" role="tab" :aria-selected="selected === tab.key" :aria-controls="`event-editor-pane-${tab.key}`" :tabindex="selected === tab.key ? 0 : -1" @click="selectTab(tab.key)" @keydown="tabKey($event, index)"><img class="rh-tab-icon" :src="pngIconUrl({ details: 'document', tickets: 'ticket', checkout: 'cart', access: 'security', payments: 'wallet' }[tab.key])" alt="" aria-hidden="true" width="20" height="20" />{{ tab.label }}</button>
     </div>
     <div v-show="formSection" :id="`event-editor-pane-${formSection ? selected : lastFormSection}`" role="tabpanel" :aria-labelledby="`event-editor-tab-${formSection ? selected : lastFormSection}`">
       <CreateEvent :key="eventId" embedded :event-id="eventId" :editor-section="formSection ? selected : lastFormSection" @section-change="selectTab" />

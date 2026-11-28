@@ -1,4 +1,5 @@
 <script setup>
+import FeedbackToast from '@/components/FeedbackToast.vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
@@ -239,58 +240,6 @@ onBeforeUnmount(() => {
       @notify="showSuccessToast"
       @refresh="loadOverview(selectedEventId, { force: true })"
     />
-    <Transition name="dashboard-toast">
-      <div
-        v-if="toast"
-        :key="toast.key"
-        class="dashboard-success-toast"
-        role="status"
-        aria-live="polite"
-      >
-        <span class="dashboard-success-toast__icon" aria-hidden="true"> i </span>
-        <div>
-          <strong>Event update</strong>
-          <p>{{ toast.message }}</p>
-        </div>
-        <span class="dashboard-success-toast__progress" aria-hidden="true"></span>
-      </div>
-    </Transition>
+    <FeedbackToast :message="toast?.message || ''" @dismiss="toast = null" />
   </div>
 </template>
-
-<style>
-.dashboard-success-toast {
-  position: fixed;
-  right: 24px;
-  bottom: 24px;
-  z-index: 100;
-  max-width: 420px;
-  display: flex;
-  gap: 12px;
-  padding: 18px 24px;
-  border: 1px solid #e5e8ed;
-  border-radius: 8px;
-  background: white;
-  box-shadow: 0 10px 40px #17121e20;
-  color: #343b46;
-  font:
-    14px/1.5 'DM Sans',
-    sans-serif;
-}
-.dashboard-success-toast p {
-  margin: 4px 0 0;
-}
-.dashboard-success-toast__icon {
-  color: #0f7055;
-}
-.dashboard-success-toast__progress {
-  display: none;
-}
-@media (max-width: 760px) {
-  .dashboard-success-toast {
-    left: 20px;
-    right: 20px;
-    bottom: 20px;
-  }
-}
-</style>

@@ -46,11 +46,21 @@ export async function getPublicEvents(filters = {}, signal) {
 }
 
 export function categoryArtIndex(name) {
-  if (/music|concert|night|party/i.test(name)) return 0
-  if (/meet|tech|business|conference|education|workshop/i.test(name)) return 1
+  if (/conference|summit/i.test(name)) return 11
+  if (/workshop|skills/i.test(name)) return 6
+  if (/startup|tech/i.test(name)) return 7
+  if (/business/i.test(name)) return 5
+  if (/education|learning|class/i.test(name)) return 1
+  if (/theatre|theater|drama/i.test(name)) return 10
+  if (/faith|community/i.test(name)) return 9
+  if (/party|parties|social|meetup/i.test(name)) return 8
+  if (/music|concert|nightlife/i.test(name)) return 0
   if (/food|dining/i.test(name)) return 2
   if (/sport|fitness|outdoor|wellness/i.test(name)) return 4
-  return 3
+  if (/film|movie|cinema/i.test(name)) return 12
+  if (/festival/i.test(name)) return 13
+  if (/art|creativ|culture/i.test(name)) return 3
+  return 14
 }
 
 export function categoryLabel(name) {

@@ -49,7 +49,7 @@ onMounted(async () => {
 <template>
   <main class="recovery-page">
     <section>
-      <h1>Find your order and tickets</h1>
+      <h1>Find your tickets</h1>
       <p>
         Enter your order reference and the email you used at checkout. We’ll email you a secure
         link.
@@ -69,7 +69,7 @@ onMounted(async () => {
             type="email"
             maxlength="255"
             autocomplete="email" /></label
-        ><button :disabled="busy">
+        ><button :disabled="busy" :aria-busy="busy">
           {{ busy ? 'Checking your order…' : 'Send recovery link' }}
         </button>
       </form>

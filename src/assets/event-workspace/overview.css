@@ -1,2 +1,32 @@
-﻿/* Overview follows reference.css, including its original type, spacing and controls.
-   Shared application behavior belongs in the component and integration.css. */
+/* Overview adjustments at the workspace mobile breakpoint. */
+@media (max-width: 760px) {
+  .event-workspace #rh-overview-glance .metrics-surface {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .event-workspace #rh-overview-glance .privacy-toggle {
+    font-size: var(--ds-size-small);
+  }
+}
+
+.event-workspace .weekly-sales-scroll {
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+}
+.event-workspace .weekly-sales-scroll svg {
+  display: block;
+  max-width: none;
+}
+.event-workspace .weekly-sales-scroll [role='button'] {
+  cursor: pointer;
+}
+.event-workspace .weekly-sales-scroll [role='button']:focus-visible {
+  outline: 2px solid var(--ds-color-text);
+  outline-offset: 3px;
+}
+.event-workspace .weekly-sales-detail {
+  margin: 14px 0 0;
+  color: var(--ds-color-text-secondary);
+  font-size: var(--ds-size-small);
+}

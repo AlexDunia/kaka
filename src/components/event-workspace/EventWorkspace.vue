@@ -1,4 +1,5 @@
 <script setup>
+import { pngIconUrl } from '@/constants/pngIcons'
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -200,8 +201,7 @@ const phase = computed(
         </nav>
         <nav v-if="!accountWorkspace" class="rh-back-nav" aria-label="Your events">
           <a class="rh-my-events" href="#" @click.prevent="$emit('back')"
-            ><svg class="rh-side-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M14 6l-6 6 6 6M9 12h11" /></svg
+            ><svg class="rh-side-icon" viewBox="0 0 24 24" aria-hidden="true"><image :href="pngIconUrl('back')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg
             ><span>My events</span></a
           >
         </nav>
@@ -235,7 +235,7 @@ const phase = computed(
         <div class="rh29-side-footer">
           <span class="rh29-avatar">{{ initials }}</span
           ><span
-            ><strong>Organizer workspace</strong
+            ><strong>Organiser dashboard</strong
             ><small
               ><span class="rh-wordmark"
                 ><span class="rh-wordmark-name">Rush Hour</span
@@ -289,14 +289,14 @@ const phase = computed(
           </div>
         </div>
       </header>
-      <nav
+      <Transition name="rh-popup" appear><nav
         v-if="mobileOpen"
         id="workspace-mobile-nav"
         class="workspace-mobile-nav"
         aria-label="Mobile event navigation"
       >
-        <button @click="$emit('back')">My events</button>
-        <button v-if="accountWorkspace" @click="navigateMobile('create')">Create event</button>
+        <button @click="$emit('back')"><svg class="rh-tab-icon" width="20" height="20" aria-hidden="true"><use href="#ico-calendar" /></svg>My events</button>
+        <button v-if="accountWorkspace" @click="navigateMobile('create')"><svg class="rh-tab-icon" width="20" height="20" aria-hidden="true"><use href="#ico-calendar" /></svg>Create event</button>
         <strong v-else>{{ event?.title }}</strong
         ><template v-for="group in visibleGroups" :key="group.name"
           ><span>{{ group.name }}</span
@@ -306,13 +306,13 @@ const phase = computed(
             :aria-current="activeView === item.key ? 'page' : undefined"
             @click="navigateMobile(item.key)"
           >
-            {{ item.label }}
+            <svg class="rh-tab-icon" width="20" height="20" aria-hidden="true"><use :href="`#ico-${item.icon}`" /></svg>{{ item.label }}
           </button></template
         >
-      </nav>
+      </nav></Transition>
       <main class="main-inner content" :aria-busy="loading">
         <div v-if="loading" class="workspace-loading" role="status">
-          <span class="rh-sr">Getting your workspace ready…</span>
+          <span class="rh-sr">Getting your dashboard ready…</span>
           <div class="workspace-skeleton-hero" />
           <div class="workspace-skeleton-row"><i v-for="i in 4" :key="i" /></div>
           <div class="workspace-skeleton-panels"><i /><i /></div>
@@ -335,7 +335,7 @@ const phase = computed(
         />
         <section v-else-if="!overview" class="rh-module workspace-empty" role="alert">
           <h1>We couldn’t load this event’s overview.</h1>
-          <p>Your event is selected. Reload its details to continue.</p>
+          <p>Reload the event details to continue.</p>
           <button class="rh-button rh-button-dark" @click="$emit('retry')">Reload event</button>
         </section>
         <template v-else>

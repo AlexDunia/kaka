@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import EventPublicControls from '@/components/EventPublicControls.vue'
-import { ArrowLeftIcon } from '@heroicons/vue/24/outline'
+import { ArrowLeftIcon } from '@/components/icons/pngIcons'
 import { useAuthStore } from '@/stores/auth'
 import { useSlug } from '@/composables/useSlug'
 import { getStaticEvent, quoteStaticTickets } from '@/services/staticEventCatalog'
@@ -256,7 +256,7 @@ const handleOrder = async (order) => {
     accessCode.value = ''
     stopPolling()
     confirming.value = false
-    error.value = 'The payment was not completed. You can try again without losing your cart.'
+    error.value = 'Payment wasn’t completed. Your tickets are still in your cart.'
     return true
   }
   if (order.status === 'expired') {
@@ -269,7 +269,7 @@ const handleOrder = async (order) => {
     reference.value = ''
     accessCode.value = ''
     error.value =
-      'Your ticket reservation expired. Your cart is still here — start payment again to reserve fresh availability.'
+      'Your reservation expired. Your cart is still here. Start payment again to reserve available tickets.'
     await loadQuote()
     return true
   }
@@ -431,7 +431,7 @@ const pay = async () => {
     })
     if (disposed) return
     const order = result?.order
-    if (!order?.public_id) throw new Error('Checkout did not return an order.')
+    if (!order?.public_id) throw new Error('We couldn’t create your order. Please try again.')
     orderId.value = order.public_id
     rememberOrderToken(order.public_id, checkoutToken.value)
     reference.value = result?.payment?.reference || ''
@@ -552,12 +552,12 @@ onBeforeUnmount(() => {
     </header>
     <main class="ep-container ep-checkout-main">
       <h1>Checkout</h1>
-      <p class="ep-checkout-intro">Your tickets are nearly yours.</p>
+      <p class="ep-checkout-intro">You’re almost there.</p>
       <p v-if="loading" role="status">Getting your tickets ready…</p>
       <div v-else class="ep-checkout-grid">
         <form @submit.prevent="pay">
           <h2>Your details</h2>
-          <p>We’ll send your ticket confirmation to this email.</p>
+          <p>We’ll email your ticket confirmation here.</p>
           <div class="ep-checkout-fields">
             <label
               v-for="(label, key) in {
@@ -618,6 +618,7 @@ onBeforeUnmount(() => {
           </template>
           <button
             class="ep-primary ep-pay-button"
+            :aria-busy="submitting || confirming"
             :disabled="
               submitting ||
               confirming ||
@@ -643,13 +644,13 @@ onBeforeUnmount(() => {
             Online payment isn’t available for this event yet.
           </p>
           <p v-if="confirming" aria-live="polite">
-            Confirming payment… We’ll update this page as soon as your payment is confirmed.
+            Checking payment… This page will update when it’s confirmed.
           </p>
           <button
             v-if="orderId && !submitting"
             class="ep-secondary"
             type="button"
-            :disabled="verifying"
+            :disabled="verifying" :aria-busy="verifying"
             @click="checkPayment"
           >
             Check payment
@@ -687,7 +688,7 @@ onBeforeUnmount(() => {
             Free registration for {{ registrationQuantity }} guest(s). Availability is confirmed
             when you submit.
           </p>
-          <p v-else>Your ticket total will appear here once availability is confirmed.</p>
+          <p v-else>We’ll show your total after checking ticket availability.</p>
         </aside>
       </div>
     </main>

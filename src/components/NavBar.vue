@@ -1,4 +1,5 @@
 <script setup>
+import { pngIconUrl } from '@/constants/pngIcons'
 import { useCartStore } from '@/stores/cart'
 import { getRushHourLogo } from '@/constants/brand'
 import { computed, inject } from 'vue'
@@ -62,11 +63,7 @@ const brandLogoUrl = computed(() => getRushHourLogo(theme.value))
             stroke-width="2"
             stroke-linecap="round"
             stroke-linejoin="round"
-          >
-            <circle cx="9" cy="21" r="1" />
-            <circle cx="20" cy="21" r="1" />
-            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-          </svg>
+          ><image :href="pngIconUrl('cart')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg>
           <span v-if="cartCount > 0" class="cart-badge">{{ cartCount }}</span>
         </router-link>
       </div>

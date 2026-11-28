@@ -1,4 +1,5 @@
 <script setup>
+import { pngIconUrl } from '@/constants/pngIcons'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { DASHBOARD_PREVIEW as preview } from '@/services/dashboardPreview'
@@ -624,6 +625,7 @@ onBeforeUnmount(() => {
           :tabindex="attendeeSource === source ? 0 : -1"
           @click="selectSource(source)"
         >
+          <img class="rh-tab-icon" :src="pngIconUrl({ all: 'ticket', discount: 'discount', social: 'link' }[source])" alt="" aria-hidden="true" width="20" height="20" />
           {{ label }}
         </button>
       </div>
@@ -859,8 +861,7 @@ onBeforeUnmount(() => {
                     ticket, or reset your filters.
                     <button type="button" @click="clearFilters">Reset filters</button></template
                   ><template v-else
-                    >No purchases are shown on this page. Try another email or order
-                    reference.</template
+                    >No purchases on this page. Try another email or order reference.</template
                   >
                 </td>
               </tr>
@@ -882,7 +883,7 @@ onBeforeUnmount(() => {
                   q: search || undefined,
                 })
               "
-            >
+             :aria-busy="model.loading.value">
               Previous
             </button>
             <span
@@ -913,8 +914,7 @@ onBeforeUnmount(() => {
       <section v-if="!preview" class="rh-module">
         <h2>Guest records</h2>
         <p class="rh-note">
-          Search by the start of a guest name or email. Guest and purchase pages are loaded
-          separately.
+          Search by the first letters of a guest’s name or email. Guests and purchases have separate pages.
         </p>
         <div class="rh-table-scroll">
           <table class="rh-data-table">
@@ -991,7 +991,7 @@ onBeforeUnmount(() => {
             :href="destination('attendees')"
             :aria-label="context === 'door' ? 'Back to door check-in' : 'Back to attendees'"
             @click.prevent="navigate('attendees')"
-            ><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m14 6-6 6 6 6" /></svg
+            ><svg aria-hidden="true" viewBox="0 0 24 24"><image :href="pngIconUrl('back')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg
             >{{ context === 'door' ? 'Door check-in' : 'Attendees' }}</a
           >
           <h1 id="rh-v22-purchase-title">
@@ -1044,8 +1044,7 @@ onBeforeUnmount(() => {
               stroke-width="1.75"
               viewBox="0 0 24 24"
               width="14"
-            >
-              <path d="M12 16V4m-4 4 4-4 4 4M4 15v4c0 .55.45 1 1 1h14c.55 0 1-.45 1-1v-4" /></svg
+            ><image :href="pngIconUrl('download')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg
             ><span>{{ photo ? 'Change photo' : 'Add photo' }}</span
             ><input
               id="rh28-photo-input"
@@ -1078,10 +1077,7 @@ onBeforeUnmount(() => {
                 stroke-linejoin="round"
                 stroke-width="1.8"
                 viewBox="0 0 24 24"
-              >
-                <path
-                  d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6zM18 12h.01"
-                /></svg
+              ><image :href="pngIconUrl('printer')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg
               ><span>{{ free ? 'Print registration' : 'Print receipt' }}</span>
             </button>
           </div>
@@ -1229,7 +1225,7 @@ onBeforeUnmount(() => {
       <div id="rh-v26-history-only">
         <div class="rh-v26-history-heading">
           <a class="rh-v26-back" :href="historyBackHref" @click.prevent="historyBack"
-            ><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m14 6-6 6 6 6" /></svg>Back to
+            ><svg aria-hidden="true" viewBox="0 0 24 24"><image :href="pngIconUrl('back')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg>Back to
             {{ context === 'door' ? 'guest details' : 'tickets' }}</a
           >
           <h1 id="rh-v26-history-title">
@@ -1278,7 +1274,7 @@ onBeforeUnmount(() => {
                 >
               </div>
               <p v-if="!model.movements.value.length" class="rh-note">
-                No movements are recorded on this history page.
+                No entries or exits on this page.
               </p>
               <nav class="rh-form-actions" aria-label="Ticket history pages">
                 <button
@@ -1372,7 +1368,7 @@ onBeforeUnmount(() => {
           class="rh-sticky-attendees-back"
           :href="destination('attendees')"
           @click.prevent="navigate('attendees')"
-          ><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6" /></svg
+          ><svg aria-hidden="true" viewBox="0 0 24 24"><image :href="pngIconUrl('back')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg
           >{{ context === 'door' ? 'Door check-in' : 'Attendees' }}</a
         >
         <div class="rh-v21-sticky-title">
@@ -1409,9 +1405,7 @@ onBeforeUnmount(() => {
             @keydown.esc="guestTooltip = null"
           >
             <span class="rh-v20-person-icon"
-              ><svg viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="12" cy="7.5" r="3.15" />
-                <path d="M5 20v-1.2c0-3.7 2.9-6 7-6s7 2.3 7 6V20z" /></svg
+              ><svg viewBox="0 0 24 24" aria-hidden="true"><image :href="pngIconUrl('user')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg
             ></span>
           </button>
         </nav>
@@ -1443,9 +1437,7 @@ onBeforeUnmount(() => {
             class="rh-v25-dialog-close"
             aria-label="Close dialog"
             @click="editDialog.close()"
-          >
-            ×
-          </button>
+          ><svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align: middle"><image :href="pngIconUrl('close')" width="24" height="24" /></svg></button>
         </div>
         <p>Ticket {{ editing?.id }}</p>
         <label class="rh-field"
@@ -1501,7 +1493,7 @@ onBeforeUnmount(() => {
             class="rh-button rh-button-dark"
             :disabled="!preview && model.busy.value"
             type="submit"
-          >
+           :aria-busy="model.busy.value">
             Save changes</button
           ><button class="rh-button rh-button-outline" type="button" @click="editDialog.close()">
             Cancel
@@ -1544,9 +1536,7 @@ onBeforeUnmount(() => {
             aria-label="Close"
             type="button"
             @click="alertDialog.close()"
-          >
-            ×
-          </button>
+          ><svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align: middle"><image :href="pngIconUrl('close')" width="24" height="24" /></svg></button>
         </div>
         <p>Guest: {{ alertGuest?.name }}</p>
         <label class="rh-field"
@@ -1568,8 +1558,7 @@ onBeforeUnmount(() => {
             type="email"
         /></label>
         <p class="rh-v22-small-note">
-          Your alert preference will be saved in this browser. Email notifications aren’t connected
-          yet.
+          Your alert choice stays in this browser. Email alerts aren’t available yet.
         </p>
         <p v-if="alertError" class="rh-error" role="alert">{{ alertError }}</p>
         <div class="rh-v22-dialog-buttons">

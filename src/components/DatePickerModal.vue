@@ -1,6 +1,6 @@
 <template>
-  <div v-if="isOpen" class="date-picker-overlay" @click.self="close">
-    <div class="date-picker-modal">
+  <Transition name="rh-popup" appear><div data-popup-overlay v-if="isOpen" class="date-picker-overlay" @click.self="close">
+    <div data-popup-panel class="date-picker-modal">
       <div class="date-picker-header">
         <h3>Select Date</h3>
         <button type="button" class="date-picker-close" @click="close">
@@ -10,22 +10,7 @@
             viewBox="0 0 24 24"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M18 6L6 18"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-            <path
-              d="M6 6L18 18"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
+          ><image :href="pngIconUrl('close')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg>
         </button>
       </div>
       <div class="date-picker-body">
@@ -42,15 +27,7 @@
               viewBox="0 0 24 24"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M15 18L9 12L15 6"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
+            ><image :href="pngIconUrl('back')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg>
           </button>
           <span class="current-month-year">{{ currentMonthYear }}</span>
           <button type="button" class="month-nav-btn" @click="nextMonth">
@@ -60,15 +37,7 @@
               viewBox="0 0 24 24"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M9 18L15 12L9 6"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
+            ><image :href="pngIconUrl('next')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg>
           </button>
         </div>
 
@@ -103,10 +72,11 @@
         </button>
       </div>
     </div>
-  </div>
+  </div></Transition>
 </template>
 
 <script setup>
+import { pngIconUrl } from '@/constants/pngIcons'
 import { ref, computed, watch } from 'vue'
 
 const props = defineProps({
@@ -287,7 +257,6 @@ if (props.initialDate) {
   justify-content: center;
   z-index: 100;
   backdrop-filter: blur(5px);
-  animation: fadeIn 0.3s ease-out forwards;
 }
 
 .date-picker-modal {
@@ -296,7 +265,6 @@ if (props.initialDate) {
   border-radius: 16px;
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-subtle);
-  animation: modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   overflow: hidden;
 }
 

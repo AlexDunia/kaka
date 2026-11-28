@@ -2,7 +2,7 @@
 import { nextTick, ref, shallowRef } from 'vue'
 import QrcodeVue from 'qrcode.vue'
 import { drawQrExport, qrFlyerLayout, qrPositions } from '@/utils/eventQrExport'
-import { DocumentDuplicateIcon, QrCodeIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { DocumentDuplicateIcon, QrCodeIcon, XMarkIcon } from '@/components/icons/pngIcons'
 import { getEventShareLinks, createEventShareLink } from '@/services/dashboardShareService'
 import { mergeShareLinks, platformFor } from '@/components/event-workspace/promotionModel'
 const props = defineProps({
@@ -241,11 +241,11 @@ defineExpose({ openShare })
         ></template>
       </div>
       <p>Instagram and TikTok copy a link you can paste into your post or profile.</p>
-      <button v-if="owner" class="ep-primary" :disabled="busy || !loaded" @click="generate">
+      <button v-if="owner" class="ep-primary" :disabled="busy || !loaded" @click="generate" :aria-busy="busy">
         {{ busy ? 'Getting your links ready…' : 'Generate event links' }}
       </button>
       <p v-if="owner">
-        Each generated link tracks where your event’s visitors and buyers come from.
+        See which links bring visitors and ticket buyers.
       </p>
       <p role="status">{{ message }}</p>
     </div>
@@ -265,7 +265,7 @@ defineExpose({ openShare })
     </button>
     <div class="ep-dialog-content">
       <h2 id="event-poster-heading">Your event, ready to share</h2>
-      <p>Save your booking QR code on its own or place it directly on your flyer.</p>
+      <p>Save your booking QR code on its own or on your flyer.</p>
       <fieldset class="event-export-options">
         <legend>What would you like to save?</legend>
         <label
@@ -324,9 +324,9 @@ defineExpose({ openShare })
       <p role="status">{{ busy ? 'Preparing your image…' : message }}</p>
       <button v-if="!busy && !loaded" class="ep-secondary" @click="renderPoster">Try again</button>
       <div class="event-export-actions">
-        <button class="ep-primary" :disabled="busy || !loaded" @click="savePoster">
+        <button class="ep-primary" :disabled="busy || !loaded" @click="savePoster" :aria-busy="busy">
           {{ exportMode === 'qr' ? 'Save QR code' : 'Save flyer' }}</button
-        ><button class="ep-secondary" :disabled="busy || !loaded" @click="printPoster">
+        ><button class="ep-secondary" :disabled="busy || !loaded" @click="printPoster" :aria-busy="busy">
           Print
         </button>
       </div>

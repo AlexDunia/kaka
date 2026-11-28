@@ -27,8 +27,8 @@ export const platformFor = (link) =>
 export const story = [
   {
     image: storyOne,
-    title: 'Meet Tola, an event organizer.',
-    text: 'She’s promoting her event in Lagos. People are buying tickets, but she wants to know which posts are working.',
+    title: 'Meet Tola, an event organiser.',
+    text: 'Tola wants to know which posts bring ticket buyers to her Lagos event.',
     alt: 'Tola thinking about how to promote her Lagos event',
   },
   {
@@ -40,7 +40,7 @@ export const story = [
   {
     image: storyThree,
     title: 'Then she shares them.',
-    text: 'She posts the WhatsApp link on WhatsApp and the Instagram link on Instagram. Each link keeps its source.',
+    text: 'She shares each link on its matching app so she can track where buyers come from.',
     alt: 'Tola sharing links on WhatsApp, Instagram and X',
   },
   {

@@ -239,7 +239,7 @@ const facts = computed(() => {
 const sampleNote = computed(() =>
   DASHBOARD_PREVIEW
     ? 'Sales by code and social link are sample figures until payments and checkout tracking are connected.'
-    : 'Code attribution and individual purchase records aren’t connected yet. Available earnings come from your event’s sales records.',
+    : 'Sales by code and individual purchases aren’t available yet. Earnings shown come from your event’s sales records.',
 )
 </script>
 <template>
@@ -253,7 +253,7 @@ const sampleNote = computed(() =>
     >
     <div class="rhe-buyers-head">
       <h1>See who bought your tickets</h1>
-      <p>Find the people who bought each ticket type and the guests included in their purchases.</p>
+      <p>Find buyers and guests for each ticket type.</p>
     </div>
     <div class="rhe-buyers-search">
       <label class="rh-field"
@@ -385,7 +385,7 @@ const sampleNote = computed(() =>
                 : `Tickets sold through ${source.label}`
             }}
           </h2>
-          <p>See which ticket types contributed to these sales.</p>
+          <p>See sales by ticket type.</p>
         </div>
         <Table
           :headers="breakdownHeaders"
@@ -515,8 +515,7 @@ const sampleNote = computed(() =>
     />
     <p class="rhea-sample-note">{{ sampleNote }}</p>
     <p v-if="tab === 'social'" class="rhea-note">
-      A sale can have both a discount code and a social source. It is counted only once in total
-      ticket earnings.
+      A sale can use both a discount code and a social link. It counts once in total ticket earnings.
     </p>
   </section>
 </template>

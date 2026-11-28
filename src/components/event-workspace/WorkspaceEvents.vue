@@ -1,4 +1,5 @@
 <script setup>
+import { pngIconUrl } from '@/constants/pngIcons'
 import { computed, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useDashboardStore } from '@/stores/dashboard'
@@ -101,6 +102,7 @@ watch(
         class="rh-button rh-button-outline"
         :disabled="dashboard.eventsLoading || dashboard.eventsPage <= 1"
         @click="dashboard.fetchEvents({ page: dashboard.eventsPage - 1 }).catch(() => {})"
+        :aria-busy="dashboard.eventsLoading"
       >
         Previous events
       </button>
@@ -120,7 +122,7 @@ watch(
     <section class="rh29-home-hero">
       <div class="rh29-home-inner rh29-hero-layout">
         <div class="rh29-home-hero-copy">
-          <span class="rh29-home-eyebrow"><i aria-hidden="true" />Your events, one place</span>
+          <span class="rh29-home-eyebrow"><i aria-hidden="true" />Your events, in one place</span>
           <h1 id="rh29-home-title">Welcome back{{ firstName ? `, ${firstName}` : '' }}.</h1>
           <p>
             {{
@@ -136,7 +138,7 @@ watch(
               :href="href(featured)"
               @click.prevent="open(featured)"
               >Open your event
-              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6" /></svg
+              <svg aria-hidden="true" viewBox="0 0 24 24"><image :href="pngIconUrl('next')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg
             ></a>
             <button v-else class="rh29-hero-primary" type="button" @click="emit('create')">
               Create event
@@ -159,7 +161,7 @@ watch(
             ><strong>{{ featured.title }}</strong
             ><small
               >Open event
-              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6" /></svg
+              <svg aria-hidden="true" viewBox="0 0 24 24"><image :href="pngIconUrl('next')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg
             ></small>
           </div>
         </a>
@@ -169,7 +171,7 @@ watch(
       <div v-if="events.length" class="rh29-home-sectiontop">
         <div>
           <span class="rh29-overline">At a glance</span>
-          <h2>How things are going</h2>
+          <h2>Your event sales</h2>
         </div>
       </div>
       <div
@@ -232,19 +234,15 @@ watch(
             <div class="rh29-event-title-row">
               <h3>{{ event.title }}</h3>
               <span class="rh29-card-open" aria-hidden="true"
-                ><svg viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6" /></svg
+                ><svg viewBox="0 0 24 24"><image :href="pngIconUrl('next')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg
               ></span>
             </div>
             <p class="rh29-event-date">
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <rect x="3.5" y="5" width="17" height="15" rx="2" />
-                <path d="M7 3v4m10-4v4M4 10h16" /></svg
+              <svg aria-hidden="true" viewBox="0 0 24 24"><image :href="pngIconUrl('calendar')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg
               ><span>{{ overviewEventDate(event) }}</span>
             </p>
             <p class="rh29-event-venue">
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z" />
-                <circle cx="12" cy="10" r="2.3" /></svg
+              <svg aria-hidden="true" viewBox="0 0 24 24"><image :href="pngIconUrl('location')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg
               ><span>{{ event.venue || 'Venue to be confirmed' }}</span>
             </p>
             <div v-if="eventSales(event)" class="rh29-event-progress">
@@ -265,13 +263,13 @@ watch(
             </div>
             <span class="rh29-event-card-cta"
               >View event details
-              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6" /></svg
+              <svg aria-hidden="true" viewBox="0 0 24 24"><image :href="pngIconUrl('next')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg
             ></span>
           </div>
         </a>
         <button class="rh29-new-event-card" type="button" @click="emit('create')">
           <span class="rh29-plus-circle"
-            ><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg></span
+            ><svg aria-hidden="true" viewBox="0 0 24 24"><image :href="pngIconUrl('plus')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg></span
           ><strong>{{ firstEvent ? 'Create your first event' : 'Create a new event' }}</strong
           ><span>Start with the event name and date.</span>
         </button>
@@ -301,10 +299,10 @@ watch(
                 >{{ order.buyer }} bought {{ order.ticketIds.length }}
                 {{ order.ticketIds.length === 1 ? 'ticket' : 'tickets' }}</strong
               ><small>{{ order.event.title }} · {{ order.purchased }}</small></span
-            ><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg
+            ><svg aria-hidden="true" viewBox="0 0 24 24"><image :href="pngIconUrl('next')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg
           ></a>
           <p v-if="!recent.length" class="rh-note">
-            Recent ticket purchases will appear here when purchase records are available.
+            Recent ticket purchases will appear here.
           </p>
         </section>
         <section class="rh29-next-card" aria-labelledby="rh29-next-title">
@@ -317,10 +315,10 @@ watch(
               ><small>{{ datePart(featured, { weekday: 'long', year: 'numeric' }) }}</small></span
             >
           </div>
-          <p>Open this event to check its details and see how sales are going.</p>
+          <p>View event details and ticket sales.</p>
           <a class="rh29-next-link" :href="href(featured)" @click.prevent="open(featured)"
             >Open event overview
-            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6" /></svg
+            <svg aria-hidden="true" viewBox="0 0 24 24"><image :href="pngIconUrl('next')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg
           ></a>
         </section>
       </div>

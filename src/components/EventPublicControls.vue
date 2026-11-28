@@ -1,7 +1,7 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { Bars3Icon, XMarkIcon, UserCircleIcon } from '@heroicons/vue/24/outline'
+import { Bars3Icon, XMarkIcon, UserCircleIcon } from '@/components/icons/pngIcons'
 import { useAuthStore } from '@/stores/auth'
 import AccountMenu from '@/components/AccountMenu.vue'
 const auth = useAuthStore(),
@@ -47,7 +47,7 @@ onBeforeUnmount(() => {
     >
       <component :is="open ? XMarkIcon : Bars3Icon" />
     </button>
-    <Transition name="ep-menu"
+    <Transition name="rh-popup"
       ><nav v-if="open" class="ep-public-menu" role="menu" aria-label="Site navigation">
         <RouterLink to="/" role="menuitem">Explore events</RouterLink
         ><RouterLink to="/my-tickets" role="menuitem">My tickets</RouterLink

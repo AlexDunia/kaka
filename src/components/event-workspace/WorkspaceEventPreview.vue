@@ -33,8 +33,8 @@ function change(t, delta) {
     <div class="rh-page-heading">
       <div>
         <span class="rh-eyebrow">Public event page / Preview</span>
-        <h1 id="rh-public-heading">What ticket buyers will see</h1>
-        <p>Preview the event page your buyers would see. Checkout isn’t connected yet.</p>
+        <h1 id="rh-public-heading">Your event page preview</h1>
+        <p>See your event page as buyers will. Checkout isn’t available yet.</p>
       </div>
       <button class="rh-button rh-button-outline" @click="$emit('navigate', 'overview')">
         ← Back to overview
@@ -93,7 +93,7 @@ function change(t, delta) {
             <span>Where</span><strong>{{ event.venue || 'Venue to be confirmed' }}</strong>
           </div>
           <div v-if="event.contact_email || event.contact_phone">
-            <span>Contact the organizer</span
+            <span>Contact the organiser</span
             ><strong>{{
               [event.contact_email, event.contact_phone].filter(Boolean).join(' · ')
             }}</strong>
@@ -154,12 +154,12 @@ function change(t, delta) {
           :disabled="!count"
           @click="review = true"
         >
-          Continue with tickets</button
+          Continue</button
         ><button v-else class="rh-button rh-button-dark rh-fullwidth" @click="$emit('public')">
           Open public event page
         </button>
         <p v-if="DASHBOARD_PREVIEW" class="rh-note">
-          Checkout isn’t connected yet, so no payment will be taken and no tickets will be issued.
+          Checkout isn’t available yet. No payment will be taken and no tickets will be issued.
         </p>
         <p v-if="review" class="rh-note" role="status">
           You selected {{ count }} {{ count === 1 ? 'ticket' : 'tickets' }} for {{ money(total) }}.

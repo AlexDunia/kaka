@@ -150,16 +150,16 @@ onBeforeUnmount(() => {
     <section class="rhe-card rhe-bank">
       <div class="rhe-section-head">
         <div>
-          <h2>Where should we send your ticket payments?</h2>
-          <p>Add a Nigerian NGN bank account in your name or your business name.</p>
+          <h2>Your payout account</h2>
+          <p>Add a Nigerian bank account in naira, in your name or your business name.</p>
         </div>
         <span class="rhe-status">{{ latest ? financeStatus(latest.status) : 'Not set up' }}</span>
       </div>
       <p v-if="DASHBOARD_PREVIEW">Bank setup is unavailable in this preview.</p>
       <form v-else-if="editing" :inert="busy" @submit.prevent="saveBank">
         <p>
-          Verification continues after you submit. Your existing active account stays in use until
-          the new account is active.
+          We’ll check your details after you submit. We’ll keep using your current account until
+          the new one is ready.
         </p>
         <div class="rhe-form">
           <label>
@@ -180,11 +180,11 @@ onBeforeUnmount(() => {
               required
           /></label>
         </div>
-        <p v-if="banksLoading" role="status">Getting banks ready...</p>
+        <p v-if="banksLoading" role="status">Loading banks...</p>
         <p v-if="bankError" role="alert">{{ bankError }}</p>
-        <button type="button" class="rhea-inline-link" :disabled="busy" @click="openBankPicker">Find your bank</button>
+        <button type="button" class="rhea-inline-link" :disabled="busy" @click="openBankPicker" :aria-busy="busy">Find your bank</button>
         <div class="rhe-actions">
-          <button class="rh-button rh-button-dark" :disabled="busy">
+          <button class="rh-button rh-button-dark" :disabled="busy" :aria-busy="busy">
             {{ busy ? 'Checking details…' : 'Submit bank details' }}
           </button>
           <button
@@ -192,7 +192,7 @@ onBeforeUnmount(() => {
             class="rh-button rh-button-outline"
             :disabled="busy"
             @click="closeForm"
-          >
+           :aria-busy="busy">
             Cancel
           </button>
 
@@ -203,7 +203,7 @@ onBeforeUnmount(() => {
       </button>
       <p v-if="error" role="alert">{{ error }}</p>
       <div v-for="account in accounts" :key="account.id" class="rhe-ledger">
-        <strong>{{ account.account_name || 'Account verification pending' }}</strong>
+        <strong>{{ account.account_name || 'Checking account details' }}</strong>
         <p>
           {{ account.bank_name || 'Bank details submitted' }} · Account ending
           {{ account.account_last4 }}
@@ -218,14 +218,14 @@ onBeforeUnmount(() => {
       </nav>
     </section>
     <section v-if="!destinationOnly" class="rhe-card">
-      <h2>Settlement history</h2>
+      <h2>Payout history</h2>
       <p>
-        Confirmed seller settlement is shown in your earnings records. Individual settlement
-        statements and payment dates are not available here yet.
+        Your earnings records show confirmed payouts. Individual payout
+        statements and payment dates aren’t available here yet.
       </p>
       <p>
-        Pending proceeds are not a withdrawable balance. Payments needing review require
-        reconciliation.
+        You can’t withdraw pending earnings. Payments marked for review need to be
+        checked first.
       </p>
     </section>
     <dialog ref="bankPicker" class="bank-picker" aria-labelledby="bank-picker-title">
@@ -236,13 +236,13 @@ onBeforeUnmount(() => {
       <label class="bank-picker-search">Search banks<input v-model="bankSearch" type="search" placeholder="Enter your bank name" autocomplete="off" autofocus /></label>
       <p class="bank-picker-help">Search the banks loaded below. If yours is missing, load more banks and search again.</p>
       <p v-if="bankError" role="alert">{{ bankError }}</p>
-      <p v-if="banksLoading" role="status">Getting banks ready...</p>
+      <p v-if="banksLoading" role="status">Loading banks...</p>
       <p v-else-if="!matchingBanks.length" role="status">No matching banks in this list.</p>
       <ul class="bank-picker-list" aria-label="Banks">
         <li v-for="bank in visibleBanks" :key="bank.code"><button type="button" :aria-pressed="form.bank_code === String(bank.code)" @click="chooseBank(bank.code)">{{ bank.name }}</button></li>
       </ul>
-      <p v-if="matchingBanks.length > visibleBanks.length">Showing the first 100 matches. Add more of your bank name to narrow the list.</p>
-      <button v-if="moreBanks && bankPage < 100" type="button" class="rh-button rh-button-outline" :disabled="banksLoading" @click="loadBanks">{{ banksLoading ? 'Loading banks...' : bankError ? 'Try again' : 'Load more banks' }}</button>
+      <p v-if="matchingBanks.length > visibleBanks.length">Showing the first 100 matches. Type more of your bank name to narrow the list.</p>
+      <button v-if="moreBanks && bankPage < 100" type="button" class="rh-button rh-button-outline" :disabled="banksLoading" @click="loadBanks" :aria-busy="banksLoading">{{ banksLoading ? 'Loading banks...' : bankError ? 'Try again' : 'Load more banks' }}</button>
       <p v-else-if="!moreBanks">All available banks are loaded.</p>
       <p v-else>Add more of your bank name to narrow the list.</p>
     </dialog>

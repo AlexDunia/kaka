@@ -169,8 +169,7 @@ onBeforeUnmount(() => {
       <section v-for="group in metrics?.by_currency || []" :key="group.currency" class="rhe-card">
         <h2>Your earnings in {{ group.currency }}</h2>
         <p>
-          Original purchase amounts stay unchanged. Seller proceeds are separate from confirmed
-          settlement.
+          Original purchase amounts stay unchanged. Ticket earnings and confirmed payouts are shown separately.
         </p>
         <div class="rhe-ledger">
           <div v-for="[key, label] in financialRows" :key="key">
@@ -179,7 +178,7 @@ onBeforeUnmount(() => {
           </div>
         </div>
         <p v-if="group.legacy_refund_amounts_unknown">
-          Some older refund amounts are unconfirmed. These figures include confirmed refunds only.
+          These totals include confirmed refunds only. Some older refunds are unconfirmed.
         </p>
         <p v-if="group.unknown_provider_fee_items">
           Provider fees are still unconfirmed for {{ group.unknown_provider_fee_items }} purchase
@@ -219,8 +218,8 @@ onBeforeUnmount(() => {
           class="rh-button rh-button-outline"
           :disabled="busy"
           @click="selectPurchase(item)"
-        >
-          Refund this purchase line
+         :aria-busy="busy">
+          Refund this item
         </button>
       </div>
       <p v-if="purchases && !purchases.data.length">No purchases match your search.</p>
@@ -243,22 +242,20 @@ onBeforeUnmount(() => {
     <form v-if="selected" class="rhe-card" @submit.prevent="refund">
       <h2>Refund {{ selected.ticket_name }}</h2>
       <p>
-        This refunds the whole purchase line: all {{ selected.quantity }} units and their admission
-        seats. The server confirms the amount and eligibility. A line with an admitted guest cannot
-        be refunded here. Free registrations are voided without a payment.
+        This refunds all {{ selected.quantity }} tickets or tables in this item, including their guest places. We’ll check the amount and whether it can be refunded. Items with guests who have entered can’t be refunded here. Free registrations are cancelled without a payment.
       </p>
       <label
         >Reason<textarea v-model="reason" minlength="3" maxlength="300" required :disabled="busy" />
       </label>
       <div class="rhe-actions">
-        <button class="rh-button rh-button-dark" :disabled="busy">
-          {{ busy ? 'Submitting refund…' : 'Confirm whole-line refund' }}</button
+        <button class="rh-button rh-button-dark" :disabled="busy" :aria-busy="busy">
+          {{ busy ? 'Submitting refund…' : 'Confirm full item refund' }}</button
         ><button
           type="button"
           class="rh-button rh-button-outline"
           :disabled="busy"
           @click="selected = null"
-        >
+         :aria-busy="busy">
           Keep purchase
         </button>
       </div>
@@ -273,7 +270,7 @@ onBeforeUnmount(() => {
           class="rh-button rh-button-outline"
           :disabled="busy"
           @click="retry(row)"
-        >
+         :aria-busy="busy">
           Check this refund again
         </button>
       </div>

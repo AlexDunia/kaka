@@ -1,4 +1,5 @@
 <script setup>
+import { pngIconUrl } from '@/constants/pngIcons'
 import { ref, onMounted } from 'vue'
 import emailjs from '@emailjs/browser'
 
@@ -32,7 +33,7 @@ onMounted(async () => {
   try {
     await emailjs.init(EMAILJS_PUBLIC_KEY)
   } catch {
-    showError('Failed to initialize contact form. Please try again later.')
+    showError('The contact form is unavailable. Please try again later.')
   }
 })
 
@@ -45,11 +46,11 @@ const handleSubmit = async () => {
   try {
     // Form validation
     if (!form.value.name || !form.value.email || !form.value.message) {
-      throw new Error('Please fill in all required fields')
+      throw new Error('Fill in all required fields.')
     }
 
     if (!isValidEmail(form.value.email)) {
-      throw new Error('Please enter a valid email address')
+      throw new Error('Enter a valid email address.')
     }
 
     // Prepare email parameters
@@ -57,7 +58,7 @@ const handleSubmit = async () => {
       from_name: form.value.name,
       from_email: form.value.email,
       message: form.value.message,
-      subject: form.value.subject || 'Contact Form Submission',
+      subject: form.value.subject || 'Contact form message',
     }
 
     // Send email
@@ -66,12 +67,12 @@ const handleSubmit = async () => {
     if (response.status === 200) {
       success.value = true
       form.value = { name: '', email: '', subject: '', message: '' }
-      showSuccess('Message sent successfully! We will get back to you soon.')
+      showSuccess('Message sent. We’ll reply soon.')
     } else {
-      throw new Error('Failed to send message')
+      throw new Error('We couldn’t send your message.')
     }
   } catch (err) {
-    error.value = err.message || 'Failed to send message. Please try again later.'
+    error.value = err.message || 'We couldn’t send your message. Please try again later.'
     showError(error.value)
   } finally {
     loading.value = false
@@ -83,9 +84,9 @@ const handleSubmit = async () => {
   <div class="contact-page">
     <div class="container">
       <div class="contact-page__header">
-        <h1 class="contact-page__title">Contact Us</h1>
+        <h1 class="contact-page__title">Contact us</h1>
         <p class="contact-page__subtitle">
-          Have a question or need assistance? We're here to help!
+          Need help with tickets or your event?
         </p>
       </div>
 
@@ -103,11 +104,7 @@ const handleSubmit = async () => {
                 stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
-              >
-                <path
-                  d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"
-                ></path>
-              </svg>
+              ><image :href="pngIconUrl('phone')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg>
             </div>
             <h3 class="contact-info-card__title">Phone</h3>
             <p class="contact-info-card__detail">+2348108725914</p>
@@ -126,16 +123,11 @@ const handleSubmit = async () => {
                 stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
-              >
-                <path
-                  d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"
-                ></path>
-                <polyline points="22,6 12,13 2,6"></polyline>
-              </svg>
+              ><image :href="pngIconUrl('message')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg>
             </div>
             <h3 class="contact-info-card__title">Email</h3>
             <p class="contact-info-card__detail">kakaworldevent@gmail.com</p>
-            <p class="contact-info-card__hours">We respond within 24 hours</p>
+            <p class="contact-info-card__hours">We reply within 24 hours</p>
           </div>
 
           <div class="contact-info-card">
@@ -150,10 +142,7 @@ const handleSubmit = async () => {
                 stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
-              >
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"></path>
-                <circle cx="12" cy="10" r="3"></circle>
-              </svg>
+              ><image :href="pngIconUrl('location')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg>
             </div>
             <h3 class="contact-info-card__title">Location</h3>
             <p class="contact-info-card__detail">Lagos, Nigeria</p>
@@ -172,17 +161,14 @@ const handleSubmit = async () => {
               stroke-width="2"
               stroke-linecap="round"
               stroke-linejoin="round"
-            >
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-              <polyline points="22 4 12 14.01 9 11.01"></polyline>
-            </svg>
-            <h3>Message Sent!</h3>
-            <p>Thank you for contacting us. We'll get back to you as soon as possible.</p>
-            <button class="btn" @click="success = false">Send Another Message</button>
+            ><image :href="pngIconUrl('check')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg>
+            <h3>Message sent</h3>
+            <p>Thanks for your message. We’ll reply soon.</p>
+            <button class="btn" @click="success = false">Send another message</button>
           </div>
 
           <form v-else class="contact-form" @submit.prevent="handleSubmit">
-            <h2 class="contact-form__title">Send Us a Message</h2>
+            <h2 class="contact-form__title">Send a message</h2>
 
             <div v-if="error" class="contact-form__error">
               {{ error }}
@@ -235,9 +221,9 @@ const handleSubmit = async () => {
               ></textarea>
             </div>
 
-            <button type="submit" class="contact-form__submit" :disabled="loading">
+            <button type="submit" class="contact-form__submit" :disabled="loading" :aria-busy="loading">
               <span v-if="loading">Sending...</span>
-              <span v-else>Send Message</span>
+              <span v-else>Send message</span>
             </button>
           </form>
         </div>

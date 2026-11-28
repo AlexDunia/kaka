@@ -1,6 +1,6 @@
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
-import { ChevronDownIcon } from '@heroicons/vue/24/outline'
+import { ChevronDownIcon } from '@/components/icons/pngIcons'
 import { formatSessionTime } from '@/utils/explicitSchedule'
 const props = defineProps({ modelValue: String, label: String, open: Boolean, anchor: String })
 const emit = defineEmits(['update:modelValue', 'toggle'])
@@ -82,7 +82,7 @@ function keys(event, index) {
         ><strong>{{ formatSessionTime(modelValue) }}</strong></span
       ><ChevronDownIcon aria-hidden="true" />
     </button>
-    <div v-if="open" class="schedule-time-picker">
+    <Transition name="rh-popup" appear><div v-if="open" class="schedule-time-picker">
       <div ref="list" class="schedule-time-options" role="group" :aria-label="label">
         <button
           v-for="(value, index) in options"
@@ -99,6 +99,6 @@ function keys(event, index) {
       <button type="button" class="schedule-link" @click="togglePrecision">
         {{ precise ? 'Show fewer times' : 'Show every minute' }}
       </button>
-    </div>
+    </div></Transition>
   </div>
 </template>

@@ -40,11 +40,11 @@ export const registerFreeEvent = async (eventId, payload) => {
 }
 export const operationsError = (
   error,
-  fallback = 'We could not load these records. Please try again.',
+  fallback = 'We couldn’t load these records. Please try again.',
 ) => {
   const status = error?.response?.status
   if (status === 401) return 'Please log in to continue.'
-  if (status === 403) return 'You do not have access to these event records.'
+  if (status === 403) return 'You don’t have access to these event records.'
   if (status === 409) return 'This record changed on another device. Reload it before saving again.'
   if (status === 422)
     return (

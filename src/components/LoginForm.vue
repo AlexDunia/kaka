@@ -92,7 +92,7 @@ const goToRegister = () => {
         </button>
       </div>
 
-      <button type="submit" class="login-form__submit" :disabled="loading">
+      <button type="submit" class="login-form__submit" :disabled="loading" :aria-busy="loading">
         <span v-if="loading">Getting things ready...</span>
         <span v-else>Log in</span>
       </button>

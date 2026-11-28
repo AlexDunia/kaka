@@ -50,9 +50,9 @@
           <div class="time-input-group">
             <label>Hour</label>
             <div class="time-buttons">
-              <button type="button" @click="incrementHours" class="time-btn">+</button>
+              <button type="button" @click="incrementHours" class="time-btn" aria-label="Increase hours"><svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align: middle"><image :href="pngIconUrl('plus')" width="24" height="24" /></svg></button>
               <span>{{ formattedHours }}</span>
-              <button type="button" @click="decrementHours" class="time-btn">-</button>
+              <button type="button" @click="decrementHours" class="time-btn" aria-label="Decrease hours"><svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align: middle"><image :href="pngIconUrl('minus')" width="24" height="24" /></svg></button>
             </div>
           </div>
 
@@ -61,9 +61,9 @@
           <div class="time-input-group">
             <label>Minute</label>
             <div class="time-buttons">
-              <button type="button" @click="incrementMinutes" class="time-btn">+</button>
+              <button type="button" @click="incrementMinutes" class="time-btn" aria-label="Increase minutes"><svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align: middle"><image :href="pngIconUrl('plus')" width="24" height="24" /></svg></button>
               <span>{{ formattedMinutes }}</span>
-              <button type="button" @click="decrementMinutes" class="time-btn">-</button>
+              <button type="button" @click="decrementMinutes" class="time-btn" aria-label="Decrease minutes"><svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align: middle"><image :href="pngIconUrl('minus')" width="24" height="24" /></svg></button>
             </div>
           </div>
 
@@ -94,6 +94,7 @@
 </template>
 
 <script setup>
+import { pngIconUrl } from '@/constants/pngIcons'
 import {
   fromLocalDateTimeString,
   toLocalDateTimeString,

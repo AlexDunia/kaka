@@ -1,4 +1,5 @@
 <script setup>
+import { pngIconUrl } from '@/constants/pngIcons'
 import { onBeforeUnmount, ref } from 'vue'
 const props = defineProps({
   value: String,
@@ -9,8 +10,11 @@ const props = defineProps({
 })
 const emit = defineEmits(['notify'])
 const copied = ref(false)
+const copying = ref(false)
 let timer
 async function copy() {
+  if (copying.value) return
+  copying.value = true
   let ok = false
   try {
     await navigator.clipboard.writeText(props.value)
@@ -31,6 +35,7 @@ async function copy() {
     input.remove()
     focused?.focus()
   }
+  copying.value = false
   copied.value = ok
   emit(
     'notify',
@@ -50,6 +55,8 @@ onBeforeUnmount(() => clearTimeout(timer))
     :aria-label="copied ? 'Copied' : label"
     :title="copied ? 'Copied' : label"
     :data-copied="copied"
+    :disabled="copying"
+    :aria-busy="copying"
     @click="copy"
   >
     <span v-if="text">{{ copied ? 'Copied' : text }}</span>
@@ -64,9 +71,7 @@ onBeforeUnmount(() => clearTimeout(timer))
       stroke-width="1.8"
       stroke-linecap="round"
       stroke-linejoin="round"
-    >
-      <rect x="8" y="8" width="12" height="12" rx="2" />
-      <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" /></svg
+    ><image :href="pngIconUrl('copy')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg
     ><svg
       v-else
       viewBox="0 0 24 24"
@@ -76,8 +81,6 @@ onBeforeUnmount(() => clearTimeout(timer))
       stroke="currentColor"
       stroke-width="2"
       aria-hidden="true"
-    >
-      <path d="m5 12 4 4 10-10" />
-    </svg>
+    ><image :href="pngIconUrl('check')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg>
   </button>
 </template>

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import {
   formatMoneyMinor as money,
   formatNumber as number,
@@ -15,11 +15,13 @@ import {
   leadingBuyerSources,
   overviewEventDate,
   salesChart,
+  weeklySales,
 } from './overviewModel'
 const props = defineProps({ overview: { type: Object, required: true } })
 const emit = defineEmits(['navigate', 'public', 'edit'])
 const { amountsHidden: hidden, toggleAmounts } = useWorkspacePrivacy()
-const range = ref('30d')
+const chartScroll = ref(null)
+const selectedWeek = ref('')
 const privacyStatus = ref('')
 const event = computed(() => props.overview.event || {})
 // A guest page is not an event-wide aggregate. Preview data never supplies live metrics.
@@ -71,7 +73,24 @@ const amount = (value, compact = false) =>
   hidden.value
     ? '\u2022\u2022\u2022\u2022\u2022\u2022'
     : money(value, revenue.value.currency || 'NGN', { compact })
-const chart = computed(() => salesChart(props.overview.sales_trend?.[range.value] || []))
+const weeks = computed(() => weeklySales(props.overview.sales_trend?.all || []))
+const chartWidth = computed(() => Math.max(600, weeks.value.length * 96 + 64))
+const chart = computed(() => salesChart(weeks.value, chartWidth.value))
+const selectedPoint = computed(() =>
+  points.value.find((point) => point.date === selectedWeek.value),
+)
+watch(
+  weeks,
+  async (value, previous) => {
+    if (!value.some((point) => point.date === selectedWeek.value))
+      selectedWeek.value = value.at(-1)?.date || ''
+    if (value.at(-1)?.date !== previous?.at(-1)?.date) {
+      await nextTick()
+      if (chartScroll.value) chartScroll.value.scrollLeft = chartScroll.value.scrollWidth
+    }
+  },
+  { immediate: true },
+)
 const points = computed(() => chart.value.points)
 const coordinates = computed(() => chart.value.coordinates)
 const ceiling = computed(() => chart.value.maximum)
@@ -93,9 +112,12 @@ function navigate(view, query = {}) {
 function chartDate(value) {
   const date = new Date(`${value}T12:00:00Z`)
   return Number.isFinite(date.getTime())
-    ? new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(
-        date,
-      )
+    ? new Intl.DateTimeFormat('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        timeZone: 'UTC',
+      }).format(date)
     : value
 }
 </script>
@@ -169,7 +191,7 @@ function chartDate(value) {
           {{
             DASHBOARD_PREVIEW
               ? 'See how many guests have registered and who has arrived.'
-              : 'Registration and arrival totals come from confirmed event records.'
+              : 'Totals include confirmed registrations and arrivals.'
           }}
         </p>
       </div>
@@ -203,8 +225,7 @@ function chartDate(value) {
   <section id="rh-overview-glance" class="rh-overview-section" aria-labelledby="glance-title">
     <div class="section-title glance-heading">
       <div>
-        <h2 id="glance-title">Sales at a glance</h2>
-        <p>Your ticket sales and the ways buyers are finding your event are shown here.</p>
+        <h2 id="glance-title">Ticket sales</h2>
       </div>
       <div class="glance-actions">
         <button
@@ -227,7 +248,7 @@ function chartDate(value) {
     <div class="metrics-surface">
       <article class="metric">
         <div class="metric-label">
-          Your tickets sold<svg class="icon" aria-hidden="true"><use href="#ico-ticket" /></svg>
+          Tickets sold<svg class="icon" aria-hidden="true"><use href="#ico-ticket" /></svg>
         </div>
         <div class="metric-value">{{ number(sales.units_sold) }}</div>
         <div class="metric-foot">
@@ -239,7 +260,7 @@ function chartDate(value) {
       </article>
       <article class="metric revenue-metric">
         <div class="metric-label">
-          Your ticket revenue<svg class="icon" aria-hidden="true"><use href="#ico-wallet" /></svg>
+          Ticket revenue<svg class="icon" aria-hidden="true"><use href="#ico-wallet" /></svg>
         </div>
         <div class="metric-value">{{ amount(revenue.total_minor, true) }}</div>
         <div class="metric-foot">
@@ -254,41 +275,44 @@ function chartDate(value) {
           </svg>
         </div>
         <div class="metric-value">{{ number(sales.this_week_units) }}</div>
-        <div class="metric-foot">Your sales this week so far</div>
+        <div class="metric-foot">Sold so far this week</div>
       </article>
       <article class="metric">
         <div class="metric-label">
-          Your event page views<svg class="icon" aria-hidden="true"><use href="#ico-eye" /></svg>
+          Event page views<svg class="icon" aria-hidden="true"><use href="#ico-eye" /></svg>
         </div>
         <div class="metric-value">{{ number(traffic.page_views) }}</div>
         <div class="metric-foot">
-          <span class="positive">{{ percent(traffic.conversion_percent) }}</span> visitor-to-buyer
-          conversion
+          <span class="positive">{{ percent(traffic.conversion_percent) }}</span> of visitors bought
+          tickets
         </div>
       </article>
     </div>
   </section>
-  <section id="sales" class="rh-overview-section" aria-labelledby="sales-title">
-    <div class="section-title">
-      <div>
-        <h2 id="sales-title">Sales performance</h2>
-        <p>Track how sales have changed over time and see which ticket types people are buying.</p>
-      </div>
-    </div>
+  <section id="sales" class="rh-overview-section" aria-label="Ticket sales charts">
     <div class="duo">
       <article class="panel panel-pad">
         <div class="panel-top">
           <div>
-            <h3>Tickets bought over time</h3>
-            <p class="panel-sub">Paid ticket units · sales trend</p>
+            <h3 id="weekly-sales-title">Sales by week</h3>
+            <p class="panel-sub">Paid tickets sold each week, Monday to Sunday.</p>
           </div>
-          <span class="filter-label">Last 30 days</span>
+          <span class="filter-label"
+            >{{ weeks.length }} {{ weeks.length === 1 ? 'week' : 'weeks' }}</span
+          >
         </div>
-        <div class="chart-wrap">
+        <div
+          ref="chartScroll"
+          class="chart-wrap weekly-sales-scroll"
+          tabindex="0"
+          role="region"
+          aria-labelledby="weekly-sales-title"
+        >
           <svg
-            viewBox="0 0 600 260"
-            role="img"
-            :aria-label="`${points.length} days of paid ticket sales`"
+            :viewBox="`0 0 ${chartWidth} 280`"
+            :style="{ width: `${chartWidth}px`, minWidth: '100%', height: '280px' }"
+            role="group"
+            :aria-label="`${points.length} weeks of ticket sales. Select a point for its total.`"
           >
             <defs>
               <linearGradient id="workspace-sales-fade" x1="0" x2="0" y1="0" y2="1">
@@ -297,7 +321,7 @@ function chartDate(value) {
               </linearGradient>
             </defs>
             <g v-for="i in 5" :key="i">
-              <path :d="`M44 ${26 + (i - 1) * 50}H580`" stroke="#f0f0f1" />
+              <path :d="`M44 ${26 + (i - 1) * 50}H${chartWidth - 20}`" stroke="#f0f0f1" />
               <text x="3" :y="30 + (i - 1) * 50" fill="#81858d" font-size="11">
                 {{ ceiling - ((i - 1) * ceiling) / 4 }}
               </text>
@@ -311,54 +335,100 @@ function chartDate(value) {
               stroke-linecap="round"
               stroke-linejoin="round"
             />
-            <circle
-              v-if="coordinates.length"
-              :cx="coordinates.at(-1).x"
-              :cy="coordinates.at(-1).y"
-              r="5"
-              fill="white"
-              stroke="#e92876"
-              stroke-width="3"
-            />
-            <text v-if="points.length" x="44" y="253" fill="#81858d" font-size="11">
-              {{ chartDate(points[0].date) }}
-            </text>
-            <text
-              v-if="points.length"
-              x="580"
-              y="253"
-              text-anchor="end"
-              fill="#81858d"
-              font-size="11"
-            >
-              {{ chartDate(points.at(-1).date) }}
-            </text>
+            <g v-for="(point, index) in points" :key="point.date">
+              <text
+                :x="coordinates[index].x"
+                :y="coordinates[index].y - 14"
+                text-anchor="middle"
+                fill="#343b46"
+                font-size="12"
+              >
+                {{ number(point.units_sold) }}
+              </text>
+              <g
+                tabindex="0"
+                role="button"
+                :aria-label="`Week ${index + 1}, ${chartDate(point.date)} to ${chartDate(point.end_date)}: ${number(point.units_sold)} tickets sold`"
+                :aria-pressed="selectedWeek === point.date"
+                @click="selectedWeek = point.date"
+                @focus="selectedWeek = point.date"
+                @keydown.enter.prevent="selectedWeek = point.date"
+                @keydown.space.prevent="selectedWeek = point.date"
+              >
+                <title>
+                  {{ chartDate(point.date) }} to {{ chartDate(point.end_date) }}:
+                  {{ number(point.units_sold) }} tickets sold
+                </title>
+                <circle
+                  :cx="coordinates[index].x"
+                  :cy="coordinates[index].y"
+                  r="22"
+                  fill="transparent"
+                />
+                <circle
+                  :cx="coordinates[index].x"
+                  :cy="coordinates[index].y"
+                  r="5"
+                  :fill="selectedWeek === point.date ? '#e92876' : 'white'"
+                  stroke="#e92876"
+                  stroke-width="3"
+                />
+              </g>
+              <text
+                :x="coordinates[index].x"
+                y="252"
+                text-anchor="middle"
+                fill="#59616d"
+                font-size="11"
+              >
+                Week {{ index + 1 }}
+              </text>
+              <text
+                :x="coordinates[index].x"
+                y="270"
+                text-anchor="middle"
+                fill="#81858d"
+                font-size="10"
+              >
+                {{ chartDate(point.date) }}
+              </text>
+            </g>
           </svg>
         </div>
         <p v-if="!points.length" class="rh-note">
-          Your sales trend will appear after your first ticket sale.
+          Your weekly sales will appear here after your first ticket sale.
         </p>
         <table class="rh-data-table rh-sr">
           <caption>
-            Daily paid ticket sales
+            Weekly ticket sales
           </caption>
           <thead>
             <tr>
-              <th>Date</th>
+              <th>Week</th>
               <th>Tickets sold</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="point in points" :key="point.date">
-              <td>{{ point.date }}</td>
+              <td>{{ chartDate(point.date) }} to {{ chartDate(point.end_date) }}</td>
               <td>{{ number(point.units_sold) }}</td>
             </tr>
           </tbody>
         </table>
         <div class="chart-legend">
           <span class="legend-left"><i class="legend-mark" />Tickets sold</span
-          ><span>Daily trend</span>
+          ><span>Scroll to see more weeks</span>
         </div>
+        <p v-if="selectedPoint" class="weekly-sales-detail" role="status" aria-live="polite">
+          {{ chartDate(selectedPoint.date) }} to {{ chartDate(selectedPoint.end_date) }}:
+          <strong
+            >{{ number(selectedPoint.units_sold) }}
+            {{ selectedPoint.units_sold === 1 ? 'ticket sold' : 'tickets sold' }}</strong
+          >
+        </p>
+        <p v-if="overview.sales_trend?.truncated" class="rh-note">
+          Showing the most recent three years. The first week may be incomplete.
+        </p>
         <div class="chart-footer">
           <b>{{ number(sales.this_week_units) }} tickets sold this week</b
           ><span>{{ amount(revenue.this_week_minor) }} in ticket sales</span>
@@ -410,20 +480,14 @@ function chartDate(value) {
       </article>
     </div>
   </section>
-  <section id="audience" class="rh-overview-section" aria-labelledby="audience-title">
-    <div class="section-title">
-      <div>
-        <h2 id="audience-title">Reach &amp; audience</h2>
-        <p>See where your buyers found the event and how many visitors went on to buy tickets.</p>
-      </div>
-    </div>
+  <section id="audience" class="rh-overview-section" aria-label="Buyer sources">
     <div class="audience-grid">
       <article id="channels" class="panel panel-pad">
         <div class="panel-top">
           <div>
             <h3>Where buyers find you</h3>
             <p class="panel-sub">
-              Share of {{ number(overview.buyers?.unique_buyers) }} attributed buyers
+              Share of {{ number(overview.buyers?.unique_buyers) }} buyers with a known source
             </p>
           </div>
         </div>
@@ -446,11 +510,11 @@ function chartDate(value) {
         </div>
       </article>
       <article class="panel panel-pad">
-        <h3>From visit to purchase</h3>
-        <p class="panel-sub">Unique visitors and attributed buyers</p>
+        <h3>Visitors who buy tickets</h3>
+        <p class="panel-sub">Unique visitors and buyers with a known source</p>
         <div class="conversion">
           <strong>{{ percent(traffic.conversion_percent) }}</strong
-          ><span>conversion rate</span>
+          ><span>of visitors bought tickets</span>
         </div>
         <div class="funnel">
           <div class="funnel-step">
@@ -464,8 +528,7 @@ function chartDate(value) {
           </div>
         </div>
         <div class="audience-note">
-          Visitors are counted once per event and reporting period; repeat page views don’t increase
-          unique visitors.
+          Each visitor is counted once per event in this period, even if they visit again.
         </div>
       </article>
     </div>
@@ -473,15 +536,15 @@ function chartDate(value) {
   <section id="insights" class="section-slim rh-overview-section">
     <div class="section-title">
       <div>
-        <h2>Good to know</h2>
-        <p>These patterns show when people tend to buy and how much they spend.</p>
+        <h2>Buying patterns</h2>
+        <p>See when people buy and how much they spend.</p>
       </div>
     </div>
     <div class="mini-grid">
       <article class="mini-item">
         <div class="small-label">Average buyer spend</div>
         <strong>{{ amount(overview.buyers?.average_spend_minor) }}</strong>
-        <p>Across attributed ticket buyers</p>
+        <p>For buyers with a known source</p>
       </article>
       <article class="mini-item">
         <div class="small-label">Strongest sales day</div>
@@ -491,11 +554,11 @@ function chartDate(value) {
       <article class="mini-item">
         <div class="small-label">Popular buying hours</div>
         <strong>{{ overview.peak_buying_time?.label || 'No sales yet' }}</strong>
-        <p>Peak purchase window</p>
+        <p>Busiest buying hours</p>
       </article>
     </div>
     <div class="insights">
-      <div class="section-title"><h2>What stands out</h2></div>
+      <div class="section-title"><h2>Sales highlights</h2></div>
       <div class="insight-grid">
         <div v-if="strongest" class="insight">
           <span class="insight-index">01</span>
@@ -532,7 +595,7 @@ function chartDate(value) {
           </div>
         </div>
         <p v-if="!tiers.length && !sources.length" class="rh-note">
-          As people find your event and buy tickets, useful patterns will appear here.
+          Sales patterns will appear after people buy tickets.
         </p>
       </div>
     </div>

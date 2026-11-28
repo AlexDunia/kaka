@@ -66,7 +66,7 @@ function changeMonth(offset) {
 <template>
   <section class="weekly-calendar" aria-label="Weekly schedule preview">
     <h3>Scheduled dates</h3>
-    <p class="calendar-help">Highlighted dates follow your selected weekdays. Change the days above to update your schedule.</p>
+    <p class="calendar-help">Highlighted dates match the weekdays you chose.</p>
     <template v-if="validRange">
       <div class="calendar-month">
         <button type="button" :disabled="month <= firstMonth" aria-label="Previous month" @click="changeMonth(-1)">Previous</button>
@@ -85,7 +85,7 @@ function changeMonth(offset) {
       </table>
       <p class="calendar-help" role="status">{{ eventCount }} {{ eventCount === 1 ? 'event' : 'events' }} this month<span v-if="eventCount && timeLabel">, {{ timeLabel }}</span>.</p>
     </template>
-    <p v-else class="calendar-help">Choose an overall start date and end date to see your scheduled dates.</p>
+    <p v-else class="calendar-help">Choose a start and end date to see your schedule.</p>
   </section>
 </template>
 

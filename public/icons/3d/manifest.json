@@ -1,0 +1,341 @@
+{
+  "generator": "built-in image_gen",
+  "format": "PNG",
+  "width": 256,
+  "height": 256,
+  "background": "transparent",
+  "sharedPrompt": "Use case: stylized-concept. Generate ONE original PNG UI icon for Rush Hour Tickets, matching a coherent miniature 3D object icon family inspired by the supplied Airbnb references. Soft rounded tactile clay and ceramic with restrained glossy highlights, subtle three-quarter view, studio lighting upper left, crisp simple silhouette readable at 20px. Main object centered fills 82% of square canvas. Tasteful raspberry pink #ef277a accents, ivory, and subject-appropriate pastel colors, charcoal details and small gold accents. Fully transparent background and transparent corners; no white square, no scene, no text, no letters, no watermark, no brand logo. No haze or colored glow beyond object. Subject: ",
+  "icons": [
+    {
+      "name": "ticket",
+      "file": "ticket.png",
+      "prompt": "two raspberry and ivory event admission tickets with a gold star"
+    },
+    {
+      "name": "calendar",
+      "file": "calendar.png",
+      "prompt": "an ivory desk calendar with raspberry binding, simple charcoal date dots and a pink highlighted date, no numbers"
+    },
+    {
+      "name": "location",
+      "file": "location.png",
+      "prompt": "a raspberry map pin standing on a tiny folded ivory and pale sage map"
+    },
+    {
+      "name": "clock",
+      "file": "clock.png",
+      "prompt": "an ivory round clock with raspberry hands and dark hour dots, no numbers"
+    },
+    {
+      "name": "people",
+      "file": "people.png",
+      "prompt": "a small group of three friendly rounded attendee busts, raspberry, lilac and sage outfits"
+    },
+    {
+      "name": "wallet",
+      "file": "wallet.png",
+      "prompt": "a raspberry leather wallet with two small gold coins peeking out"
+    },
+    {
+      "name": "chart",
+      "file": "chart.png",
+      "prompt": "three softly rounded rising bar chart columns in raspberry, peach and lavender"
+    },
+    {
+      "name": "megaphone",
+      "file": "megaphone.png",
+      "prompt": "an ivory and raspberry handheld megaphone with a gold rim"
+    },
+    {
+      "name": "discount",
+      "file": "discount.png",
+      "prompt": "a raspberry hanging price tag with a white percent symbol embossed"
+    },
+    {
+      "name": "message",
+      "file": "message.png",
+      "prompt": "an ivory open envelope with a raspberry message card inside"
+    },
+    {
+      "name": "check",
+      "file": "check.png",
+      "prompt": "a sage green round approval badge with a clear ivory checkmark"
+    },
+    {
+      "name": "settings",
+      "file": "settings.png",
+      "prompt": "a silver and lavender rounded cogwheel with a raspberry center"
+    },
+    {
+      "name": "home",
+      "file": "home.png",
+      "prompt": "a tiny ivory house with a raspberry roof and warm yellow window"
+    },
+    {
+      "name": "eye",
+      "file": "eye.png",
+      "prompt": "a simple ivory open eye with charcoal pupil and raspberry iris detail"
+    },
+    {
+      "name": "eye-off",
+      "file": "eye-off.png",
+      "prompt": "a simple ivory eye with charcoal pupil crossed by one raspberry diagonal privacy slash"
+    },
+    {
+      "name": "edit",
+      "file": "edit.png",
+      "prompt": "a raspberry and ivory pencil leaning over a tiny ivory note"
+    },
+    {
+      "name": "bell",
+      "file": "bell.png",
+      "prompt": "a small warm gold notification bell with a raspberry clapper"
+    },
+    {
+      "name": "search",
+      "file": "search.png",
+      "prompt": "a silver magnifying glass with clear pale blue lens and raspberry handle"
+    },
+    {
+      "name": "heart",
+      "file": "heart.png",
+      "prompt": "a plump raspberry heart with soft ceramic highlights"
+    },
+    {
+      "name": "share",
+      "file": "share.png",
+      "prompt": "three small raspberry and lilac spherical nodes connected by two smooth ivory rods, familiar share symbol"
+    },
+    {
+      "name": "photo",
+      "file": "photo.png",
+      "prompt": "a small ivory photo frame containing pale blue sky, sage hills and a gold sun"
+    },
+    {
+      "name": "link",
+      "file": "link.png",
+      "prompt": "two interlocking rounded chain links, one raspberry and one lavender"
+    },
+    {
+      "name": "globe",
+      "file": "globe.png",
+      "prompt": "a small pale blue and sage globe with a raspberry stand"
+    },
+    {
+      "name": "info",
+      "file": "info.png",
+      "prompt": "a pale blue round badge with a simple ivory lowercase i information symbol"
+    },
+    {
+      "name": "help",
+      "file": "help.png",
+      "prompt": "a lavender round badge with a clear ivory question mark"
+    },
+    {
+      "name": "trash",
+      "file": "trash.png",
+      "prompt": "a small raspberry waste bin with an ivory lid"
+    },
+    {
+      "name": "document",
+      "file": "document.png",
+      "prompt": "an ivory clipboard with a gold clip and simple raspberry checklist marks"
+    },
+    {
+      "name": "trophy",
+      "file": "trophy.png",
+      "prompt": "a small polished gold trophy cup on a dark raspberry base"
+    },
+    {
+      "name": "graduation",
+      "file": "graduation.png",
+      "prompt": "a dark charcoal graduation cap with a raspberry tassel"
+    },
+    {
+      "name": "music",
+      "file": "music.png",
+      "prompt": "a raspberry musical note with an ivory wireless headphone accent"
+    },
+    {
+      "name": "moon",
+      "file": "moon.png",
+      "prompt": "a soft lavender crescent moon with a tiny gold star"
+    },
+    {
+      "name": "computer",
+      "file": "computer.png",
+      "prompt": "an ivory desktop monitor with a lavender screen and raspberry base"
+    },
+    {
+      "name": "sun",
+      "file": "sun.png",
+      "prompt": "a warm gold miniature sun with rounded short rays"
+    },
+    {
+      "name": "plus",
+      "file": "plus.png",
+      "prompt": "a simple chunky softly rounded raspberry plus symbol, iconic and minimal"
+    },
+    {
+      "name": "minus",
+      "file": "minus.png",
+      "prompt": "a single chunky softly rounded raspberry horizontal minus symbol, iconic and minimal"
+    },
+    {
+      "name": "menu",
+      "file": "menu.png",
+      "prompt": "ONE standalone UI menu hamburger symbol: exactly THREE straight parallel horizontal charcoal gray bars stacked vertically with equal spacing. Chunky rounded extruded 3D edges, very slight soft studio highlights. Absolutely nothing else: NO tickets, NO paper, NO people, NO clock, NO illustrated scenes. Transparent background. Square. Centered large simple silhouette readable at 16px."
+    },
+    {
+      "name": "external",
+      "file": "external.png",
+      "prompt": "an ivory rounded open square with a raspberry arrow pointing diagonally up and right"
+    },
+    {
+      "name": "copy",
+      "file": "copy.png",
+      "prompt": "ONE standalone copy UI icon: exactly TWO overlapping plain ivory rectangular sheets of paper, one offset up-left behind the front sheet. Gently rounded corners, subtle 3D thickness, a small pink folded corner on the front sheet. No perforations. Absolutely NO tickets, NO star, NO clocks, NO characters, NO words or letters. Transparent background. Square. Soft upper-left studio lighting. Simple silhouette readable at 16px."
+    },
+    {
+      "name": "phone",
+      "file": "phone.png",
+      "prompt": "a small curved raspberry telephone handset with an ivory underside"
+    },
+    {
+      "name": "food",
+      "file": "food.png",
+      "prompt": "an ivory plate with a small gold fork and raspberry spoon beside it"
+    },
+    {
+      "name": "art",
+      "file": "art.png",
+      "prompt": "a lavender artist palette with raspberry, sage and gold paint daubs and a small ivory paintbrush"
+    },
+    {
+      "name": "film",
+      "file": "film.png",
+      "prompt": "a small dark charcoal and ivory cinema clapperboard with a raspberry accent, no text"
+    },
+    {
+      "name": "sparkles",
+      "file": "sparkles.png",
+      "prompt": "ONE standalone UI sparkle symbol: exactly TWO polished gold four-point sparkle stars, larger star upper left and smaller star lower right. Soft rounded extruded 3D edges and subtle studio highlights. Absolutely nothing else: NO tickets, NO paper, NO people, NO clock, NO illustrated scenes. Transparent background. Square. Centered large simple silhouette readable at 16px."
+    },
+    {
+      "name": "qr",
+      "file": "qr.png",
+      "prompt": "a small ivory square entry pass bearing a simplified dark QR-like pictogram and a raspberry scanning frame; decorative symbol only"
+    },
+    {
+      "name": "back",
+      "file": "back.png",
+      "prompt": "a single chunky softly rounded raspberry left-pointing chevron, iconic and minimal"
+    },
+    {
+      "name": "next",
+      "file": "next.png",
+      "prompt": "a single chunky softly rounded raspberry right-pointing chevron, iconic and minimal"
+    },
+    {
+      "name": "down",
+      "file": "down.png",
+      "prompt": "a single chunky softly rounded raspberry downward-pointing chevron, iconic and minimal"
+    },
+    {
+      "name": "close",
+      "file": "close.png",
+      "prompt": "a simple chunky softly rounded charcoal X cross, iconic and minimal"
+    },
+    {
+      "name": "user",
+      "file": "user.png",
+      "prompt": "a friendly rounded attendee bust with a raspberry top and warm neutral head"
+    },
+    {
+      "name": "security",
+      "file": "security.png",
+      "prompt": "a raspberry shield with an ivory checkmark"
+    },
+    {
+      "name": "cart",
+      "file": "cart.png",
+      "prompt": "Use case: stylized-concept. ONE unmistakable miniature SHOPPING CART / supermarket trolley UI icon, NOT an animal, NOT a shopping bag or basket with a top handle, NOT a house. Side three-quarter view with an OPEN RECTANGULAR wire-style ivory cart basket on a slim charcoal metal frame, long raspberry pink PUSH HANDLE sticking out to the upper left, and TWO CLEAR round charcoal WHEELS at the bottom. Empty cart, no tickets or other contents. Simple bold silhouette legible at 20px. Soft rounded tactile 3D emoji/clay style, subtle gloss, studio light upper left. Match Rush Hour Tickets raspberry pink #ef277a, ivory and charcoal palette. Centered fills 82% of square canvas. Fully transparent background and corners, no scene, no ground, no text, no decorative objects.",
+      "generator": "built-in image_gen"
+    },
+    {
+      "name": "sports",
+      "file": "sports.png",
+      "prompt": "a pale ivory and sage football with a small gold trophy accent"
+    },
+    {
+      "name": "theatre",
+      "file": "theatre.png",
+      "prompt": "two tiny theatre comedy and tragedy masks in raspberry and ivory"
+    },
+    {
+      "name": "festival",
+      "file": "festival.png",
+      "prompt": "a miniature raspberry and ivory striped festival tent with a small gold pennant"
+    },
+    {
+      "name": "download",
+      "file": "download.png",
+      "prompt": "a raspberry downward arrow descending into a small ivory receiving tray"
+    },
+    {
+      "name": "printer",
+      "file": "printer.png",
+      "prompt": "an ivory desktop printer with raspberry paper tray and a single white sheet emerging"
+    },
+    {
+      "name": "pause",
+      "file": "pause.png",
+      "prompt": "ONE minimal UI pause symbol, exactly two parallel vertical charcoal gray bars of equal size. Rounded chunky soft 3D extrusion and restrained studio highlights. Transparent background. No tickets or extra objects. Square."
+    },
+    {
+      "name": "play",
+      "file": "play.png",
+      "prompt": "ONE minimal UI play symbol, exactly one raspberry right-pointing equilateral triangular play button shape. Rounded chunky soft 3D extrusion and restrained studio highlights. Transparent background. No tickets or extra objects. Square."
+    },
+    {
+      "name": "door",
+      "file": "door.png",
+      "prompt": "ONE miniature open ivory door in a raspberry doorframe, a small warm gold doorknob and pale sage interior. Tactile softly rounded 3D object for event entrance UI, slight three-quarter view, studio light upper left. Transparent background. No text or extra objects. Square."
+    },
+    {
+      "name": "business",
+      "file": "business.png",
+      "prompt": "Use case: stylized-concept. Generate ONE original miniature 3D UI icon for Rush Hour Tickets. Match a coherent premium playful emoji family: tactile softly rounded clay and ceramic, subtle glossy highlights, gentle three-quarter perspective, soft studio light upper left. Simple strong silhouette readable at 24px. Raspberry pink #ef277a, warm ivory, lavender, charcoal and small warm gold details. Object centered, fills 80% of square canvas. Fully transparent background and corners. No scene, ground plane, white square, backdrop, watermark, text or brand logos. Subject: ONE business briefcase: unmistakable closed charcoal leather briefcase, short ivory handle on TOP, small gold latch, restrained raspberry accent. No people, no tickets, no graduation cap.",
+      "generator": "built-in image_gen",
+      "normalization": "256px transparent PNG"
+    },
+    {
+      "name": "workshop",
+      "file": "workshop.png",
+      "prompt": "Use case: stylized-concept. Generate ONE original miniature 3D UI icon for Rush Hour Tickets. Match a coherent premium playful emoji family: tactile softly rounded clay and ceramic, subtle glossy highlights, gentle three-quarter perspective, soft studio light upper left. Simple strong silhouette readable at 24px. Raspberry pink #ef277a, warm ivory, lavender, charcoal and small warm gold details. Object centered, fills 80% of square canvas. Fully transparent background and corners. No scene, ground plane, white square, backdrop, watermark, text or brand logos. Subject: ONE workshop toolkit: a small open ivory toolbox with raspberry handle, one simple hammer and one screwdriver protruding clearly. Readable hands-on making and practical skills. No graduation cap, no tickets.",
+      "generator": "built-in image_gen",
+      "normalization": "256px transparent PNG"
+    },
+    {
+      "name": "technology",
+      "file": "technology.png",
+      "prompt": "Use case: stylized-concept. Generate ONE original miniature 3D UI icon for Rush Hour Tickets. Match a coherent premium playful emoji family: tactile softly rounded clay and ceramic, subtle glossy highlights, gentle three-quarter perspective, soft studio light upper left. Simple strong silhouette readable at 24px. Raspberry pink #ef277a, warm ivory, lavender, charcoal and small warm gold details. Object centered, fills 80% of square canvas. Fully transparent background and corners. No scene, ground plane, white square, backdrop, watermark, text or brand logos. Subject: ONE modern open laptop: ivory slim laptop with visible charcoal keyboard and lavender screen bearing a simple raspberry code brackets symbol. Clearly a laptop, not a television or desktop monitor. No graduation cap.",
+      "generator": "built-in image_gen",
+      "normalization": "256px transparent PNG"
+    },
+    {
+      "name": "conference",
+      "file": "conference.png",
+      "prompt": "Use case: stylized-concept. Generate ONE original miniature 3D UI icon for Rush Hour Tickets. Match a coherent premium playful emoji family: tactile softly rounded clay and ceramic, subtle glossy highlights, gentle three-quarter perspective, soft studio light upper left. Simple strong silhouette readable at 24px. Raspberry pink #ef277a, warm ivory, lavender, charcoal and small warm gold details. Object centered, fills 80% of square canvas. Fully transparent background and corners. No scene, ground plane, white square, backdrop, watermark, text or brand logos. Subject: ONE conference speaker podium: short ivory lectern with raspberry front panel and ONE slender black gooseneck microphone on top. No person, no graduation cap, no tickets, no text.",
+      "generator": "built-in image_gen",
+      "normalization": "256px transparent PNG"
+    },
+    {
+      "name": "social",
+      "file": "social.png",
+      "prompt": "Use case: stylized-concept. Generate ONE original miniature 3D UI icon for Rush Hour Tickets. Match a coherent premium playful emoji family: tactile softly rounded clay and ceramic, subtle glossy highlights, gentle three-quarter perspective, soft studio light upper left. Simple strong silhouette readable at 24px. Raspberry pink #ef277a, warm ivory, lavender, charcoal and small warm gold details. Object centered, fills 80% of square canvas. Fully transparent background and corners. No scene, ground plane, white square, backdrop, watermark, text or brand logos. Subject: TWO overlapping rounded conversation bubbles, one raspberry pink and one ivory, with three tiny charcoal dots on the front bubble. Friendly social conversation. No music, no headphones, no star.",
+      "generator": "built-in image_gen",
+      "normalization": "256px transparent PNG"
+    }
+  ]
+}

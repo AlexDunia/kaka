@@ -1,4 +1,5 @@
 <script setup>
+import { pngIconUrl } from '@/constants/pngIcons'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import PublicSymbols from './PublicSymbols.vue'
@@ -152,11 +153,8 @@ onBeforeUnmount(() => {
         <div class="header-actions">
           <PublicHeaderSearch />
           <RouterLink class="public-cart-link" to="/cart" aria-label="Your cart"
-            ><svg class="icon" aria-hidden="true" viewBox="0 0 24 24">
-              <path d="M3 3h2l3 12h10l3-9H6" />
-              <circle cx="9" cy="20" r="1" />
-              <circle cx="18" cy="20" r="1" /></svg></RouterLink
-          ><AccountMenu v-if="auth.isAuthenticated" context="site" /><RouterLink
+            ><svg class="icon" aria-hidden="true" viewBox="0 0 24 24" @contextmenu.prevent @dragstart.prevent><image :href="pngIconUrl('cart')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg></RouterLink
+          ><AccountMenu v-if="auth.isAuthenticated" context="site" class="header-account" /><RouterLink
             v-else
             class="public-login-link"
             to="/login"
@@ -170,11 +168,11 @@ onBeforeUnmount(() => {
             :aria-label="menuOpen ? 'Close menu' : 'Open menu'"
             @click="menuOpen = !menuOpen"
           >
-            <svg class="icon"><use :href="menuOpen ? '#i-close' : '#i-menu'" /></svg>
+            <img class="mobile-menu-art" draggable="false" @contextmenu.prevent @dragstart.prevent :src="pngIconUrl(menuOpen ? 'close' : 'menu')" alt="" aria-hidden="true" width="24" height="24" />
           </button>
         </div>
       </div>
-      <nav
+      <Transition name="rh-popup" appear><nav v-if="menuOpen"
         id="public-mobile-nav"
         class="mobile-nav"
         :class="{ open: menuOpen }"
@@ -190,7 +188,9 @@ onBeforeUnmount(() => {
           >{{ link.label }}</RouterLink
         ><RouterLink to="/create-event" @click="menuOpen = false">Create event</RouterLink
         ><RouterLink to="/contact" @click="menuOpen = false">Contact us</RouterLink>
-      </nav>
+        <AccountMenu v-if="auth.isAuthenticated" context="site" label="Your account" />
+        <RouterLink v-else to="/login" @click="menuOpen = false">Log in</RouterLink>
+      </nav></Transition>
       <HomeScrollGreeting
         v-if="isHome || discovery"
         :key="route.path"

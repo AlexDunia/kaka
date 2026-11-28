@@ -41,7 +41,7 @@ import {
   TrophyIcon,
   UserIcon,
   XMarkIcon,
-} from '@heroicons/vue/24/outline'
+} from '@/components/icons/pngIcons'
 import { usePublishGuidanceStore } from '@/stores/publishGuidance'
 import RecurringEventSection from '@/components/recurring/RecurringEventSection.vue'
 import { createExplicitSchedule, explicitScheduleError, isExplicitSchedule } from '@/utils/explicitSchedule'
@@ -240,7 +240,7 @@ const attendeeFieldDefaults = [
   },
   {
     id: 'company',
-    label: 'Organisation / Company',
+    label: 'Organisation',
     help: 'Where they work or study',
     enabled: false,
     required: false,
@@ -254,7 +254,7 @@ const attendeeFieldDefaults = [
   },
   {
     id: 'dietary',
-    label: 'Dietary requirements',
+    label: 'Food needs',
     help: 'Useful for catered events',
     enabled: false,
     required: false,
@@ -1204,13 +1204,13 @@ function validateStep(step) {
         'Choose a valid IANA timezone, such as Africa/Lagos.',
       )
     if (form.title.length > 100)
-      setError('title', 'Keep the event name within 100 characters.')
+      setError('title', 'Use 100 characters or fewer for the event name.')
     if (form.meetingLink && !/^https?:\/\//i.test(form.meetingLink))
-      setError('meetingLink', 'Use an HTTP or HTTPS meeting link.')
-    if (!form.title.trim()) setError('title', 'Please enter an event name.')
+      setError('meetingLink', 'Enter a meeting link starting with http:// or https://.')
+    if (!form.title.trim()) setError('title', 'Enter an event name.')
     if (!explicitSchedule.value && !form.startsAt)
-      setError('startsAt', 'Please choose a start date and time.')
-    if (!explicitSchedule.value && !form.endsAt) setError('endsAt', 'Please choose an end date and time.')
+      setError('startsAt', 'Choose a start date and time.')
+    if (!explicitSchedule.value && !form.endsAt) setError('endsAt', 'Choose an end date and time.')
     if (usesDateRange.value && !isEditMode.value && form.startsAt && !isStartDateTimeValid(form.startsAt, eventTimeZone.value, clock.value))
       setError('startsAt', 'Choose a start time at least 30 minutes from now.')
     if (
@@ -1221,7 +1221,7 @@ function validateStep(step) {
       setError('endsAt', 'End time must be after the start time.')
     }
     if (form.format !== 'online' && !form.venue.trim()) {
-      setError('venue', 'Please enter the venue or address.')
+      setError('venue', 'Enter the venue or address.')
     }
     if (
       (form.format === 'online' || form.format === 'hybrid') &&
@@ -1232,7 +1232,7 @@ function validateStep(step) {
         'Please add the meeting link for online attendees.',
       )
     }
-    if (!form.category) setError('category', 'Please choose a category.')
+    if (!form.category) setError('category', 'Choose a category.')
     if (explicitSchedule.value) {
       const scheduleError = explicitScheduleError(form.recurrence, { publish: true, today: toDateInputValue(venueToday.value) })
       if (scheduleError) setError('repeatSchedule', scheduleError)
@@ -1280,22 +1280,22 @@ function validateStep(step) {
     )
       setError(
         'organiserWebsite',
-        'Use an HTTP or HTTPS website link within 500 characters.',
+        'Enter a website link starting with http:// or https://, up to 500 characters.',
       )
   }
   if (step === 2 && !form.coverImage) {
     setError(
       'coverImage',
-      'Please add a cover image so attendees can recognise your event.',
+      'Add a cover photo for your event.',
     )
   }
 
   if (step === 3 && form.ticketMode === 'paid') {
     if (!form.tickets.length)
-      setError('tickets', 'Add at least one paid ticket category.')
+      setError('tickets', 'Add at least one paid ticket type.')
     form.tickets.forEach((ticket) => {
       if (!ticket.name.trim())
-        setError(`ticket-${ticket.id}-name`, 'Ticket name is required.')
+        setError(`ticket-${ticket.id}-name`, 'Enter a ticket name.')
       if (
         !/^\d+(?:\.\d{1,2})?$/.test(String(ticket.price)) ||
         Number(ticket.price) <= 0 ||
@@ -1303,12 +1303,12 @@ function validateStep(step) {
       )
         setError(
           `ticket-${ticket.id}-price`,
-          'Enter a paid ticket price above zero, up to 999999.99, with at most two decimal places.',
+          'Enter a price above 0 and up to 999,999.99, with no more than two decimal places.',
         )
       if (ticket.name.length > 50)
         setError(
           `ticket-${ticket.id}-name`,
-          'Keep the ticket name within 50 characters.',
+          'Use 50 characters or fewer for the ticket name.',
         )
       if (
         !Number.isInteger(Number(ticket.units)) ||
@@ -1317,7 +1317,7 @@ function validateStep(step) {
       )
         setError(
           `ticket-${ticket.id}-units`,
-          'Enter a capacity from 0 to 1,000,000. Zero means no stock.',
+          'Enter 0 to 1,000,000 tickets or tables. Zero means none available.',
         )
       if (
         Number(ticket.units) <
@@ -1326,7 +1326,7 @@ function validateStep(step) {
       )
         setError(
           `ticket-${ticket.id}-units`,
-          'Keep enough units for sold tickets and current reservations.',
+          'Keep enough tickets or tables for existing sales and reservations.',
         )
       if (
         ticket.unitType === 'table' &&
@@ -1356,7 +1356,7 @@ function validateStep(step) {
       ) {
         setError(
           `ticket-${ticket.id}-salesEnd`,
-          'Sales close must be after sales open.',
+          'Sales must end after they start.',
         )
       }
       if (
@@ -1380,9 +1380,9 @@ function validateStep(step) {
       Number(form.freeCapacity) < 0 ||
       Number(form.freeCapacity) > 1000000)
   )
-    setError('freeCapacity', 'Enter a capacity from 0 to 1,000,000.')
+    setError('freeCapacity', 'Enter a guest limit from 0 to 1,000,000.')
   if (step === 3 && totalCapacity.value > 2147483647)
-    setError('tickets', 'Reduce the total admission capacity before saving.')
+    setError('tickets', 'Lower the total guest limit before saving.')
 
   const firstError = Object.keys(errors)[0]
   if (firstError) {
@@ -1817,7 +1817,7 @@ watch(
           class="ghost-btn"
           :disabled="isSaving || isPublishing || conflict || editorLoading || Boolean(editorLoadError)"
           @click="saveDraft"
-        >
+         :aria-busy="isSaving">
           {{ isSaving ? 'Saving...' : editorStatus === 'active' ? 'Save changes' : 'Save draft' }}
         </button>
       </div>
@@ -1859,7 +1859,7 @@ watch(
                 Let's build your<br /><em>event.</em>
                 <SparklesIcon class="headline-icon" aria-hidden="true" />
               </h1>
-              <p>Start with the basics. Everything can be updated after publishing.</p>
+              <p>Start with the basics. You can update these details later.</p>
             </div>
 
             <div class="ce-card">
@@ -1930,7 +1930,7 @@ watch(
                   </div>
                 </div>
                 <p v-if="isDailySchedule" class="help">Your event runs every day between these dates, at the same times.</p>
-                <p v-else class="help">Choose the overall date range and the time for each event. Then choose the weekdays below.</p>
+                <p v-else class="help">Choose the date range, event times, and weekdays.</p>
                 <p v-if="form.startsAt && form.endsAt && toDateInputValue(form.endsAt) > scheduleStartDate" class="help">Each event ends the following day.</p>
               </section>
               <template v-if="!usesDateRange && (form.eventType !== 'recurring' || form.recurrence.frequency)">
@@ -2038,7 +2038,7 @@ watch(
                         </span>
                       </label>
                     </div>
-                    <p class="help">These choices follow your start date. Change it to choose a different date or weekday.</p>
+                    <p class="help">Change your start date to choose a different date or weekday.</p>
                   </section>
 
                   <section v-if="!usesDateRange" class="recurrence-step reveal-step">
@@ -2114,7 +2114,7 @@ watch(
               </div>
 
               <div v-if="form.format !== 'online'" class="field" data-error-key="venue">
-                <label for="venue">Venue / Location</label>
+                <label for="venue">Venue or address</label>
                 <div class="input-with-icon">
                   <MapPinIcon aria-hidden="true" />
                   <input
@@ -2144,7 +2144,7 @@ watch(
 
               <div class="two-col">
                 <div class="field" data-error-key="city"><label for="event-city">City <span>Optional</span></label><input id="event-city" v-model="form.city" maxlength="255" class="field-input" /><p v-if="errors.city" class="error-text">{{ errors.city }}</p></div>
-                <div class="field" data-error-key="timeZone"><label for="event-timezone">Event timezone</label><input id="event-timezone" v-model.lazy="form.venueTimezone" maxlength="60" class="field-input" placeholder="Africa/Lagos" /><p v-if="errors.timeZone" class="error-text">{{ errors.timeZone }}</p></div>
+                <div class="field" data-error-key="timeZone"><label for="event-timezone">Event time zone</label><input id="event-timezone" v-model.lazy="form.venueTimezone" maxlength="60" class="field-input" placeholder="Africa/Lagos" /><p v-if="errors.timeZone" class="error-text">{{ errors.timeZone }}</p></div>
               </div>
               <div v-if="form.format !== 'in-person'" class="field" data-error-key="meetingLink">
                 <label for="meeting-link">Meeting link</label>
@@ -2218,7 +2218,7 @@ watch(
                 <div class="field-top">
                   <div>
                     <label>Event images <span>Required cover Â· max 6</span></label>
-                    <p class="help">Upload a cover photo first, then add optional gallery images for the event page.</p>
+                    <p class="help">Add a cover photo, then up to five gallery images.</p>
                   </div>
                   <button type="button" class="text-btn" @click="showTemplates = !showTemplates">
                     <SparklesIcon aria-hidden="true" /> Templates
@@ -2227,7 +2227,7 @@ watch(
 
                 <label for="flyer-format">Image format</label>
                 <select id="flyer-format" v-model="flyerFormat" class="field-input"><option v-for="format in flyerFormats" :key="format.value" :value="format.value">{{ format.label }}</option></select>
-                <p class="help">Choose a shape before uploading. Images fill this shape without borders. Edges outside the frame are cropped. Linked images keep their original shape.</p>
+                <p class="help">Choose a shape before uploading. Images are cropped to fit. Linked images keep their shape.</p>
                 <div class="upload-tabs">
                   <button
                     type="button"
@@ -2338,7 +2338,7 @@ watch(
               <div class="two-col">
                 <div class="field" data-error-key="organiser">
                   <p v-if="errors.organiser" class="error-text">{{ errors.organiser }}</p>
-                  <label for="organiser">Name or org <span>Optional</span></label>
+                  <label for="organiser">Name or organisation <span>Optional</span></label>
                   <input id="organiser" v-model="form.organiser" maxlength="100" class="field-input" placeholder="e.g. TechHub Lagos" />
                 </div>
                 <div class="field" data-error-key="organiserWebsite">
@@ -2349,7 +2349,7 @@ watch(
               </div>
 
               <div class="divider"><span>Extra details</span></div>
-              <div class="detail-hint">ðŸ’¡ <strong>The more you share, the fewer questions you get.</strong></div>
+              <div class="detail-hint">ðŸ’¡ <strong>Add details that help attendees plan.</strong></div>
               <div class="detail-chip-row">
                 <button
                   v-for="option in detailOptions"
@@ -2389,14 +2389,14 @@ watch(
           <div v-if="embedded ? editorSection === 'tickets' : currentStep === 3" class="screen">
             <div v-if="!embedded" class="screen-head">
               <h1>Set up your<br /><em>tickets.</em></h1>
-              <p>Tell us how people will attend and what they will pay.</p>
+              <p>Choose free entry or set ticket prices.</p>
             </div>
 
             <div v-if="!embedded" class="info-card pink">
               <TicketIcon aria-hidden="true" />
               <div>
-                <strong>What are ticket categories?</strong>
-                <p>They let you offer different access levels at different prices, like Early Bird, General, VIP, or tables.</p>
+                <strong>What are ticket types?</strong>
+                <p>Offer options like early bird, general admission, VIP, or tables.</p>
               </div>
             </div>
 
@@ -2422,7 +2422,7 @@ watch(
                   >
                     <BanknotesIcon aria-hidden="true" />
                     <strong>Paid tickets</strong>
-                    <span>Set prices, create tiers, and get paid.</span>
+                    <span>Set ticket types and prices.</span>
                   </button>
                 </div>
               </div>
@@ -2432,11 +2432,11 @@ watch(
                   <CheckIcon aria-hidden="true" />
                   <div>
                     <strong>Free event</strong>
-                    <p>Set the admission capacity. Zero or a blank value means no stock. Registration is not connected yet.</p>
+                    <p>Set the guest limit. Zero or blank means no spaces. Registration isn’t available yet.</p>
                   </div>
                 </div>
                 <div class="field">
-                  <label for="free-capacity">Max spots <span>Optional</span></label>
+                  <label for="free-capacity">Guest limit <span>Optional</span></label>
                   <p v-if="errors.freeCapacity" class="error-text">{{ errors.freeCapacity }}</p>
                   <input data-error-key="freeCapacity" id="free-capacity" v-model="form.freeCapacity" type="number" min="0" max="1000000" step="1" class="field-input" placeholder="e.g. 200" />
                 </div>
@@ -2445,8 +2445,8 @@ watch(
               <div v-else class="paid-block" data-error-key="tickets">
                 <div class="field-top">
                   <div>
-                    <label>Ticket categories</label>
-                    <p class="help">Tap a template, then customise price, quantity, and perks.</p>
+                    <label>Ticket types</label>
+                    <p class="help">Choose a template, then set the price, quantity, and perks.</p>
                   </div>
                   <span class="count-badge">{{ form.tickets.length }} added</span>
                 </div>
@@ -2462,15 +2462,15 @@ watch(
                     {{ template.name }}
                   </button>
                   <button type="button" class="quick-chip custom" @click="addTicket()">
-                    <PlusIcon aria-hidden="true" /> Add custom category
+                    <PlusIcon aria-hidden="true" /> Add ticket type
                   </button>
                 </div>
                 <p v-if="errors.tickets" class="error-text">{{ errors.tickets }}</p>
 
                 <div v-if="!form.tickets.length" class="empty-state">
                   <TicketIcon aria-hidden="true" />
-                  <strong>No ticket categories yet</strong>
-                  <span>Choose a template above or add a custom category.</span>
+                  <strong>No ticket types yet</strong>
+                  <span>Choose a template or add a ticket type.</span>
                 </div>
 
                 <div class="ticket-list">
@@ -2479,7 +2479,7 @@ watch(
                     <div class="ticket-card-head">
                       <span class="color-dot" :style="{ background: ticket.color }"></span>
                       <strong>{{ ticket.name || 'Unnamed ticket' }}</strong>
-                      <span v-if="ticket.inventory">Configured: {{ ticket.inventory.configured_capacity_units }} &middot; Sold: {{ ticket.inventory.sold_units }} &middot; Reserved: {{ ticket.inventory.reserved_units }} &middot; Available: {{ ticket.inventory.available_units }} &middot; Admissions: {{ ticket.inventory.admission_capacity }}</span>
+                      <span v-if="ticket.inventory">Total: {{ ticket.inventory.configured_capacity_units }} &middot; Sold: {{ ticket.inventory.sold_units }} &middot; Reserved: {{ ticket.inventory.reserved_units }} &middot; Available: {{ ticket.inventory.available_units }} &middot; Admissions: {{ ticket.inventory.admission_capacity }}</span>
                       <button type="button" class="icon-btn danger" @click="removeTicket(ticket.id)">
                         <TrashIcon aria-hidden="true" />
                       </button>
@@ -2510,7 +2510,7 @@ watch(
                     <div class="two-col">
                       <div class="field">
                         <label>{{ ticket.unitType === 'table' ? 'Number of tables' : 'How many spots?' }}</label>
-                        <input v-model.number="ticket.units" type="number" min="0" class="field-input" max="1000000" step="1" placeholder="0 means no stock" />
+                        <input v-model.number="ticket.units" type="number" min="0" class="field-input" max="1000000" step="1" placeholder="0 means none available" />
                       </div>
                       <div v-if="ticket.unitType === 'table'" class="field">
                         <label>People per table</label>
@@ -2521,11 +2521,11 @@ watch(
                       <div class="field">
                         <label>Price (NGN)</label>
                         <input v-model="ticket.price" type="number" min="0" max="999999.99" step="0.01" class="field-input" placeholder="Enter a paid ticket price" />
-                        <p v-if="Number(ticket.price) <= 0" class="help">Paid tickets need a price above zero before publication. You can save a draft with a zero price.</p>
+                        <p v-if="Number(ticket.price) <= 0" class="help">Set a price above zero to publish. Draft tickets can have a zero price.</p>
                       </div>
                       <div class="field">
                         <label>Each person can buy <span>Optional</span></label>
-                        <input v-model.number="ticket.maxPerPerson" type="number" min="1" max="1000000" step="1" class="field-input" placeholder="e.g. 2 means one person can only buy 2 tickets" />
+                        <input v-model.number="ticket.maxPerPerson" type="number" min="1" max="1000000" step="1" class="field-input" placeholder="e.g. 2 tickets per person" />
                       </div>
                     </div>
                     <div v-if="ticket.unitType === 'table' && ticket.units" class="calc-card">
@@ -2537,7 +2537,7 @@ watch(
                         <label>Sales open <span>Optional</span></label>
                         <DateTimePickerInput
                           v-model="ticket.salesStart"
-                          placeholder="Select sales open"
+                          placeholder="Choose sales start"
                           :min-date="isEditMode ? null : venueToday"
                           :max-date="form.startsAt"
                           :max-date-time="form.startsAt"
@@ -2547,7 +2547,7 @@ watch(
                         <label>Sales close <span>Optional</span></label>
                         <DateTimePickerInput
                           v-model="ticket.salesEnd"
-                          placeholder="Select sales close"
+                          placeholder="Choose sales end"
                           :min-date="isEditMode ? null : venueToday"
                           :max-date="form.startsAt"
                           :max-date-time="form.startsAt"
@@ -2566,7 +2566,7 @@ watch(
                 </div>
 
                 <div v-if="form.tickets.length" class="summary-row">
-                  <span>Total capacity</span>
+                  <span>Total guest places</span>
                   <strong>{{ totalCapacity.toLocaleString() }} seats</strong>
                 </div>
               </div>
@@ -2576,14 +2576,14 @@ watch(
           <div v-if="embedded ? editorSection === 'checkout' : currentStep === 4" class="screen">
             <div v-if="!embedded" class="screen-head">
               <h1>Who's<br /><em>registering?</em></h1>
-              <p>Choose what information to collect. Fewer fields usually means more sign-ups.</p>
+              <p>Ask only for the details you need.</p>
             </div>
 
             <div v-if="!embedded" class="info-card pink">
               <DocumentTextIcon aria-hidden="true" />
               <div>
                 <strong>Your registration form</strong>
-                <p>Every attendee fills this when they sign up. Name and email stay required.</p>
+                <p>Attendees fill this in when they register. Name and email are required.</p>
               </div>
             </div>
 
@@ -2610,7 +2610,7 @@ watch(
                 </div>
                 <div class="email-body">
                   <p>Hi [Attendee name],</p>
-                  <p>Your registration is confirmed. We cannot wait to see you.</p>
+                  <p>Your registration is confirmed. See you there!</p>
                   <div class="email-ticket">
                     <strong>Ticket details</strong>
                     <span>{{ form.title || 'Event name' }}</span>
@@ -2624,7 +2624,7 @@ watch(
 
           <div v-if="embedded" class="nav-actions">
             <span v-if="lastSavedAt" role="status">{{ lastSavedLabel }}</span>
-            <button type="button" class="primary-btn" :disabled="isSaving || isPublishing || conflict || editorLoading || Boolean(editorLoadError)" @click="saveEventChanges">{{ isSaving ? 'Saving...' : 'Save changes' }}</button>
+            <button type="button" class="primary-btn" :disabled="isSaving || isPublishing || conflict || editorLoading || Boolean(editorLoadError)" @click="saveEventChanges" :aria-busy="isSaving">{{ isSaving ? 'Saving...' : 'Save changes' }}</button>
           </div>
           <div v-else class="nav-actions">
             <button v-if="currentStep > 1" type="button" class="back-btn" @click="goBack">
@@ -2647,7 +2647,7 @@ watch(
               :class="{ disabled: !canContinue || isSaving || isPublishing }"
               :disabled="!canContinue || isSaving || isPublishing || conflict"
               @click="publishEvent"
-            >
+             :aria-busy="isSaving">
               {{ isPublishing ? 'Publishing...' : editorStatus === 'active' ? 'Save changes' : 'Publish event' }} <ArrowRightIcon aria-hidden="true" />
             </button>
           </div>

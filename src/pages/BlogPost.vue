@@ -1,4 +1,5 @@
 <script setup>
+import { pngIconUrl } from '@/constants/pngIcons'
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import blogService from '@/services/blogService'
@@ -83,7 +84,7 @@ const estimatedReadingTime = computed(() => {
   <div class="blog-post">
     <div v-if="error" class="error-message">
       {{ error }}
-      <button @click="goBack" class="back-button">← Back to Blog</button>
+      <button @click="goBack" class="back-button">← Back to blog</button>
     </div>
 
     <template v-else>
@@ -134,10 +135,7 @@ const estimatedReadingTime = computed(() => {
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-            >
-              <circle cx="12" cy="12" r="9" stroke-width="2" />
-              <path d="M12 7v5l3 3" stroke-width="2" stroke-linecap="round" />
-            </svg>
+            ><image :href="pngIconUrl('clock')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg>
             {{ estimatedReadingTime }}
           </span>
         </div>
@@ -199,7 +197,7 @@ const estimatedReadingTime = computed(() => {
       </div>
 
       <!-- Back Button -->
-      <button @click="goBack" class="back-button">← Back to Blog</button>
+      <button @click="goBack" class="back-button">← Back to blog</button>
 
       <!-- Loading State -->
       <PageSkeleton v-if="loading" variant="detail" :rows="5" />
@@ -243,7 +241,7 @@ const estimatedReadingTime = computed(() => {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Buy here
+                Get tickets
               </a>
             </div>
           </div>

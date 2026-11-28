@@ -1,4 +1,5 @@
 <script setup>
+import { pngIconUrl } from '@/constants/pngIcons'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useEventStore } from '@/stores/events'
@@ -53,7 +54,7 @@ onBeforeUnmount(() => window.clearInterval(rotationTimer))
       <p class="hero__lead">Find events worth showing up for.</p>
       <form class="hero__search" @submit.prevent="submitSearch">
         <label class="sr-only" for="hero-search">Search events</label>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m20 20-4.4-4.4m2.4-5.1a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z" /></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><image :href="pngIconUrl('search')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg>
         <input id="hero-search" v-model="searchTerm" type="search" placeholder="Search events, artists or venues" />
         <button type="submit">Search</button>
       </form>

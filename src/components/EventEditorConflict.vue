@@ -6,8 +6,7 @@ defineEmits(['reload', 'retry'])
   <section role="alert" class="api-error-summary">
     <strong>Review the saved event</strong>
     <p>
-      Your edits are still here. Compare the saved event before continuing. Reloading replaces your
-      unsaved inputs.
+      Your edits are still here. Review the saved event before continuing. Reloading replaces your unsaved changes.
     </p>
     <p v-if="loading">Getting the saved event...</p>
     <p v-if="error">{{ error }} <button type="button" @click="$emit('retry')">Try again</button></p>
@@ -26,7 +25,7 @@ defineEmits(['reload', 'retry'])
         </li>
       </ul>
     </details>
-    <button type="button" class="ghost-btn" :disabled="!record || loading" @click="$emit('reload')">
+    <button type="button" class="ghost-btn" :disabled="!record || loading" @click="$emit('reload')" :aria-busy="loading">
       Reload saved event
     </button>
   </section>

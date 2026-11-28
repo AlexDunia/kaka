@@ -1,4 +1,5 @@
 <script setup>
+import { pngIconUrl } from '@/constants/pngIcons'
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { DASHBOARD_PREVIEW } from '@/services/dashboardPreview'
@@ -266,8 +267,8 @@ watch(
     <div class="rh-page-heading rh-d13-page-heading">
       <div>
         <span class="rh-eyebrow">GROW SALES / DISCOUNT CODES</span>
-        <h1 id="rh-discounts-title">You can give buyers a special price.</h1>
-        <p>Create a code for a specific ticket type or make it available to everyone.</p>
+        <h1 id="rh-discounts-title">Give buyers a discount.</h1>
+        <p>Create a code for one ticket type or all tickets.</p>
       </div>
       <button
         class="rh-button rh-button-dark"
@@ -288,7 +289,7 @@ watch(
         ><strong id="rh-code-active">{{
           codes.filter((code) => codeStatus(code) === 'available').length
         }}</strong
-        ><small>Active, within its dates and still available to use</small>
+        ><small>Active and ready to use</small>
       </article>
       <article class="rh-summary-card">
         <span>Uses</span
@@ -305,7 +306,7 @@ watch(
             {{ editing ? `Edit ${editing}` : 'Create a discount code' }}
           </h2>
           <p>
-            Choose the discount, who can use it and when it works. Review the offer before saving.
+            Choose the discount, tickets, and dates. Review before saving.
           </p>
         </div>
         <button
@@ -314,9 +315,7 @@ watch(
           id="rh-d13-close"
           @click="closeEditor"
           type="button"
-        >
-          ×
-        </button>
+        ><svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align: middle"><image :href="pngIconUrl('close')" width="24" height="24" /></svg></button>
       </div>
       <form id="rh-d13-form" ref="formElement" @submit.prevent="saveDiscount">
         <div class="rh-d13-form-grid">
@@ -507,9 +506,7 @@ watch(
             stroke-width="1.7"
             viewBox="0 0 24 24"
             width="18"
-          >
-            <circle cx="11" cy="11" r="7"></circle>
-            <path d="m16 16 5 5"></path></svg
+          ><image :href="pngIconUrl('search')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg
           ><input
             autocomplete="off"
             id="rh-d13-search"
@@ -530,7 +527,7 @@ watch(
         >
       </div>
       <div class="rh-d13-mobile-hint">
-        Swipe sideways to see each code’s status and actions <span aria-hidden="true">→</span>
+        Swipe sideways to see each code’s status and actions <span aria-hidden="true"><svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align: middle"><image :href="pngIconUrl('next')" width="24" height="24" /></svg></span>
       </div>
       <div class="rh-table-scroll rh-d13-table-scroll">
         <table class="rh-data-table rh-d13-table">
@@ -587,15 +584,12 @@ watch(
                       v-if="codeStatus(code) === 'available'"
                       viewBox="0 0 24 24"
                       aria-hidden="true"
-                    >
-                      <rect x="6" y="5" width="4" height="14" rx="1" />
-                      <rect x="14" y="5" width="4" height="14" rx="1" /></svg
+                    ><image :href="pngIconUrl('pause')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg
                     ><svg
                       v-else-if="codeStatus(code) === 'paused'"
                       viewBox="0 0 24 24"
                       aria-hidden="true"
-                    >
-                      <path d="M8 5.5 19 12 8 18.5Z" /></svg
+                    ><image :href="pngIconUrl('play')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg
                     ><template v-else>{{
                       {
                         scheduled: 'Start now',
@@ -636,10 +630,7 @@ watch(
         stroke-width="1.8"
         viewBox="0 0 24 24"
         width="18"
-      >
-        <circle cx="12" cy="12" r="9"></circle>
-        <path d="M12 11v5M12 7h.01"></path>
-      </svg>
+      ><image :href="pngIconUrl('info')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg>
       <p>
         <strong>Before sharing a code:</strong> Checkout isn’t connected yet, so these codes can’t
         be used to buy tickets or record sales.
@@ -654,7 +645,7 @@ watch(
         "
         type="button"
       >
-        How codes will work <span aria-hidden="true">→</span>
+        How codes will work <span aria-hidden="true"><svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align: middle"><image :href="pngIconUrl('next')" width="24" height="24" /></svg></span>
       </button>
     </div>
     <dialog
@@ -676,9 +667,7 @@ watch(
             id="rh-d13-dialog-close"
             @click="dialog.close()"
             type="button"
-          >
-            ×
-          </button>
+          ><svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align: middle"><image :href="pngIconUrl('close')" width="24" height="24" /></svg></button>
         </div>
         <div v-if="selected" id="rh-d13-dialog-body">
           <div
@@ -699,13 +688,10 @@ watch(
             ><strong>{{ value }}</strong>
           </div>
           <p class="rh-d13-dialog-hint">
-            One use means one completed order in the planned Rush Hour Tickets system. These usage
-            figures are examples; no payment or ticket sale is being recorded here.
+            Each use means one completed order. These are sample figures. No payments or ticket sales are recorded here.
           </p>
           <p v-if="selected.used > 0" class="rh-d13-dialog-hint">
-            <strong>Existing uses:</strong> The code and saving are locked in this prototype to
-            protect the original offer. You can still change future dates, eligible tickets and the
-            usage limit.
+            <strong>Existing uses:</strong> You can’t change the code or discount in this preview after use. You can change future dates, eligible tickets, and the use limit.
           </p>
         </div>
         <div class="rh-d13-dialog-actions">

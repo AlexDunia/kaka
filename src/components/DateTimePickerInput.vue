@@ -23,19 +23,14 @@
           stroke-width="2"
           stroke-linecap="round"
           stroke-linejoin="round"
-        >
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-          <line x1="16" y1="2" x2="16" y2="6"></line>
-          <line x1="8" y1="2" x2="8" y2="6"></line>
-          <line x1="3" y1="10" x2="21" y2="10"></line>
-        </svg>
+        ><image :href="pngIconUrl('calendar')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg>
       </button>
     </div>
     <p v-if="error" class="error-message">{{ error }}</p>
 
     <Teleport to="body">
-      <div v-if="isPickerOpen" class="datetime-picker-modal-overlay" @click.self="closePicker">
-        <div class="datetime-picker-modal">
+      <Transition name="rh-popup" appear><div data-popup-overlay v-if="isPickerOpen" class="datetime-picker-modal-overlay" @click.self="closePicker">
+        <div data-popup-panel class="datetime-picker-modal">
           <DateTimePicker
             :title="modalTitle"
             :initial-date-time="modelValue || new Date()"
@@ -49,12 +44,13 @@
             @close="closePicker"
           />
         </div>
-      </div>
+      </div></Transition>
     </Teleport>
   </div>
 </template>
 
 <script setup>
+import { pngIconUrl } from '@/constants/pngIcons'
 import { toLocalDateTimeString } from '@/utils/eventDateTime'
 import { ref, computed } from 'vue'
 import { v4 as uuidv4 } from 'uuid'

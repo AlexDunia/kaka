@@ -131,9 +131,26 @@ const catalogSource = (
   "import catalog from '@/api/axios'",
   `import axios from '${import.meta.resolve('axios')}'; const catalog = axios.create()`,
 )
-const { getPublicEvents, getPublicCategories } = await import(
+const { getPublicEvents, getPublicCategories, categoryArtIndex } = await import(
   `data:text/javascript;base64,${Buffer.from(catalogSource).toString('base64')}`
 )
+
+const artSource = (await readFile(new URL('../src/components/public/categoryArt.js', import.meta.url), 'utf8'))
+  .replace("'@/constants/pngIcons'", JSON.stringify(new URL('../src/constants/pngIcons.js', import.meta.url).href))
+const { categoryArt } = await import(`data:text/javascript;base64,${Buffer.from(artSource).toString('base64')}`)
+test('category artwork matches each event type instead of shared unrelated fallbacks', () => {
+  const expected = {
+    Conferences: 'conference', Music: 'music', Food: 'food', Arts: 'art',
+    Business: 'business', Sports: 'sports', Workshops: 'workshop', Social: 'social',
+    Tech: 'technology', Community: 'people', Theatre: 'theatre', Education: 'graduation',
+    'Startup & Tech': 'technology', 'Parties & Social': 'social', 'Faith & Community': 'people',
+    'Unknown category': 'ticket',
+  }
+  for (const [name, icon] of Object.entries(expected)) {
+    assert.equal(categoryArt[categoryArtIndex(name)].icon, icon, name)
+  }
+})
+
 
 test('loads database categories, preserving their identifiers', async () => {
   assert.deepEqual(await getPublicCategories(), [{ name: 'Food & Dining', value: '12' }])
@@ -184,7 +201,7 @@ const renderer = createRenderer({
   nextSibling() {},
 })
 
-test('replays public transitions even with a session, while skipping Back and protected pages', async (t) => {
+test('shows loading only for pending public navigation and skips ready, fast, Back and protected pages', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] })
   const previousWindow = globalThis.window
   globalThis.window = {
@@ -203,7 +220,7 @@ test('replays public transitions even with a session, while skipping Back and pr
       hooks.after = fn
       return () => {}
     },
-    onError: () => () => {},
+    onError: (fn) => { hooks.error = fn; return () => {} },
   }
   const auth = reactive({ isAuthenticated: false })
   let state
@@ -215,21 +232,23 @@ test('replays public transitions even with a session, while skipping Back and pr
   })
   try {
     app.mount({ children: [] })
-    assert.equal(state.visible.value, true)
-    assert.equal(state.stage.value, 'brand')
-    t.mock.timers.tick(1375)
-    assert.equal(state.stage.value, 'skeleton')
-    t.mock.timers.tick(285)
-    assert.equal(state.stage.value, 'reveal')
-    t.mock.timers.tick(190)
+    assert.equal(state.visible.value, false, 'Ready initial page has no artificial loader')
+    t.mock.timers.tick(2000)
     assert.equal(state.visible.value, false)
-    const home = { path: '/', meta: {} },
+    const home = { name: 'home', path: '/', meta: {} },
       find = { name: 'find-events', path: '/find-events', meta: {} }
     hooks.before(find, home)
-    assert.equal(state.visible.value, true)
+    assert.equal(state.visible.value, false)
+    hooks.after(find, home)
+    t.mock.timers.tick(2000)
+    assert.equal(state.visible.value, false, 'Fast navigation never flashes a loader')
+    hooks.before(find, home)
+    t.mock.timers.tick(200)
+    assert.equal(state.visible.value, true, 'Slow navigation shows loading')
+    assert.equal(state.stage.value, 'skeleton')
     window.history.state.position = 1
     hooks.after(find, home)
-    t.mock.timers.tick(1850)
+    assert.equal(state.visible.value, false, 'Ready route releases loading immediately')
     window.history.state.position = 0
     hooks.before(home, find)
     assert.equal(state.visible.value, false)
@@ -237,10 +256,19 @@ test('replays public transitions even with a session, while skipping Back and pr
     auth.isAuthenticated = true
     await nextTick()
     hooks.before(find, home)
+    t.mock.timers.tick(200)
     assert.equal(state.visible.value, true)
     hooks.before({ name: 'dashboard', path: '/dashboard', meta: { requiresAuth: true } }, find)
     assert.equal(state.visible.value, false)
     hooks.before({ name: 'CreateEvent', path: '/create-event', meta: { requiresAuth: true } }, find)
+    assert.equal(state.visible.value, false)
+    hooks.before(find, home)
+    hooks.after(find, home, new Error('Navigation cancelled'))
+    t.mock.timers.tick(2000)
+    assert.equal(state.visible.value, false)
+    hooks.before(find, home)
+    t.mock.timers.tick(200)
+    hooks.error(new Error('Route failed'))
     assert.equal(state.visible.value, false)
     assert.equal(shouldShowPublicLoader({ authenticated: false, protectedRoute: true }), false)
     assert.equal(shouldShowPublicLoader({ authenticated: false, samePage: true }), false)

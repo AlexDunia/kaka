@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { TicketIcon } from '@heroicons/vue/24/outline'
+import { TicketIcon } from '@/components/icons/pngIcons'
 import { safePublicUrl } from '@/utils/eventProfile'
 
 const props = defineProps({ src: { type: String, default: '' }, alt: { type: String, default: '' } })

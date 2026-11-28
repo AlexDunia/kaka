@@ -1,6 +1,6 @@
 <template>
-  <div v-if="isOpen" class="time-picker-overlay" @click.self="close">
-    <div class="time-picker-modal">
+  <Transition name="rh-popup" appear><div data-popup-overlay v-if="isOpen" class="time-picker-overlay" @click.self="close">
+    <div data-popup-panel class="time-picker-modal">
       <div class="time-picker-header">
         <h3>Select Time</h3>
         <button type="button" class="time-picker-close" @click="close">
@@ -10,22 +10,7 @@
             viewBox="0 0 24 24"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M18 6L6 18"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-            <path
-              d="M6 6L18 18"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
+          ><image :href="pngIconUrl('close')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg>
         </button>
       </div>
       <div class="time-picker-body">
@@ -92,10 +77,11 @@
         </button>
       </div>
     </div>
-  </div>
+  </div></Transition>
 </template>
 
 <script setup>
+import { pngIconUrl } from '@/constants/pngIcons'
 import { ref, watch } from 'vue'
 
 const props = defineProps({
@@ -227,7 +213,6 @@ const apply = () => {
   justify-content: center;
   z-index: 100;
   backdrop-filter: blur(5px);
-  animation: fadeIn 0.3s ease-out forwards;
 }
 
 .time-picker-modal {
@@ -236,7 +221,6 @@ const apply = () => {
   border-radius: 16px;
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-subtle);
-  animation: modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   overflow: hidden;
 }
 

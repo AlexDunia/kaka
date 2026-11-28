@@ -1,0 +1,84 @@
+/* Feedback follows real state; reduced motion keeps every state visible. */
+.rh-spinner,
+button[aria-busy='true']:not(:has(.rh-spinner))::after {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  box-sizing: border-box;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: rh-feedback-spin 0.75s linear infinite;
+}
+button[aria-busy='true'] {
+  cursor: progress;
+}
+button[aria-busy='true']::after {
+  margin-inline-start: 8px;
+}
+@keyframes rh-feedback-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  #app :is(button, a, input, select, textarea, summary) {
+    transition:
+      background-color 160ms ease,
+      color 160ms ease,
+      border-color 160ms ease,
+      box-shadow 160ms ease,
+      opacity 160ms ease;
+  }
+  :is(.hero-search, .search-with-filters) :is(input, select) {
+    transition:
+      border-color 180ms ease,
+      box-shadow 180ms ease,
+      background-color 180ms ease;
+  }
+  :is(.hero-search, .search-with-filters) input:focus {
+    box-shadow: 0 0 0 3px rgb(239 39 122 / 0.12);
+  }
+  .search-select-wrap > svg {
+    transition: transform 180ms ease;
+  }
+  .search-select-wrap:focus-within > svg {
+    transform: translateY(-50%) rotate(180deg);
+  }
+}
+/* Native keyboard, touch and screen-reader behavior is retained. Browsers without
+   customisable selects keep their own accessible option picker. */
+@supports (appearance: base-select) {
+  :is(.hero-search, .search-with-filters) select,
+  :is(.hero-search, .search-with-filters) select::picker(select) {
+    appearance: base-select;
+  }
+  .search-with-filters select::picker-icon {
+    display: none;
+  }
+  :is(.hero-search, .search-with-filters) select::picker(select) {
+    border: 1px solid var(--ds-color-border);
+    border-radius: var(--ds-radius-control);
+    background: var(--ds-color-surface);
+    color: var(--ds-color-text);
+    box-shadow: 0 8px 24px rgb(32 39 50 / 0.12);
+    padding: 6px;
+    max-height: 280px;
+    overflow: auto;
+  }
+  :is(.hero-search, .search-with-filters) option {
+    padding: 10px 12px;
+    border-radius: 4px;
+  }
+  :is(.hero-search, .search-with-filters) option:checked {
+    background: var(--ds-color-surface-subtle);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rh-spinner,
+  button[aria-busy='true']::after {
+    animation: none;
+  }
+}

@@ -1,4 +1,7 @@
 <script setup>
+import FeedbackToast from '@/components/FeedbackToast.vue'
+import { HeartIcon, ShareIcon, ChevronLeftIcon } from '@heroicons/vue/24/outline'
+import { pngIconUrl } from '@/constants/pngIcons'
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
@@ -6,15 +9,12 @@ import {
   CalendarDaysIcon,
   MapPinIcon,
   GlobeAltIcon,
-  HeartIcon,
-  ShareIcon,
-  ChevronLeftIcon,
   ChevronRightIcon,
   XMarkIcon,
   SparklesIcon,
   TicketIcon,
   CheckIcon,
-} from '@heroicons/vue/24/outline'
+} from '@/components/icons/pngIcons'
 import { useEventStore } from '@/stores/events'
 import { useAuthStore } from '@/stores/auth'
 import { useSeo } from '@/composables/useSeo'
@@ -429,9 +429,11 @@ onBeforeUnmount(() => {
                   :aria-label="saved ? 'Remove event from saved events' : 'Save event'"
                   :aria-pressed="saved"
                   :disabled="saving"
+                  :aria-busy="saving"
                   @click="toggleSaved"
                 >
-                  <HeartIcon :class="{ 'ep-heart-saved': saved }" aria-hidden="true" />
+                  <span v-if="saving" class="rh-spinner" aria-hidden="true" />
+                  <HeartIcon v-else :class="{ 'ep-heart-saved': saved }" aria-hidden="true" />
                 </button>
               </div>
             </div>
@@ -498,9 +500,11 @@ onBeforeUnmount(() => {
               class="ep-secondary rh24-quiet-button ep-desktop-hero-action"
               :aria-pressed="saved"
               :disabled="saving"
+                  :aria-busy="saving"
               @click="toggleSaved"
             >
-              <HeartIcon :class="{ 'ep-heart-saved': saved }" />{{
+              <span v-if="saving" class="rh-spinner" aria-hidden="true" />
+                  <HeartIcon v-else :class="{ 'ep-heart-saved': saved }" />{{
                 saved ? 'Saved' : 'Save event'
               }}</button
             ><button
@@ -613,8 +617,8 @@ onBeforeUnmount(() => {
           </section>
           <section v-if="profile.guests.length" id="ep-guests" class="ep-chapter rh24-chapter">
             <div class="ep-section-heading rh24-section-heading">
-              <div><h2>Featured guests</h2></div>
-              <p>Meet the artists and special guests joining the event.</p>
+              <div><h2>Special guests</h2></div>
+              <p>See who’s joining the event.</p>
             </div>
             <div v-if="profile.guests.length" class="ep-people-grid rh24-people-grid">
               <button
@@ -680,7 +684,7 @@ onBeforeUnmount(() => {
           </section>
           <section v-if="profile.faq.length" id="ep-faq" class="ep-chapter rh24-chapter">
             <div class="ep-section-heading rh24-section-heading">
-              <h2>Frequently asked questions</h2>
+              <h2>Common questions</h2>
               <p>Answers to help you plan your visit.</p>
             </div>
             <div v-if="profile.faq.length" class="ep-faq rh30-faq-list">
@@ -721,8 +725,8 @@ onBeforeUnmount(() => {
           </section>
           <section v-if="profile.crew.length" class="rh24-chapter rh26-crew">
             <div class="rh24-section-heading">
-              <div><h2>People behind the event</h2></div>
-              <p>Meet the people who helped make it happen.</p>
+              <div><h2>The event team</h2></div>
+              <p>Meet the people bringing this event to life.</p>
             </div>
             <div class="rh26-crew-tags">
               <div v-for="person in profile.crew" :key="person.name" class="rh26-creator-chip">
@@ -766,7 +770,7 @@ onBeforeUnmount(() => {
               :disabled="!profile.canBuy && !profile.canRegister"
               @click="openTickets"
             >
-              {{ purchaseLabel }} <span v-if="profile.canBuy" aria-hidden="true">→</span>
+              {{ purchaseLabel }} <span v-if="profile.canBuy" aria-hidden="true"><svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align: middle"><image :href="pngIconUrl('next')" width="24" height="24" /></svg></span>
             </button>
           </div>
           <p class="ep-ticket-help">
@@ -777,7 +781,7 @@ onBeforeUnmount(() => {
       <section v-if="relatedEvents.length" class="ep-container ep-related rh24-related" aria-labelledby="ep-more-events">
         <div class="ep-section-heading rh24-section-heading">
           <h2 id="ep-more-events">More events</h2>
-          <p>Explore events connected to the same community.</p>
+          <p>Find more events from this community.</p>
         </div>
         <div v-if="relatedEvents.length" class="ep-related-grid rh24-related-grid">
           <button
@@ -982,7 +986,7 @@ onBeforeUnmount(() => {
         ></template>
       </dialog>
     </template>
-    <div v-if="toast" class="ep-toast" role="status" aria-live="polite">{{ toast }}</div>
+    <FeedbackToast :message="toast" @dismiss="toast = ''" />
   </div>
 </template>
 
