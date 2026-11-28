@@ -336,6 +336,11 @@
       "prompt": "Use case: stylized-concept. Generate ONE original miniature 3D UI icon for Rush Hour Tickets. Match a coherent premium playful emoji family: tactile softly rounded clay and ceramic, subtle glossy highlights, gentle three-quarter perspective, soft studio light upper left. Simple strong silhouette readable at 24px. Raspberry pink #ef277a, warm ivory, lavender, charcoal and small warm gold details. Object centered, fills 80% of square canvas. Fully transparent background and corners. No scene, ground plane, white square, backdrop, watermark, text or brand logos. Subject: TWO overlapping rounded conversation bubbles, one raspberry pink and one ivory, with three tiny charcoal dots on the front bubble. Friendly social conversation. No music, no headphones, no star.",
       "generator": "built-in image_gen",
       "normalization": "256px transparent PNG"
+    },
+    {
+      "name": "wave",
+      "file": "wave.png",
+      "prompt": "a friendly raised right hand waving hello, palm facing the viewer, five softly rounded fingers, warm golden peach hand and small raspberry pink sleeve cuff; no motion lines"
     }
   ]
 }
