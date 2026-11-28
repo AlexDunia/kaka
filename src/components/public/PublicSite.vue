@@ -154,7 +154,7 @@ onBeforeUnmount(() => {
           <PublicHeaderSearch />
           <RouterLink class="public-cart-link" to="/cart" aria-label="Your cart"
             ><svg class="icon" aria-hidden="true" viewBox="0 0 24 24" @contextmenu.prevent @dragstart.prevent><image :href="pngIconUrl('cart')" width="24" height="24" preserveAspectRatio="xMidYMid meet" /></svg></RouterLink
-          ><AccountMenu v-if="auth.isAuthenticated" context="site" class="header-account" /><RouterLink
+          ><AccountMenu v-if="(auth.isAuthenticated || auth.isPreview)" context="site" class="header-account" /><RouterLink
             v-else
             class="public-login-link"
             to="/login"
@@ -188,7 +188,7 @@ onBeforeUnmount(() => {
           >{{ link.label }}</RouterLink
         ><RouterLink to="/create-event" @click="menuOpen = false">Create event</RouterLink
         ><RouterLink to="/contact" @click="menuOpen = false">Contact us</RouterLink>
-        <AccountMenu v-if="auth.isAuthenticated" context="site" label="Your account" />
+        <AccountMenu v-if="(auth.isAuthenticated || auth.isPreview)" context="site" label="Your account" />
         <RouterLink v-else to="/login" @click="menuOpen = false">Log in</RouterLink>
       </nav></Transition>
       <HomeScrollGreeting
@@ -211,7 +211,7 @@ onBeforeUnmount(() => {
         /></span>
         <RouterLink
           :to="
-            auth.isAuthenticated
+            (auth.isAuthenticated || auth.isPreview)
               ? '/create-event'
               : { path: '/register', query: { redirect: '/create-event' } }
           "

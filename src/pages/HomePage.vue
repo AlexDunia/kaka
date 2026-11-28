@@ -120,11 +120,11 @@ const asset = (path) => `${import.meta.env.BASE_URL}${path}`
         <div class="feature-stories">
           <article class="story-row" data-feature="promote">
             <div class="story-copy">
-              <span class="story-step">01 / PROMOTION</span>
+              <span class="story-step">Promotion</span>
               <h3>Share your event. See what works.</h3>
               <p>Track ticket sales from Instagram, WhatsApp and your other sharing links.</p>
               <RouterLink class="text-link" to="/dashboard?view=share"
-                >Explore promotion <svg class="icon"><use href="#i-arrow"></use></svg
+                >Explore promotion <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6" /></svg
               ></RouterLink>
             </div>
             <div class="story-stage stage-promo">
@@ -174,11 +174,11 @@ const asset = (path) => `${import.meta.env.BASE_URL}${path}`
           </article>
           <article class="story-row" data-feature="sales">
             <div class="story-copy">
-              <span class="story-step">02 / OVERVIEW</span>
+              <span class="story-step">Overview</span>
               <h3>Know how your event is selling.</h3>
               <p>See tickets sold, money earned and what’s still available.</p>
               <RouterLink class="text-link" to="/dashboard?view=overview"
-                >Explore overview <svg class="icon"><use href="#i-arrow"></use></svg
+                >Explore overview <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6" /></svg
               ></RouterLink>
             </div>
             <div class="story-stage stage-sales">
@@ -238,11 +238,11 @@ const asset = (path) => `${import.meta.env.BASE_URL}${path}`
           </article>
           <article class="story-row" data-feature="attendees">
             <div class="story-copy">
-              <span class="story-step">03 / ATTENDEES</span>
+              <span class="story-step">Attendees</span>
               <h3>Know who’s coming.</h3>
               <p>Find your buyers, see their tickets and manage your guest list.</p>
               <RouterLink class="text-link" to="/dashboard?view=attendees"
-                >Explore attendees <svg class="icon"><use href="#i-arrow"></use></svg
+                >Explore attendees <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6" /></svg
               ></RouterLink>
             </div>
             <div class="story-stage stage-attendees">
@@ -291,11 +291,11 @@ const asset = (path) => `${import.meta.env.BASE_URL}${path}`
           </article>
           <article class="story-row" data-feature="checkin">
             <div class="story-copy">
-              <span class="story-step">04 / DOOR CHECK-IN</span>
+              <span class="story-step">Door check-in</span>
               <h3>Check guests in with less hassle.</h3>
               <p>Scan tickets, confirm entry and keep track of arrivals.</p>
               <RouterLink class="text-link" to="/dashboard?view=checkin"
-                >Explore door check-in <svg class="icon"><use href="#i-arrow"></use></svg
+                >Explore door check-in <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6" /></svg
               ></RouterLink>
             </div>
             <div class="story-stage stage-checkin">

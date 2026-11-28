@@ -1,6 +1,7 @@
 ﻿import { createRouter, createWebHistory } from 'vue-router'
 import { isScheduleNavigation } from '@/utils/routePresentation'
 import { useAuthStore } from '@/stores/auth'
+import { isStaticPreview } from '@/services/staticPreviewMode'
 import HomePage from '../pages/HomePage.vue'
 
 const router = createRouter({
@@ -383,7 +384,8 @@ router.beforeEach(async (to) => {
   if (to.meta.requiresAuth) {
     await authStore.initialize()
 
-    if (!authStore.isAuthenticated) {
+    const staticRoute = isStaticPreview() && ['dashboard', 'dashboard-event', 'CreateEvent', 'EditEvent'].includes(to.name)
+    if (!authStore.isAuthenticated && !staticRoute) {
       return {
         name: 'login',
         query: {

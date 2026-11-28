@@ -1,6 +1,8 @@
 ﻿import { v4 as uuidv4 } from 'uuid'
-const ATTEMPT_KEY = 'checkoutAttemptToken',
-  ORDER_TOKEN_PREFIX = 'checkoutOrderToken:'
+import { isStaticPreview } from '@/services/staticPreviewMode'
+const prefix = isStaticPreview() ? 'rushhour:static:' : ''
+const ATTEMPT_KEY = `${prefix}checkoutAttemptToken`,
+  ORDER_TOKEN_PREFIX = `${prefix}checkoutOrderToken:`
 export const getOrCreateCheckoutToken = () => {
   const existing = getActiveCheckout()?.checkoutToken || sessionStorage.getItem(ATTEMPT_KEY)
   if (existing) return existing
@@ -15,7 +17,7 @@ export const rememberOrderToken = (orderId, token) => {
 export const getOrderToken = (orderId) =>
   orderId ? sessionStorage.getItem(`${ORDER_TOKEN_PREFIX}${orderId}`) : null
 
-const RECOVERY_PREFIX = 'checkoutOrderRecovery:'
+const RECOVERY_PREFIX = `${prefix}checkoutOrderRecovery:`
 export const rememberOrderRecovery = ({ order_public_id, access_token, expires_at }) => {
   sessionStorage.setItem(
     `${RECOVERY_PREFIX}${order_public_id}`,
@@ -36,7 +38,7 @@ export const getOrderRecovery = (orderId) => {
 }
 
 // Keep unresolved orders separate from editable cart state. Never persist ticket credentials.
-const ACTIVE_KEY = 'checkoutActiveOrder'
+const ACTIVE_KEY = `${prefix}checkoutActiveOrder`
 export const rememberActiveCheckout = ({ orderId, reference, checkoutToken }) => {
   if (checkoutToken)
     sessionStorage.setItem(ACTIVE_KEY, JSON.stringify({ orderId, reference, checkoutToken }))

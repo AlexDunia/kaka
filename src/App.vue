@@ -252,7 +252,7 @@ const authStore = useAuthStore()
 const { visible: publicLoading, stage: publicLoadingStage, destination: publicLoadingDestination, sequence: publicLoadingSequence } = usePublicPageLoader(router)
 provide('publicPageLoading', publicLoading)
 const cartCount = computed(() => cartStore.itemCount)
-const isAuthenticated = computed(() => authStore.isAuthenticated)
+const isAuthenticated = computed(() => authStore.isAuthenticated || authStore.isPreview)
 const scrollPosition = ref(0)
 const handleScroll = throttle(() => {
   scrollPosition.value = window.scrollY

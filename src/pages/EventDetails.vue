@@ -27,6 +27,7 @@ import { eventProfileNavigation } from '@/utils/eventProfileNavigation'
 import { staticEvents, getStaticEvent } from '@/services/staticEventCatalog'
 import { trackEventView } from '@/services/eventViewService'
 import eventService from '@/services/eventService'
+import { isStaticPreview } from '@/services/staticPreviewMode'
 import { initials, normalizeEventProfile, profileDate, safePublicUrl } from '@/utils/eventProfile'
 
 const route = useRoute(),
@@ -57,15 +58,15 @@ const selectedRelated = ref(null),
   relatedDialog = ref(null)
 const relatedEvents = ref([]),
   following = ref([])
-const preview = computed(() => Boolean(getStaticEvent(route.params.id)))
+const preview = computed(() => isStaticPreview() || Boolean(getStaticEvent(route.params.id)))
 const ticketPickerOpen = computed(
   () => route.query.tickets === '1' || typeof route.query.ticket === 'string',
 )
 const attendeeView = ref(false)
 const canEdit = computed(
   () =>
-    authStore.isAuthenticated &&
-    Number(currentEvent.value?.created_by) === Number(authStore.user?.id),
+    isStaticPreview() || (authStore.isAuthenticated &&
+    Number(currentEvent.value?.created_by) === Number(authStore.user?.id)),
 )
 const showOwnerActions = computed(() => canEdit.value && !attendeeView.value)
 watch(() => [route.params.id, authStore.user?.id], () => { attendeeView.value = false })

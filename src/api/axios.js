@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { isStaticPreview } from '@/services/staticPreviewMode'
 
 export const API_BASE_URL = '/api'
 export const apiUrl = (path) => `${API_BASE_URL}/${path.replace(/^\//, '')}`
@@ -7,8 +8,21 @@ const api = axios.create({
   withCredentials: true,
   withXSRFToken: true,
 })
+// Explicit preview mode never falls through to a live backend request.
+api.interceptors.request.use((config) => {
+  if (isStaticPreview()) {
+    config.withCredentials = false
+    config.withXSRFToken = false
+    config.adapter = async (request) => {
+      const { staticPreviewAdapter } = await import('@/services/staticPreviewApi')
+      return staticPreviewAdapter(request)
+    }
+  }
+  return config
+})
 let csrfCookieRequest = null
 export const ensureCsrfCookie = () => {
+  if (isStaticPreview()) return Promise.resolve()
   if (!csrfCookieRequest) {
     csrfCookieRequest = axios
       .get('/sanctum/csrf-cookie', { withCredentials: true, withXSRFToken: true })

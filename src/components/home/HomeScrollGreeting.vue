@@ -90,7 +90,7 @@ onBeforeUnmount(() => {
         class="home-greeting-go"
         :to="
           seller
-            ? auth.isAuthenticated
+            ? (auth.isAuthenticated || auth.isPreview)
               ? '/create-event'
               : { path: '/register', query: { redirect: '/create-event' } }
             : '/find-events'

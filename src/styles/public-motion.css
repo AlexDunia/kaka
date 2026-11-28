@@ -208,6 +208,10 @@
   background: var(--ds-color-surface-subtle, #f3f5f6);
 }
 @media (max-width: 760px) {
+  #app .public-site .campaign-heading,
+  #app .public-site .story-copy h3 {
+    font-size: 27.5px;
+  }
   #app .public-site .campaign-intro {
     gap: 16px;
   }

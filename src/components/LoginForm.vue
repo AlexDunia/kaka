@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { enterStaticPreview, exitStaticPreview, isStaticPreview } from '@/services/staticPreviewMode'
 
 
 const email = ref('')
@@ -13,6 +14,7 @@ const authStore = useAuthStore()
 const router = useRouter()
 
 const login = async () => {
+  if (isStaticPreview()) return exitStaticPreview()
   error.value = ''
 
   if (!email.value || !password.value) {
@@ -39,6 +41,7 @@ const login = async () => {
 
 // âœ… NEW: Google Sign-In
 const loginWithGoogle = () => {
+  if (isStaticPreview()) return exitStaticPreview()
   window.location.href = '/api/auth/google'
 }
 
@@ -48,6 +51,14 @@ const goToForgotPassword = () => {
 
 const goToRegister = () => {
   router.push('/register')
+}
+
+const continueStatic = () => {
+  try {
+    enterStaticPreview()
+  } catch {
+    error.value = 'Allow browser storage to open the static version, then try again.'
+  }
 }
 </script>
 
@@ -124,6 +135,11 @@ const goToRegister = () => {
         </svg>
         <span>Continue with Google</span>
       </button>
+
+      <button type="button" class="login-form__google" @click="continueStatic">
+        Continue with static version
+      </button>
+      <p class="login-form__register">Explore sample events. Your changes stay in this browser.</p>
 
       <div class="login-form__register">
         New to Rush Hour?

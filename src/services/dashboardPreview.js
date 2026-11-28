@@ -1,6 +1,7 @@
 import referenceCover from '@/assets/event-workspace/reference-a091d7590289.jpg'
+import { isStaticPreview } from './staticPreviewMode'
 // Demo fixtures are available only in an explicitly selected development demo.
-export const DASHBOARD_PREVIEW = import.meta.env.DEV && import.meta.env.VITE_DEMO_MODE === 'true'
+export const DASHBOARD_PREVIEW = isStaticPreview() || (import.meta.env.DEV && import.meta.env.VITE_DEMO_MODE === 'true')
 export const previewEvent = {
   id: 900001,
   title: 'Lagos after sunset',

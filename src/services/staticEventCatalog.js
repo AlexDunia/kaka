@@ -1,5 +1,5 @@
 import { DASHBOARD_PREVIEW } from './dashboardPreview'
-// Two complete static public events, kept separate from database-owned records.
+// Sample public events, kept separate from database-owned records.
 import concert from '@/assets/event-workspace/reference-a091d7590289.jpg'
 import { normalizeEventProfile } from '@/utils/eventProfile'
 const momentOne = 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=750&q=75'
@@ -200,18 +200,43 @@ const brief = (event) => ({
   organizer: event.organiser.name,
   source: 'static',
 })
-first.related_events = [brief(second)]
-second.related_events = [brief(first)]
-for (const event of [first, second])
-  for (const guest of event.guests) guest.events = [brief(first), brief(second)]
-for (const event of [first, second]) event.demo = true
-export const staticEvents = DASHBOARD_PREVIEW ? [first, second] : []
+const third = buildStaticEvent(900003)
+Object.assign(third, {
+  title: 'Rooftop conversations',
+  summary: 'Meet your creative community over an easy evening above the city.',
+  description: 'Join fellow creatives for a relaxed evening of conversation, short talks and new connections. Come with an idea to share or simply listen and meet people building something of their own.\n\nEntry is free. The rooftop has step-free lift access, seating and refreshments available to buy.',
+  category: 'Community',
+  ends_at: '2027-02-06T21:00:00+01:00',
+  ticket_mode: 'free',
+  ticketMode: 'free',
+  freeCapacity: 120,
+  tags: ['Community', 'Creative meetups', 'Lagos'],
+  address: { venue_name: 'The Creative Rooftop', city: 'Victoria Island', state: 'Lagos', country: 'Nigeria' },
+  ticketTypes: [{ id: 992001, name: 'Free entry', price: 0, quantity: 120, maxPerPerson: 1, description: 'An evening of conversation and connection.' }],
+  schedule: [
+    { time: '5:00 PM', title: 'Welcome to the rooftop', description: 'Settle in and meet the community.' },
+    { time: '6:00 PM', title: 'Ideas worth sharing', description: 'Short talks from local creatives, followed by questions.' },
+    { time: '7:00 PM', title: 'Make a connection', description: 'Share what you are working on and meet new collaborators.' },
+  ],
+  faqs: [
+    { question: 'Is entry free?', answer: 'Yes. Choose free entry to see the registration flow in this preview.' },
+    { question: 'Is the venue accessible?', answer: 'The rooftop has lift access and seating. Contact the organiser for specific access needs.' },
+  ],
+})
+for (const event of [first, second, third]) {
+  event.demo = true
+  event.status = 'active'
+  event.ticket_mode ||= 'paid'
+  event.related_events = [first, second, third].filter((other) => other !== event).map(brief)
+  for (const guest of event.guests) guest.events = [first, second, third].map(brief)
+}
+export const staticEvents = DASHBOARD_PREVIEW ? [first, second, third] : []
 export const getStaticEvent = (id) => staticEvents.find((event) => event.id === Number(id)) || null
 export const getEventProfilePreview = getStaticEvent
 
-export function quoteStaticTickets(items) {
+export function quoteStaticTickets(items, findEvent = getStaticEvent) {
   const rows = items.map((item) => {
-    const event = getStaticEvent(item.eventId)
+    const event = findEvent(item.eventId)
     const profile = normalizeEventProfile(event || {})
     const ticket = profile.tickets.find((candidate) => candidate.id === Number(item.ticketId))
     const quantity = Number(item.quantity)

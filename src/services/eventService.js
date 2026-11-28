@@ -1,6 +1,7 @@
 import api, { apiUrl } from '@/api/axios'
 import { DASHBOARD_PREVIEW } from './dashboardPreview'
 import { getStaticEvent } from './staticEventCatalog'
+import { isStaticPreview } from './staticPreviewMode'
 
 const listEvents = async (params) => {
   const { data } = await api.get('/events', { params })
@@ -34,7 +35,7 @@ export default {
     listEvents({ q: search, category, page, per_page: limit }),
   async getEventById(id) {
     if (!/^[1-9]\d*$/.test(String(id))) throw new Error('Choose an event to continue.')
-    if (DASHBOARD_PREVIEW) {
+    if (DASHBOARD_PREVIEW && !isStaticPreview()) {
       const sample = getStaticEvent(id)
       if (sample) return { data: structuredClone(sample) }
     }

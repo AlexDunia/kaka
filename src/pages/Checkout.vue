@@ -6,6 +6,7 @@ import { ArrowLeftIcon } from '@/components/icons/pngIcons'
 import { useAuthStore } from '@/stores/auth'
 import { useSlug } from '@/composables/useSlug'
 import { getStaticEvent, quoteStaticTickets } from '@/services/staticEventCatalog'
+import { isStaticPreview } from '@/services/staticPreviewMode'
 import { useCartStore } from '@/stores/cart'
 import { getVisitorId } from '@/services/eventViewService'
 import {
@@ -49,8 +50,9 @@ const checkoutItems = computed(() =>
 )
 const staticCheckout = computed(
   () =>
-    selectedItems.value.length > 0 &&
-    selectedItems.value.some((item) => item.demo === true || Boolean(getStaticEvent(item.eventId))),
+    isStaticPreview() ||
+    (selectedItems.value.length > 0 &&
+      selectedItems.value.some((item) => item.demo === true || Boolean(getStaticEvent(item.eventId)))),
 )
 const freeEvent = ref(null),
   registrationQuantity = ref(1),
@@ -216,7 +218,12 @@ const loadQuote = async () => {
   quote.value = null
   try {
     if (staticCheckout.value) {
-      quote.value = quoteStaticTickets(selectedItems.value)
+      if (isStaticPreview()) {
+        const ids = [...new Set(selectedItems.value.map((item) => Number(item.eventId)))]
+        const events = await Promise.all(ids.map((id) => eventService.getEventById(id)))
+        const byId = new Map(events.map((response) => [response.data.id, response.data]))
+        quote.value = quoteStaticTickets(selectedItems.value, (id) => byId.get(Number(id)))
+      } else quote.value = quoteStaticTickets(selectedItems.value)
     } else {
       quote.value = await quoteCheckout(checkoutItems.value)
     }
@@ -342,6 +349,10 @@ const checkPayment = async () => {
   }
 }
 const pay = async () => {
+  if (isStaticPreview()) {
+    error.value = 'You can explore checkout here. Payments and registrations need a connected account.'
+    return
+  }
   if (
     submitting.value ||
     confirming.value ||

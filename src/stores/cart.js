@@ -1,7 +1,9 @@
 ﻿import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-const CART_STORAGE_KEY = 'cartItems',
-  CHECKOUT_ATTEMPT_KEY = 'checkoutAttemptToken'
+import { isStaticPreview } from '@/services/staticPreviewMode'
+const prefix = isStaticPreview() ? 'rushhour:static:' : ''
+const CART_STORAGE_KEY = `${prefix}cartItems`,
+  CHECKOUT_ATTEMPT_KEY = `${prefix}checkoutAttemptToken`
 const readStoredItems = () => {
   try {
     const parsed = JSON.parse(sessionStorage.getItem(CART_STORAGE_KEY) || '[]')

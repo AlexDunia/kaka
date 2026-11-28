@@ -10,7 +10,7 @@
     "lint": "eslint . --fix",
     "format": "prettier --write src/",
     "predeploy": "npm run build && copy dist\\index.html dist\\404.html",
-    "deploy": "gh-pages -d dist"
+    "deploy": "node scripts/deploy.mjs"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",

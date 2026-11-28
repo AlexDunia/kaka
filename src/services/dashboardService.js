@@ -1,5 +1,6 @@
 import { DASHBOARD_PREVIEW, previewEvent, previewOverview } from './dashboardPreview'
 import api from '@/api/axios'
+import { isStaticPreview } from './staticPreviewMode'
 
 function previewSnapshot() {
   const overview = structuredClone(previewOverview)
@@ -45,14 +46,14 @@ function previewSnapshot() {
 }
 
 export const getDashboardEventsPage = async ({ signal, page = 1 } = {}) => {
-  if (DASHBOARD_PREVIEW)
+  if (DASHBOARD_PREVIEW && !isStaticPreview())
     return { data: [previewSnapshot().event], current_page: 1, last_page: 1, total: 1 }
   return (await api.get('/dashboard/events', { signal, params: { page, per_page: 30 } })).data
 }
 export const getDashboardEvents = async (options) => (await getDashboardEventsPage(options)).data
 
 export const getDashboardOverview = async (eventId, { signal } = {}) => {
-  if (DASHBOARD_PREVIEW) return previewSnapshot()
+  if (DASHBOARD_PREVIEW && !isStaticPreview()) return previewSnapshot()
   const response = await api.get(`/dashboard/events/${encodeURIComponent(eventId)}/overview`, {
     signal,
   })

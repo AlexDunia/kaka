@@ -29,7 +29,7 @@ onBeforeUnmount(() => {
 </script>
 <template>
   <div ref="root" class="ep-public-controls">
-    <AccountMenu v-if="auth.isAuthenticated" />
+    <AccountMenu v-if="auth.isAuthenticated || auth.isPreview" />
     <RouterLink
       v-else
       class="ep-account-link"

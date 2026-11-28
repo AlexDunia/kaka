@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import api, { ensureCsrfCookie } from '@/api/axios'
+import { exitStaticPreview, isStaticPreview } from '@/services/staticPreviewMode'
 
 const getApiErrorMessage = (error, fallback) => {
   const errors = error.response?.data?.errors
@@ -19,7 +20,8 @@ export const useAuthStore = defineStore('auth', () => {
   const initialized = ref(false)
   let initializePromise = null
 
-  const isAuthenticated = computed(() => initialized.value && Boolean(user.value))
+  const isAuthenticated = computed(() => !isStaticPreview() && initialized.value && Boolean(user.value))
+  const isPreview = computed(() => isStaticPreview())
   const getUser = computed(() => user.value)
   const getError = computed(() => error.value)
   const isAdmin = computed(() => user.value?.role === 'admin')
@@ -45,6 +47,11 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const fetchUser = async () => {
+    if (isStaticPreview()) {
+      user.value = { id: 'static-organiser', name: 'Preview organiser', email: 'preview@example.test' }
+      initialized.value = true
+      return user.value
+    }
     error.value = null
     initialized.value = false
     try {
@@ -138,6 +145,10 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const logout = async () => {
+    if (isStaticPreview()) {
+      exitStaticPreview()
+      return { serverLogoutSucceeded: false }
+    }
     isLoading.value = true
     error.value = null
     try {
@@ -227,6 +238,7 @@ export const useAuthStore = defineStore('auth', () => {
     authProvider,
     initialized,
     isAuthenticated,
+    isPreview,
     getUser,
     getError,
     isAdmin,
